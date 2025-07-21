@@ -7,14 +7,20 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "ios_icon": "npx rnvi-update-plist package.json ios/GeetaFinal/Info.plist && cd ios && pod install && cd .."
   },
   "dependencies": {
+    "@react-native-vector-icons/fontawesome6": "^12.1.0",
+    "@react-native-vector-icons/material-design-icons": "^12.2.0",
     "@react-native/new-app-screen": "0.80.1",
+    "@react-navigation/bottom-tabs": "^7.4.2",
+    "@react-navigation/elements": "^2.5.2",
     "@react-navigation/native": "^7.1.14",
     "@react-navigation/native-stack": "^7.3.21",
     "react": "19.1.0",
     "react-native": "0.80.1",
+    "react-native-paper": "^5.14.5",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.13.1"
   },
