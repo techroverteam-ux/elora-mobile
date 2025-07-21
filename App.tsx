@@ -32,22 +32,26 @@ import React from 'react'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import AppNavigator from './src/AppNavigator';
 import { PaperProvider } from 'react-native-paper';
+import { Provider } from 'react-redux';
+import { store } from './src/data/redux/store';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
-    <PaperProvider>
-      <SafeAreaProvider>
-        <SafeAreaView
-          edges={['top', 'bottom']}
-          style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : '#fff' }}
-        >
-          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-          <AppNavigator />
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </PaperProvider>
+    <Provider store={store}>
+      <PaperProvider>
+        <SafeAreaProvider>
+          <SafeAreaView
+            edges={['top', 'bottom']}
+            style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : '#fff' }}
+          >
+            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+            <AppNavigator />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </PaperProvider>
+    </Provider>
   )
 }
 
