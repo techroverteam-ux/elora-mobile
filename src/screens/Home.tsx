@@ -3,10 +3,12 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState } from '../data/redux/store'
 import { decrement, increment } from '../data/redux/slices/counterSlice'
+import { useTranslation } from 'react-i18next'
 
 const Home = () => {
   const count = useSelector((state: RootState) => state.counter.value)
   const dispatch = useDispatch()
+  // const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -27,6 +29,8 @@ const Home = () => {
       >
         <Text style={styles.buttonText}>Decrement</Text>
       </TouchableOpacity>
+
+      {/* <Text>{t('screens.intro.title')} sdffsd</Text> */}
     </View>
   )
 }
