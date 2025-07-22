@@ -7,6 +7,7 @@ import CounterControls from '../components/CounterControls';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import StorageViewer from '../components/StorageViewer';
 import { fetchAndFormatStorage } from '../utils/storageLogger';
+import CardSection from '../components/CardSection';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -28,7 +29,8 @@ const Home = () => {
 
   return (
     <View style={styles.root}>
-      <CounterControls />
+      <CardSection />
+      {/* <CounterControls />
       <View style={styles.langSwitcher}>
         <LanguageSwitcher onLanguageChange={changeLanguage} />
       </View>
@@ -36,7 +38,7 @@ const Home = () => {
         <Text>{t('screens.intro.title')}</Text>
         <Text>{t('screens.intro.text.introText')}</Text>
       </View>
-      <StorageViewer storageData={storageData} />
+      <StorageViewer storageData={storageData} /> */}
     </View>
   );
 };
@@ -48,6 +50,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: 20,
   },
   langSwitcher: {
     width: '50%',
