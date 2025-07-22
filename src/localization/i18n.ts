@@ -8,7 +8,7 @@ import fr from "./translations/fr.json";
 const STORE_LANGUAGE_KEY = "settings.lang";
 
 const languageDetectorPlugin = {
-  type: "languageDetector",
+  type: 'languageDetector' as const,
   async: true,
   init: () => { },
   detect: async function (callback: (lang: string) => void) {
@@ -16,6 +16,8 @@ const languageDetectorPlugin = {
       // get stored language from Async storage
       // put your own language detection logic here
       await AsyncStorage.getItem(STORE_LANGUAGE_KEY).then((language) => {
+        console.log("Active Language: ", language);
+
         if (language) {
           //if language was stored before, use this language in the app
           return callback(language);
@@ -32,6 +34,7 @@ const languageDetectorPlugin = {
     try {
       //save a user's language choice in Async storage
       await AsyncStorage.setItem(STORE_LANGUAGE_KEY, language);
+      console.log("Language Changed To: ", language);
     } catch (error) { }
   },
 };
@@ -47,7 +50,7 @@ const resources = {
 
 i18n.use(initReactI18next).use(languageDetectorPlugin).init({
   resources,
-  compatibilityJSON: 'v3',
+  compatibilityJSON: 'v4',
   // fallback language is set to english
   fallbackLng: "en",
   interpolation: {
