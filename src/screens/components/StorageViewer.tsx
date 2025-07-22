@@ -1,23 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchAndFormatStorage } from '../../utils/storageLogger';
 
 const StorageViewer = () => {
   const [storageData, setStorageData] = useState<string[]>([]);
 
-  const fetchAsyncStorage = async () => {
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      const result = await AsyncStorage.multiGet(keys);
-      const formatted = result.map(([key, value]) => `${key}: ${value}`);
-      setStorageData(formatted);
-    } catch (error) {
-      console.error('Error reading AsyncStorage:', error);
-    }
-  };
-
   useEffect(() => {
-    fetchAsyncStorage();
+    const fetchData = async () => {
+      const data = await fetchAndFormatStorage();
+      setStorageData(data);
+    };
+    fetchData();
   }, []);
 
   return (
