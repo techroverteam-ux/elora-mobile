@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../data/redux/store';
-import { decrement, increment } from '../../data/redux/slices/counterSlice';
+import { RootState } from '../data/redux/store';
+import { decrement, increment } from '../data/redux/slices/counterSlice';
 
 const CounterControls = () => {
   const count = useSelector((state: RootState) => state.counter.value);

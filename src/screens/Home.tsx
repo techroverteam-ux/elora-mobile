@@ -1,18 +1,30 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../localization/i18n';
 
-import CounterControls from '../screens/components/CounterControls';
-import LanguageSwitcher from '../screens/components/LanguageSwitcher';
-import StorageViewer from '../screens/components/StorageViewer';
+import CounterControls from '../components/CounterControls';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import StorageViewer from '../components/StorageViewer';
+import { fetchAndFormatStorage } from '../utils/storageLogger';
 
 const Home = () => {
   const { t } = useTranslation();
+  const [storageData, setStorageData] = useState<string[]>([]);
 
-  const changeLanguage = (lang: string) => {
-    i18n.changeLanguage(lang);
+  const refreshStorage = async () => {
+    const data = await fetchAndFormatStorage();
+    setStorageData(data);
   };
+
+  const changeLanguage = async (lang: string) => {
+    await i18n.changeLanguage(lang);
+    await refreshStorage(); // refresh after language change
+  };
+
+  useEffect(() => {
+    refreshStorage();
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -24,7 +36,7 @@ const Home = () => {
         <Text>{t('screens.intro.title')}</Text>
         <Text>{t('screens.intro.text.introText')}</Text>
       </View>
-      <StorageViewer />
+      <StorageViewer storageData={storageData} />
     </View>
   );
 };
