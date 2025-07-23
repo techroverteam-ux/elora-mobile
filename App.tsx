@@ -15,8 +15,8 @@ const App = () => {
       <PaperProvider>
         <SafeAreaProvider>
           <SafeAreaView
-            edges={['top', 'bottom']}
-            style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : '#fff' }}
+            edges={['top']}
+            style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : "#F8803B" }}
           >
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
             <AppNavigator />
