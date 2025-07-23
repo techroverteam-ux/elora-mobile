@@ -21,6 +21,19 @@ interface CardSectionProps<T> {
   contentTagName?: keyof T;
 }
 
+const getTagStyle = (tag: string): ViewStyle => {
+  switch (tag.toLowerCase()) {
+    case 'trending':
+      return { backgroundColor: '#fff' };
+    case 'best seller':
+      return { backgroundColor: '#FBE08E' };
+    case 'new':
+      return { backgroundColor: '#00BFFF' };
+    default:
+      return { backgroundColor: '#ccc' };
+  }
+};
+
 function CardSection<T>({
   title = 'Section Title',
   data,
@@ -53,6 +66,7 @@ function CardSection<T>({
           const imageUri = String(item[imageKey]);
           const cardTitle = String(item[titleKey]);
           const cardSubtitle = subtitleKey ? String(item[subtitleKey]) : '';
+          const contentTag = contentTagName ? String(item[contentTagName]) : '';
 
           return (
             <TouchableOpacity style={styles.card} onPress={() => onItemPress?.(item)}>
@@ -66,11 +80,11 @@ function CardSection<T>({
                   }}
                   resizeMode={FastImage.resizeMode.cover}
                 />
-                {true && (
-                  <View style={styles.trendingBadge}>
-                    <Text style={styles.trendingText}>{"Trending"}</Text>
+                {contentTag ? (
+                  <View style={[styles.trendingBadge, getTagStyle(contentTag)]}>
+                    <Text style={styles.trendingText}>{contentTag}</Text>
                   </View>
-                )}
+                ) : null}
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.title} numberOfLines={1}>
@@ -136,19 +150,17 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
   },
-
   trendingBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+    backgroundColor: "#fff",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
   },
-
   trendingText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 12,
     fontWeight: 'bold',
   },

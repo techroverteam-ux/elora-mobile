@@ -10,6 +10,8 @@ import { fetchAndFormatStorage } from '../utils/storageLogger';
 import CardSection from '../components/CardSection';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import MainAppHeader from '../components/MainAppHeader';
+import CardCarousel from '../components/CardCarousel';
+import PagerView from 'react-native-pager-view';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -33,35 +35,67 @@ const Home = () => {
     image: string;
     title: string;
     subtitle: string;
+    contentTag?: string;
+    time?: string
   };
 
   const books: Book[] = [
     {
       image: 'https://unsplash.it/400/400?image=1',
-      title: 'Geeta Press Book',
-      subtitle: 'Publisher Name',
+      title: 'Bhagavad Gita – As It Is',
+      subtitle: 'Geeta Press, Gorakhpur',
+      contentTag: 'Trending',
+      time: "5:30 min"
     },
     {
       image: 'https://unsplash.it/400/400?image=2',
-      title: 'Geeta Press Book',
-      subtitle: 'Publisher Name',
+      title: 'Ramcharitmanas',
+      subtitle: 'Geeta Press, Gorakhpur',
+      contentTag: 'Best Seller',
+      time: "8:15 min"
     },
     {
       image: 'https://unsplash.it/400/400?image=3',
-      title: 'Geeta Press Book',
-      subtitle: 'Publisher Name',
+      title: 'Shri Krishna Leela',
+      subtitle: 'Chaukhamba Sanskrit Sansthan',
+      contentTag: 'Editor’s Pick',
+      time: "4:45 min"
     },
     {
       image: 'https://unsplash.it/400/400?image=4',
-      title: 'Geeta Press Book',
-      subtitle: 'Publisher Name',
+      title: 'Vedas for Beginners',
+      subtitle: 'Motilal Banarsidass Publishers',
+      contentTag: '',
+      time: "3:20 min"
     },
     {
       image: 'https://unsplash.it/400/400?image=5',
-      title: 'Geeta Press Book',
-      subtitle: 'Publisher Name',
+      title: 'Upanishads: The Essence of Vedas',
+      subtitle: 'Ramakrishna Mission',
+      contentTag: '',
+      time: "6:10 min"
     },
-    // ... more books
+    {
+      image: 'https://unsplash.it/400/400?image=6',
+      title: 'Hanuman Chalisa – Illustrated Edition',
+      subtitle: 'Geeta Press, Gorakhpur',
+      contentTag: 'New Arrival',
+      time: "1:30 min"
+    },
+    {
+      image: 'https://unsplash.it/400/400?image=7',
+      title: 'Stories of Indian Saints',
+      subtitle: 'Bharatiya Vidya Bhavan',
+      contentTag: '',
+      time: "7:00 min"
+    },
+    {
+      image: 'https://unsplash.it/400/400?image=8',
+      title: 'Essence of the Mahabharata',
+      subtitle: 'Chinmaya Mission',
+      contentTag: 'Recommended',
+      time: "9:45 min"
+    },
   ];
 
   return (
@@ -70,12 +104,16 @@ const Home = () => {
 
       <View style={styles.root}>
         <ScrollView showsVerticalScrollIndicator={false}>
+
+          <CardCarousel />
+
           <CardSection<Book>
             title="Recently Viewed"
             data={books}
             imageKey="image"
             titleKey="title"
             subtitleKey="subtitle"
+            contentTagName="contentTag"
             onSeeAll={() => console.log('See All')}
             onItemPress={(item) => console.log('Pressed:', item)}
           />
@@ -84,7 +122,7 @@ const Home = () => {
             data={books}
             imageKey="image"
             titleKey="title"
-            subtitleKey="subtitle"
+            subtitleKey="time"
             onSeeAll={() => console.log('See All')}
             onItemPress={(item) => console.log('Pressed:', item)}
           />
