@@ -2,10 +2,12 @@ import { StatusBar, StyleSheet, useColorScheme } from 'react-native'
 import React from 'react'
 import "./src/localization/i18n";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
-import AppNavigator from './src/AppNavigator';
 import { PaperProvider } from 'react-native-paper';
 import { Provider } from 'react-redux';
 import { store } from './src/data/redux/store';
+import RootNavigation from './src/navigation/RootNavigation';
+import { AuthProvider } from './src/context/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -19,7 +21,10 @@ const App = () => {
             style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : "#F8803B" }}
           >
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-            <AppNavigator />
+            <AuthProvider>
+              <AppNavigator />
+            </AuthProvider>
+            {/* <RootNavigation /> */}
           </SafeAreaView>
         </SafeAreaProvider>
       </PaperProvider>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../localization/i18n';
 
@@ -13,6 +13,7 @@ import MainAppHeader from '../components/MainAppHeader';
 import CardCarousel from '../components/CardCarousel';
 import PagerView from 'react-native-pager-view';
 import { Book, books } from '../data/bookData';
+import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const { t } = useTranslation();
@@ -32,9 +33,16 @@ const Home = () => {
     refreshStorage();
   }, []);
 
+  const { logout } = useAuth();
+
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
       <MainAppHeader />
+
+      <View>
+        <Text>Home Screen</Text>
+        <Button title="Logout" onPress={logout} />
+      </View>
 
       <View style={styles.root}>
         <ScrollView showsVerticalScrollIndicator={false}>

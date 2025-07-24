@@ -2,12 +2,12 @@ import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useLinkBuilder, useTheme } from '@react-navigation/native';
-import Home from './screens/Home';
-import Categories from './screens/Categories';
-import Downloads from './screens/Downloads';
-import Account from './screens/Account';
 import { PlatformPressable } from '@react-navigation/elements';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import Home from '../screens/Home';
+import Categories from '../screens/Categories';
+import Downloads from '../screens/Downloads';
+import Account from '../screens/Account';
 
 const ICONS_MAP: Record<string, string> = {
   Home: 'home-outline',
@@ -73,25 +73,24 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   );
 }
 
-const AppNavigator = () => {
+
+const DashboardNavigator = () => {
   const Tab = createBottomTabNavigator();
 
   return (
-    <NavigationContainer>
-      {/* <Tab.Navigator screenOptions={{ headerShown: false }}> */}
-      <Tab.Navigator
-        tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}
-      >
-        <Tab.Screen name="Home" component={Home} />
-        <Tab.Screen name="Categories" component={Categories} />
-        <Tab.Screen name="Downloads" component={Downloads} />
-        <Tab.Screen name="Account" component={Account} />
-      </Tab.Navigator>
-    </NavigationContainer>
+    // <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="Home" component={Home} />
+      <Tab.Screen name="Categories" component={Categories} />
+      <Tab.Screen name="Downloads" component={Downloads} />
+      <Tab.Screen name="Account" component={Account} />
+    </Tab.Navigator>
   )
 }
 
-export default AppNavigator
+export default DashboardNavigator
 
 const styles = StyleSheet.create({
   tabBarContainer: {
