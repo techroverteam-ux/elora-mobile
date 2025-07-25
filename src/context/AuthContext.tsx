@@ -1,26 +1,38 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { fetchAndFormatStorage } from '../utils/storageLogger';
 
+export interface UserType {
+  name: string;
+  email: string;
+  // Add more fields as needed
+}
 export interface AuthContextType {
   isAuthenticated: boolean;
-  login: () => void;
+  user: UserType | null;
+  login: (userData: UserType) => void;
   logout: () => void;
   loading: boolean;
 }
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: React.PropsWithChildren) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
 
   const AUTH_KEY = 'isAuthenticated';
+  const USER_KEY = 'user';
 
   useEffect(() => {
     const loadAuthState = async () => {
       try {
         const storedAuth = await AsyncStorage.getItem(AUTH_KEY);
-        if (storedAuth === 'true') {
+        const storedUser = await AsyncStorage.getItem(USER_KEY);
+        if (storedAuth === 'true' && storedUser) {
           setIsAuthenticated(true);
+          setUser(JSON.parse(storedUser));
         }
       } catch (e) {
         console.error("Failed to load auth state", e);
@@ -32,9 +44,11 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
     loadAuthState();
   }, []);
 
-  const login = async () => {
+  const login = async (userData: UserType) => {
     try {
       await AsyncStorage.setItem(AUTH_KEY, 'true');
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setUser(userData);
       setIsAuthenticated(true);
     } catch (e) {
       console.error("Failed to persist login", e);
@@ -43,15 +57,17 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem(AUTH_KEY);
+      await AsyncStorage.multiRemove([AUTH_KEY, USER_KEY]);
+      setUser(null);
       setIsAuthenticated(false);
+      await fetchAndFormatStorage();
     } catch (e) {
       console.error("Failed to persist logout", e);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,12 +3,12 @@ import React from 'react'
 import { useNavigation } from '@react-navigation/native'
 
 const RegisterScreen = () => {
-  const { navigate } = useNavigation()
+  const { navigate, goBack } = useNavigation()
 
   return (
     <View>
       <Text>Register Screen</Text>
-      <Button title="Go to Login" onPress={() => navigate('Login')} />
+      <Button title="Go to Login" onPress={() => goBack()} />
     </View>
   )
 }
