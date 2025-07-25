@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Button } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import i18n from '../localization/i18n';
+import i18n from '../../localization/i18n';
 
-import CounterControls from '../components/CounterControls';
-import LanguageSwitcher from '../components/LanguageSwitcher';
-import StorageViewer from '../components/StorageViewer';
-import { fetchAndFormatStorage } from '../utils/storageLogger';
-import CardSection from '../components/CardSection';
+import CounterControls from '../../components/CounterControls';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
+import StorageViewer from '../../components/StorageViewer';
+import { fetchAndFormatStorage } from '../../utils/storageLogger';
+import CardSection from '../../components/CardSection';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
-import MainAppHeader from '../components/MainAppHeader';
-import CardCarousel from '../components/CardCarousel';
+import MainAppHeader from '../../components/MainAppHeader';
+import CardCarousel from '../../components/CardCarousel';
 import PagerView from 'react-native-pager-view';
-import { Book, books } from '../data/bookData';
-import { useAuth } from '../context/AuthContext';
+import { Book, books } from '../../data/bookData';
+import { useAuth } from '../../context/AuthContext';
 
 const Home = () => {
   const { t } = useTranslation();

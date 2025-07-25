@@ -1,0 +1,9 @@
+export type HomeStackParamList = {
+  HomeMain: undefined;
+  HomeDetail: { id: string };
+};
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};

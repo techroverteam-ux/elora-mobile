@@ -1,7 +1,7 @@
 import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useCallback } from 'react'
 import FastImage from 'react-native-fast-image'
-import { categoryData } from '../data/categoryData';
+import { categoryData } from '../../data/categoryData';
 
 const { width } = Dimensions.get('window');
 

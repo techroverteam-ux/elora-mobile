@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { fetchAndFormatStorage } from '../utils/storageLogger';
+import { AUTH_KEY, USER_KEY } from '../constants/storageKeys';
 
 export interface UserType {
   name: string;
@@ -22,9 +23,6 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const AUTH_KEY = 'isAuthenticated';
-  const USER_KEY = 'user';
-
   useEffect(() => {
     const loadAuthState = async () => {
       try {
@@ -34,8 +32,9 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
           setIsAuthenticated(true);
           setUser(JSON.parse(storedUser));
         }
+        setLoading(false); // add delay
       } catch (e) {
-        console.error("Failed to load auth state", e);
+        console.error("Failed to load auth state", e); // add delay
       } finally {
         setLoading(false);
       }

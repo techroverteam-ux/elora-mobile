@@ -5,16 +5,18 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { PaperProvider } from 'react-native-paper';
 import { Provider } from 'react-redux';
 import { store } from './src/data/redux/store';
-import RootNavigation from './src/navigation/RootNavigation';
 import { AuthProvider } from './src/context/AuthContext';
-import AppNavigator from './src/navigation/AppNavigator';
+import RootNavigation from './src/navigation/RootNavigation';
+import { CombinedDarkNavigationTheme, CombinedDarkPaperTheme, CombinedLightNavigationTheme, CombinedLightPaperTheme } from './src/theme';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
+  const paperTheme = isDarkMode ? CombinedDarkPaperTheme : CombinedLightPaperTheme;
+  const navigationTheme = isDarkMode ? CombinedDarkNavigationTheme : CombinedLightNavigationTheme;
 
   return (
     <Provider store={store}>
-      <PaperProvider>
+      <PaperProvider theme={paperTheme}>
         <SafeAreaProvider>
           <SafeAreaView
             edges={['top']}
@@ -22,9 +24,8 @@ const App = () => {
           >
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
             <AuthProvider>
-              <AppNavigator />
+              <RootNavigation theme={navigationTheme} />
             </AuthProvider>
-            {/* <RootNavigation /> */}
           </SafeAreaView>
         </SafeAreaProvider>
       </PaperProvider>

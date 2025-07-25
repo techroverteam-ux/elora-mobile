@@ -1,13 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native'
-import React from 'react'
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer, useLinkBuilder, useTheme } from '@react-navigation/native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useTheme, useLinkBuilder } from '@react-navigation/native';
 import { PlatformPressable } from '@react-navigation/elements';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
-import Home from '../screens/Home';
-import Categories from '../screens/Categories';
-import Downloads from '../screens/Downloads';
-import Account from '../screens/Account';
+
+// Import stack navigators
+import HomeStack from './stack/HomeStack';
+import CategoriesStack from './stack/CategoriesStack';
+import DownloadsStack from './stack/DownloadsStack';
+import AccountStack from './stack/AccountStack';
+
+const Tab = createBottomTabNavigator();
 
 const ICONS_MAP: Record<string, string> = {
   Home: 'home-outline',
@@ -73,24 +77,21 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   );
 }
 
-
 const DashboardNavigator = () => {
-  const Tab = createBottomTabNavigator();
-
   return (
-    // <Tab.Navigator screenOptions={{ headerShown: false }}>
     <Tab.Navigator
-      tabBar={(props) => <MyTabBar {...props} />} screenOptions={{ headerShown: false }}
+      tabBar={(props) => <MyTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={Home} />
-      <Tab.Screen name="Categories" component={Categories} />
-      <Tab.Screen name="Downloads" component={Downloads} />
-      <Tab.Screen name="Account" component={Account} />
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="Categories" component={CategoriesStack} />
+      <Tab.Screen name="Downloads" component={DownloadsStack} />
+      <Tab.Screen name="Account" component={AccountStack} />
     </Tab.Navigator>
-  )
-}
+  );
+};
 
-export default DashboardNavigator
+export default DashboardNavigator;
 
 const styles = StyleSheet.create({
   tabBarContainer: {
@@ -114,4 +115,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
-})
+});
