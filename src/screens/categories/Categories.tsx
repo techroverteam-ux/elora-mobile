@@ -64,7 +64,6 @@ const CARD_WIDTH = (width - horizontalPadding * 2 - columnSpacing) / 2;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   grid: {
     paddingHorizontal: horizontalPadding,

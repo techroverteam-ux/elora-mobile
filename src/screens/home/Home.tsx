@@ -36,7 +36,7 @@ const Home = () => {
   const { logout } = useAuth();
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1 }}>
       <MainAppHeader />
 
       <View>
