@@ -3,6 +3,8 @@ import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAuth, UserType } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import TestUserPicker from '../../utils/TestUserPicker';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/types';
 
 const testUsers: UserType[] = [
   { name: 'Neel', email: 'neel@gmail.com' },
@@ -10,8 +12,10 @@ const testUsers: UserType[] = [
   { name: 'Bob', email: 'bob@example.com' },
 ];
 
+type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
+
 const LoginScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
 
   const [email, setEmail] = useState('');
