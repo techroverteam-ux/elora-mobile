@@ -2,6 +2,7 @@ import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from '
 import React, { useCallback } from 'react'
 import FastImage from 'react-native-fast-image'
 import { categoryData } from '../../data/categoryData';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -12,14 +13,20 @@ type CategoryItem = {
   color: string;
 };
 
-const CategoryCard = ({ item }: { item: CategoryItem }) => (
-  <TouchableOpacity
-    accessible={true}
-    accessibilityLabel={`Category: ${item.title}`}
-    accessibilityRole="button"
-    style={[styles.card, { backgroundColor: item.color }]}
-    onPress={() => console.log(item.title)}>
-    {/* <FastImage
+const CategoryCard = ({ item }: { item: CategoryItem }) => {
+  const { navigate } = useNavigation();
+
+  return (
+    <TouchableOpacity
+      accessible={true}
+      accessibilityLabel={`Category: ${item.title}`}
+      accessibilityRole="button"
+      style={[styles.card, { backgroundColor: item.color }]}
+      onPress={() => {
+        navigate('CategorieDataList', { title: item.title })
+        console.log(item.title)
+      }}>
+      {/* <FastImage
         style={{ width: 60, height: 60, borderRadius: 100 }}
         source={{
           uri: "https://unsplash.it/400/400?image=1",
@@ -28,14 +35,16 @@ const CategoryCard = ({ item }: { item: CategoryItem }) => (
         }}
         resizeMode={FastImage.resizeMode.contain}
       /> */}
-    <View style={styles.iconWrapper}>
-      <Text style={styles.icon}>{item.icon}</Text>
-    </View>
-    <Text style={styles.title}>{item.title}</Text>
-  </TouchableOpacity>
-);
+      <View style={styles.iconWrapper}>
+        <Text style={styles.icon}>{item.icon}</Text>
+      </View>
+      <Text style={styles.title}>{item.title}</Text>
+    </TouchableOpacity>
+  )
+};
 
 const Categories = () => {
+
   const renderItem = useCallback(({ item }: { item: CategoryItem }) => <CategoryCard item={item} />, []);
 
   return (
