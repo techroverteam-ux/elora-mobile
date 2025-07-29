@@ -6,6 +6,7 @@ export type HomeStackParamList = {
 export type CategoriesStackParamList = {
   CategoriesMain: undefined;
   CategorieDataList: { title: string };
+  BlogPage: { item: any };
 };
 
 export type AuthStackParamList = {

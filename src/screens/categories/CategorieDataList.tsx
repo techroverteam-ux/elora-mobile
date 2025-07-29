@@ -1,19 +1,24 @@
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import React from 'react';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { categoryListData } from '../../data/categoryData';
 import FastImage from 'react-native-fast-image';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import AppBarHeader from '../../components/AppBarHeader';
+import { CategoriesStackParamList } from '../../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // Define type for route params
-type RootStackParamList = {
+type CategorieDataList = {
   CategorieDataList: { title: string };
 };
 
 const CategorieDataList = () => {
-  const route = useRoute<RouteProp<RootStackParamList, 'CategorieDataList'>>();
+  const route = useRoute<RouteProp<CategorieDataList, 'CategorieDataList'>>();
   const { title } = route.params;
+
+  type CategorieDataListNavigationProp = NativeStackNavigationProp<CategoriesStackParamList, 'CategorieDataList'>;
+  const { navigate } = useNavigation<CategorieDataListNavigationProp>();
 
   return (
     <View style={{ flex: 1 }}>
@@ -31,6 +36,7 @@ const CategorieDataList = () => {
                   alignItems: "center",
                   paddingVertical: 12,
                 }}
+                onPress={() => { navigate("BlogPage", { item }) }}
                 activeOpacity={0.8}
               >
                 <FastImage
