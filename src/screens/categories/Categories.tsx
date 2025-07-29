@@ -3,6 +3,8 @@ import React, { useCallback } from 'react'
 import FastImage from 'react-native-fast-image'
 import { categoryData } from '../../data/categoryData';
 import { useNavigation } from '@react-navigation/native';
+import { CategoriesStackParamList } from '../../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const { width } = Dimensions.get('window');
 
@@ -14,7 +16,8 @@ type CategoryItem = {
 };
 
 const CategoryCard = ({ item }: { item: CategoryItem }) => {
-  const { navigate } = useNavigation();
+  type CategoriesNavigationProp = NativeStackNavigationProp<CategoriesStackParamList, 'CategoriesMain'>;
+  const { navigate } = useNavigation<CategoriesNavigationProp>();
 
   return (
     <TouchableOpacity

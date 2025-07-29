@@ -7,8 +7,8 @@ import CategorieDataList from '../../screens/categories/CategorieDataList';
 const Stack = createNativeStackNavigator<CategoriesStackParamList>();
 
 const CategoriesStack = () => (
-  <Stack.Navigator>
-    <Stack.Screen name="CategoriesMain" component={Categories} options={{ headerShown: false }} />
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="CategoriesMain" component={Categories} />
     <Stack.Screen name="CategorieDataList" component={CategorieDataList} />
   </Stack.Navigator>
 );

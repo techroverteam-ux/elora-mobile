@@ -5,7 +5,7 @@ export type HomeStackParamList = {
 
 export type CategoriesStackParamList = {
   CategoriesMain: undefined;
-  CategorieDataList: undefined;
+  CategorieDataList: { title: string };
 };
 
 export type AuthStackParamList = {

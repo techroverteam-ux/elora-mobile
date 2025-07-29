@@ -1,6 +1,10 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import React from 'react';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import { categoryListData } from '../../data/categoryData';
+import FastImage from 'react-native-fast-image';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import AppBarHeader from '../../components/AppBarHeader';
 
 // Define type for route params
 type RootStackParamList = {
@@ -12,8 +16,50 @@ const CategorieDataList = () => {
   const { title } = route.params;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Category Title: {title}</Text>
+    <View style={{ flex: 1 }}>
+
+      <AppBarHeader title={title} />
+
+      <View style={styles.container}>
+        <FlatList
+          data={categoryListData}
+          renderItem={({ item }) => (
+            <View style={{ width: "90%", alignSelf: "center" }}>
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingVertical: 12,
+                }}
+                activeOpacity={0.8}
+              >
+                <FastImage
+                  style={{ width: 70, height: 70, borderRadius: 10 }}
+                  source={{
+                    uri: item.image,
+                    headers: { Authorization: 'someAuthToken' },
+                    priority: FastImage.priority.normal,
+                  }}
+                  resizeMode={FastImage.resizeMode.cover}
+                />
+
+                <View style={{ flex: 1, marginLeft: 15 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 4 }} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: "#6e6e6e", width: "75%" }} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                </View>
+
+                <MaterialDesignIcons name="chevron-right" size={24} color="#959595" />
+              </TouchableOpacity>
+
+              <View style={{ height: 1, backgroundColor: "#E5E5E5" }} />
+            </View>
+          )}
+        />
+      </View>
     </View>
   );
 };
@@ -23,9 +69,6 @@ export default CategorieDataList;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   text: {
     fontSize: 18,

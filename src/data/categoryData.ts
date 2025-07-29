@@ -8,3 +8,21 @@ export const categoryData = [
   { id: '7', title: 'Presentations', color: '#FCF3CF', icon: '🎤' },
   { id: '8', title: 'Teacher Training', color: '#FDEBD0', icon: '👨‍🏫' },
 ];
+
+export const categoryListData = [
+  {
+    "name": "Swami Vivekananda",
+    "description": "Pioneer of Vedantic philosophy globally.",
+    "image": "https://unsplash.it/400/400?image=1"
+  },
+  {
+    "name": "Ramakrishna Paramhansa",
+    "description": "A key figure in 19th-century spiritualism.",
+    "image": "https://unsplash.it/400/400?image=2"
+  },
+  {
+    "name": "Acharya Vinoba Bhave",
+    "description": "Simplified Bhagavad Gita for the masses.",
+    "image": "https://unsplash.it/400/400?image=3"
+  }
+]
