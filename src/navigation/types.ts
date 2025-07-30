@@ -9,6 +9,11 @@ export type CategoriesStackParamList = {
   BlogPage: { item: any };
 };
 
+export type AccountStackParamList = {
+  AccountMain: undefined;
+  SelectLanguage: undefined;
+};
+
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;

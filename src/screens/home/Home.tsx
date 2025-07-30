@@ -16,33 +16,9 @@ import { Book, books } from '../../data/bookData';
 import { useAuth } from '../../context/AuthContext';
 
 const Home = () => {
-  const { t } = useTranslation();
-  const [storageData, setStorageData] = useState<string[]>([]);
-
-  const refreshStorage = async () => {
-    const data = await fetchAndFormatStorage();
-    setStorageData(data);
-  };
-
-  const changeLanguage = async (lang: string) => {
-    await i18n.changeLanguage(lang);
-    await refreshStorage(); // refresh after language change
-  };
-
-  useEffect(() => {
-    refreshStorage();
-  }, []);
-
-  const { logout } = useAuth();
-
   return (
     <View style={{ flex: 1 }}>
       <MainAppHeader />
-
-      <View>
-        <Text>Home Screen</Text>
-        <Button title="Logout" onPress={logout} />
-      </View>
 
       <View style={styles.root}>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -78,17 +54,6 @@ const Home = () => {
             onItemPress={(item) => console.log('Pressed:', item)}
           />
         </ScrollView>
-
-        {/* <CounterControls />
-        <View style={styles.langSwitcher}>
-          <LanguageSwitcher onLanguageChange={changeLanguage} />
-        </View>
-        <View style={styles.translation}>
-          <Text>{t('screens.intro.title')}</Text>
-          <Text>{t('screens.intro.text.introText')}</Text>
-        </View>
-        <StorageViewer storageData={storageData} /> */}
-
       </View>
     </View>
   );
