@@ -4,6 +4,7 @@ import AppBarHeader from '../../components/AppBarHeader';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import FastImage from 'react-native-fast-image';
 import Video from 'react-native-video';
+import VideoPlayer from '../../components/VideoPlayer';
 
 // Type Definitions
 type BlogItem = {
@@ -49,12 +50,7 @@ const BlogPage = () => {
           </Text>
 
           <View style={styles.videoContainer}>
-            <Video
-              source={{ uri: 'https://www.w3schools.com/html/mov_bbb.mp4' }}
-              style={styles.video}
-              controls
-              resizeMode="contain"
-            />
+            <VideoPlayer />
           </View>
 
           <Text style={styles.paragraph}>
