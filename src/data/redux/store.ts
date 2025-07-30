@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import counterReducer from './slices/counterSlice'
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
-import { dummyApi } from './services/dummyAPI'
+import { dummyApi } from './services/dummyApi';
 
 export const store = configureStore({
   reducer: {

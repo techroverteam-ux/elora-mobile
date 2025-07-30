@@ -8,7 +8,7 @@ import {
   Button,
   StyleSheet,
 } from 'react-native';
-import { useGetPostByIdQuery, useGetPostsQuery } from '../../data/redux/services/dummyAPI';
+import { useGetPostByIdQuery, useGetPostsQuery } from '../../data/redux/services/dummyApi';
 
 const DummyComponent = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
