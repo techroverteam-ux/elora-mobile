@@ -14,8 +14,14 @@ import CardCarousel from '../../components/CardCarousel';
 import PagerView from 'react-native-pager-view';
 import { Book, books } from '../../data/bookData';
 import { useAuth } from '../../context/AuthContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { HomeStackParamList } from '../../navigation/types';
+import { useNavigation } from '@react-navigation/native';
 
 const Home = () => {
+  type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
+  const { navigate } = useNavigation<HomeNavigationProp>();
+
   return (
     <View style={{ flex: 1 }}>
       <MainAppHeader />
@@ -42,7 +48,10 @@ const Home = () => {
             titleKey="title"
             subtitleKey="time"
             onSeeAll={() => console.log('See All')}
-            onItemPress={(item) => console.log('Pressed:', item)}
+            onItemPress={(item) => {
+              navigate('VideoPlayer', { item })
+              console.log('Pressed:', item)
+            }}
           />
           <CardSection<Book>
             title="Audios"
@@ -51,7 +60,10 @@ const Home = () => {
             titleKey="title"
             subtitleKey="subtitle"
             onSeeAll={() => console.log('See All')}
-            onItemPress={(item) => console.log('Pressed:', item)}
+            onItemPress={(item) => {
+              navigate('AudioPlayer', { item })
+              console.log('Pressed:', item)
+            }}
           />
         </ScrollView>
       </View>

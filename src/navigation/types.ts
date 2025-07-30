@@ -1,6 +1,8 @@
 export type HomeStackParamList = {
   HomeMain: undefined;
   HomeDetail: { id: string };
+  AudioPlayer: { item: any };
+  VideoPlayer: { item: any };
 };
 
 export type CategoriesStackParamList = {

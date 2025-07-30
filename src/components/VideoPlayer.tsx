@@ -1,10 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import Video from 'react-native-video'
+import { useRoute } from '@react-navigation/native'
 
 const VideoPlayer = () => {
+  const { params } = useRoute();
+
   return (
     <View style={{}}>
+      <Text>{JSON.stringify(params)}</Text>
+
       <Video
         source={{ uri: 'https://www.w3schools.com/html/mov_bbb.mp4' }}
         style={{ width: '100%', aspectRatio: 16 / 9 }}
