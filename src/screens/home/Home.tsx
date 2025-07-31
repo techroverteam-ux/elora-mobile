@@ -49,7 +49,15 @@ const Home = () => {
             subtitleKey="time"
             onSeeAll={() => console.log('See All')}
             onItemPress={(item) => {
-              navigate('VideoPlayer', { item })
+              navigate('VideoPlayer', {
+                item: {
+                  videoUri: 'https://www.w3schools.com/html/mov_bbb.mp4',
+                  title: item.title,
+                  // showDebugInfo: true,
+                  // params: { item },
+                  showHeaderFromRoutes: ['HomeMain'],
+                }
+              })
               console.log('Pressed:', item)
             }}
           />
