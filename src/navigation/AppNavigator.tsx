@@ -1,5 +1,4 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import DashboardNavigator from './DashboardNavigator';
 import AuthNavigator from './AuthNavigator';
 import { useAuth } from '../context/AuthContext';
@@ -13,10 +12,6 @@ const AppNavigator = () => {
   }
 
   return (
-    // <NavigationContainer>
-    //   {isAuthenticated ? <DashboardNavigator /> : <AuthNavigator />}
-    // </NavigationContainer>
-
     isAuthenticated ? <DashboardNavigator /> : <AuthNavigator />
   );
 };

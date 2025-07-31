@@ -28,6 +28,26 @@ const Account = () => {
         />
 
         <AccountOption
+          label="Audio Player"
+          icon="home-sound-in-outline"
+          onPress={() => navigate('AudioPlayer', { item: {} })}
+        />
+
+        <AccountOption
+          label="Video Player"
+          icon="video-outline"
+          onPress={() => navigate('VideoPlayer', {
+            item: {
+              videoUri: 'https://www.w3schools.com/html/mov_bbb.mp4',
+              title: 'Big Buck Bunny',
+              // showDebugInfo: true,
+              // params: { item: {} },
+              showHeaderFromRoutes: ['AccountMain'],
+            }
+          })}
+        />
+
+        <AccountOption
           label="Logout"
           icon="logout"
           onPress={logout}

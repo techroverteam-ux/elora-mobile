@@ -1,3 +1,8 @@
+export type RootStackParamList = {
+  App: undefined;
+  ImageViewer: { uri: string };
+};
+
 export type HomeStackParamList = {
   HomeMain: undefined;
   HomeDetail: { id: string };
@@ -14,6 +19,8 @@ export type CategoriesStackParamList = {
 export type AccountStackParamList = {
   AccountMain: undefined;
   SelectLanguage: undefined;
+  AudioPlayer: { item: any };
+  VideoPlayer: { item: any };
 };
 
 export type AuthStackParamList = {

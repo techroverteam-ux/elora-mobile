@@ -1,14 +1,12 @@
 // RootNavigation.tsx
-import React from 'react';
-import { NavigationContainer, Theme as NavigationThemeType } from '@react-navigation/native';
+import React, { useRef } from 'react';
+import { NavigationContainer, Theme as NavigationThemeType, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AppNavigator from './AppNavigator';
 import ImageViewer from '../screens/modals/ImageViewer';
-
-export type RootStackParamList = {
-  App: undefined;
-  ImageViewer: { uri: string };
-};
+import { store } from '../data/redux/store';
+import { setPreviousRoute } from '../data/redux/slices/navigationSlice';
+import { RootStackParamList } from './types';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
@@ -17,8 +15,34 @@ type Props = {
 };
 
 const RootNavigation: React.FC<Props> = ({ theme }) => {
+  const routeNameRef = useRef<string | null>(null);
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+
   return (
-    <NavigationContainer theme={theme}>
+    <NavigationContainer
+      theme={theme}
+      ref={navigationRef}
+      onReady={() => {
+        const current = navigationRef.current?.getCurrentRoute();
+        routeNameRef.current = current?.name || null;
+        console.log(
+          `\x1b[44m[Navigation]\x1b[0m Initial route: \x1b[36m${current?.name}\x1b[0m`
+        );
+      }}
+
+      onStateChange={() => {
+        const current = navigationRef.current?.getCurrentRoute();
+        const previous = routeNameRef.current;
+
+        if (current?.name && previous !== current.name) {
+          console.log(
+            `\x1b[44m[Navigation]\x1b[0m Navigated from \x1b[33m${previous}\x1b[0m to \x1b[32m${current.name}\x1b[0m`
+          );
+          store.dispatch(setPreviousRoute(previous));
+          routeNameRef.current = current.name;
+        }
+      }}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="App" component={AppNavigator} />
         <RootStack.Screen

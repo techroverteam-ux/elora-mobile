@@ -49,9 +49,14 @@ const BlogPage = () => {
             nihil ipsum?
           </Text>
 
-          <View style={styles.videoContainer}>
-            <VideoPlayer />
-          </View>
+          <VideoPlayer
+            videoUri='https://www.w3schools.com/html/mov_bbb.mp4'
+            // showDebugInfo
+            // params={item}
+            // showHeaderFromRoutes={['CategorieDataList']}
+            // title='From Blog Page'
+            containerStyle={styles.videoContainer}
+          />
 
           <Text style={styles.paragraph}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla

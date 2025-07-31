@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit'
 import counterReducer from './slices/counterSlice'
+import navigationReducer from './slices/navigationSlice'
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { dummyApi } from './services/dummyApi';
 
 export const store = configureStore({
   reducer: {
     counter: counterReducer,
+    navigation: navigationReducer,
     [dummyApi.reducerPath]: dummyApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
