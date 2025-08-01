@@ -24,6 +24,10 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   const { colors } = useTheme();
   const { buildHref } = useLinkBuilder();
 
+  // Only show tab bar if there is only one route
+  console.log("state.routes", state);
+  if (state.routes[state.index]?.state?.routes?.length > 1) return null;
+
   return (
     <View style={[styles.tabBarContainer, { backgroundColor: colors.card }]}>
       {state.routes.map((route: any, index: number) => {
