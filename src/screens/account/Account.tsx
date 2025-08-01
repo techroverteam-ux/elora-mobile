@@ -28,6 +28,12 @@ const Account = () => {
         />
 
         <AccountOption
+          label="PDF Viewer"
+          icon="file-document-outline"
+          onPress={() => navigate('PdfViewer')}
+        />
+
+        <AccountOption
           label="Audio Player"
           icon="home-sound-in-outline"
           onPress={() => navigate('AudioPlayer', { item: {} })}

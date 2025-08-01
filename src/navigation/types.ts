@@ -21,6 +21,7 @@ export type AccountStackParamList = {
   SelectLanguage: undefined;
   AudioPlayer: { item: any };
   VideoPlayer: { item: any };
+  PdfViewer: undefined;
 };
 
 export type AuthStackParamList = {
