@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import React, { useRef } from 'react';
 import Pdf from 'react-native-pdf';
 import AppBarHeader from './AppBarHeader';
@@ -7,37 +7,30 @@ import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
 const PdfViewer = () => {
   const pdfRef = useRef(null);
 
-  const source = { uri: 'bundle-assets://thereactnativebook-sample.pdf' };
+  const source = Platform.OS === "android"
+    ? { uri: "bundle-assets://thereactnativebook-sample.pdf" }
+    : { uri: "bundle-assets://thereactnativebook-sample.pdf" }
 
-  // Example chapters with corresponding page numbers
-  const chapters = [
-    { title: 'Introduction', page: 1 },
-    { title: 'Chapter 1: Getting Started', page: 5 },
-    { title: 'Chapter 2: Components', page: 10 },
-    { title: 'Chapter 3: Navigation', page: 15 },
-  ];
-
-  const goToPage = (pageNum: number) => {
-    if (pdfRef.current) {
-      pdfRef.current.setPage(pageNum);
-    }
-  };
+  // const source = { uri: 'http://samples.leanpub.com/thereactnativebook-sample.pdf', cache: true };
+  //const source = require('./test.pdf');  // ios only
+  //const source = {uri:'bundle-assets://test.pdf' };
+  //const source = {uri:'file:///sdcard/test.pdf'};
+  //const source = {uri:"data:application/pdf;base64,JVBERi0xLjcKJc..."};
+  //const source = {uri:"content://com.example.blobs/xxxxxxxx-...?offset=0&size=xxx"};
+  //const source = {uri:"blob:xxxxxxxx-...?offset=0&size=xxx"};
 
   return (
     <View style={styles.screen}>
       <AppBarHeader title="PDF Viewer" />
 
-      <ScrollView horizontal style={styles.chapterBar}>
-        {chapters.map((chapter, index) => (
-          <TouchableOpacity key={index} onPress={() => goToPage(chapter.page)} style={styles.chapterButton}>
-            <Text style={styles.chapterText}>{chapter.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <Text>Source: {JSON.stringify(source)}</Text>
 
       <View style={styles.container}>
         <Pdf
           ref={pdfRef}
+          horizontal
+          enablePaging
+          page={1}
           source={source}
           onLoadComplete={(numberOfPages, filePath) => {
             console.log(`Number of pages: ${numberOfPages}`);
@@ -98,8 +91,6 @@ const styles = StyleSheet.create({
   },
   pdf: {
     flex: 1,
-    width: '100%',
-    height: '100%',
-    alignSelf: 'center',
+
   },
 });
