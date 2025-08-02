@@ -1,4 +1,5 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { wrapWithAudioAPIMetroConfig } = require('react-native-audio-api/metro-config');
 
 /**
  * Metro configuration
@@ -6,6 +7,17 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
  *
  * @type {import('@react-native/metro-config').MetroConfig}
  */
-const config = {};
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+// Create a base config
+const baseConfig = getDefaultConfig(__dirname);
+
+// Merge your custom config (if any)
+const mergedConfig = mergeConfig(baseConfig, {
+  // Add any customizations here
+});
+
+// Wrap with Audio API config
+const finalConfig = wrapWithAudioAPIMetroConfig(mergedConfig);
+
+// Export the final config
+module.exports = finalConfig;
