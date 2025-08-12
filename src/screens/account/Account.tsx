@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -6,12 +6,21 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AccountStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import BottomSheet from '@gorhom/bottom-sheet';
+import AudioBottomSheet from '../../components/AudioBottomSheet';
+import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 
 const Account = () => {
   type AccountNavigationProp = NativeStackNavigationProp<AccountStackParamList, 'AccountMain'>;
+  const sheetRef = useRef<BottomSheetMethods | null>(null);
   const { navigate } = useNavigation<AccountNavigationProp>();
   const { colors } = useTheme();
   const { logout } = useAuth();
+
+  const openAudioPlayer = () => {
+    console.log('Opening sheet');
+    sheetRef.current?.expand();
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -36,7 +45,10 @@ const Account = () => {
         <AccountOption
           label="Audio Player"
           icon="home-sound-in-outline"
-          onPress={() => navigate('AudioPlayer', { item: {} })}
+          onPress={() => {
+            openAudioPlayer()
+            // navigate('AudioPlayer', { item: {} })
+          }}
         />
 
         <AccountOption
@@ -59,6 +71,9 @@ const Account = () => {
           onPress={logout}
         />
       </ScrollView>
+
+      {/* 👇 Bottom sheet always mounted, just hidden initially */}
+      <AudioBottomSheet sheetRef={sheetRef} />
     </View>
   );
 };
