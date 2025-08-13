@@ -46,8 +46,8 @@ const Account = () => {
           label="Audio Player"
           icon="home-sound-in-outline"
           onPress={() => {
-            openAudioPlayer()
-            // navigate('AudioPlayer', { item: {} })
+            // openAudioPlayer()
+            navigate('AudioPlayer', { item: {} })
           }}
         />
 

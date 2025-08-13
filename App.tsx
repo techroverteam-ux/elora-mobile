@@ -8,6 +8,7 @@ import { store } from './src/data/redux/store';
 import { AuthProvider } from './src/context/AuthContext';
 import RootNavigation from './src/navigation/RootNavigation';
 import { CombinedDarkNavigationTheme, CombinedDarkPaperTheme, CombinedLightNavigationTheme, CombinedLightPaperTheme } from './src/theme';
+import { AudioPlayerProvider } from './src/context/AudioPlayerContext';
 
 const App = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -24,7 +25,9 @@ const App = () => {
           >
             <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
             <AuthProvider>
-              <RootNavigation theme={navigationTheme} />
+              <AudioPlayerProvider>
+                <RootNavigation theme={navigationTheme} />
+              </AudioPlayerProvider>
             </AuthProvider>
           </SafeAreaView>
         </SafeAreaProvider>

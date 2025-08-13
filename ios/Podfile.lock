@@ -1837,6 +1837,65 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - react-native-slider (4.5.7):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - react-native-slider/common (= 4.5.7)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
+  - react-native-slider/common (4.5.7):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - react-native-vector-icons-fontawesome6 (12.1.0)
   - react-native-vector-icons-material-design-icons (12.2.0)
   - react-native-video (6.16.1):
@@ -2850,6 +2909,7 @@ DEPENDENCIES:
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-pdf (from `../node_modules/react-native-pdf`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
   - "react-native-vector-icons-fontawesome6 (from `../node_modules/@react-native-vector-icons/fontawesome6`)"
   - "react-native-vector-icons-material-design-icons (from `../node_modules/@react-native-vector-icons/material-design-icons`)"
   - react-native-video (from `../node_modules/react-native-video`)
@@ -2991,6 +3051,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-pdf"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-slider:
+    :path: "../node_modules/@react-native-community/slider"
   react-native-vector-icons-fontawesome6:
     :path: "../node_modules/@react-native-vector-icons/fontawesome6"
   react-native-vector-icons-material-design-icons:
@@ -3122,6 +3184,7 @@ SPEC CHECKSUMS:
   react-native-pager-view: adf5c4ae45a4ce743b0ff2855bda83ffce13b4c4
   react-native-pdf: 2cf27361d860386ecd6d7743dffcba23ef41ef31
   react-native-safe-area-context: 339885703b6dd1be2bce42d9c0b0350c21180032
+  react-native-slider: 83d77040942794b3994a8c3e116258463326cee5
   react-native-vector-icons-fontawesome6: 2aed838cc3341d13e8eb0541929a74a16f62348d
   react-native-vector-icons-material-design-icons: e406b4fc1787999a5d150c897837150543e90b9c
   react-native-video: 56f7fa97175e9ca4c195c3d2f0a43405f4e03e12

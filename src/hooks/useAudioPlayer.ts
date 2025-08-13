@@ -80,6 +80,36 @@ export default function useAudioPlayer() {
     }
   }, [isPlaying]);
 
+  const seekTo = useCallback((seconds: number) => {
+    const newOffset = Math.max(seconds, 0);
+
+    if (isPlaying) {
+      sourceNode.current?.stop(audioContext.current.currentTime);
+      offset.current = newOffset;
+      seekOffset.current = 0;
+
+      sourceNode.current = audioContext.current.createBufferSource({ pitchCorrection: true });
+      sourceNode.current.buffer = audioBuffer.current!;
+      sourceNode.current.playbackRate.value = playbackRate.current;
+      sourceNode.current.connect(audioContext.current.destination);
+
+      sourceNode.current.onPositionChanged = (event: { value: number }) => {
+        offset.current = event.value;
+        setCurrentTime(event.value);
+        if (onPositionChanged.current && audioBuffer.current) {
+          onPositionChanged.current(offset.current / audioBuffer.current.duration);
+        }
+      };
+
+      sourceNode.current.start(audioContext.current.currentTime, offset.current);
+    } else {
+      offset.current = newOffset;
+      seekOffset.current = 0;
+      setCurrentTime(newOffset);
+    }
+  }, [isPlaying]);
+
+
   const loadBuffer = useCallback(async (url: string) => {
     const buffer = await fetch(url)
       .then(res => res.arrayBuffer())
@@ -128,6 +158,7 @@ export default function useAudioPlayer() {
     play,
     pause,
     seekBy,
+    seekTo,
     loadBuffer,
     reset,
     setOnPositionChanged,
