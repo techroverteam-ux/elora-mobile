@@ -13,8 +13,21 @@ import { ProgressBar } from 'react-native-paper';
 import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Slider from '@react-native-community/slider';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { AccountStackParamList } from '../navigation/types';
 
-const AudioPlayer = () => {
+type AudioPlayerRouteProp = RouteProp<AccountStackParamList, 'AudioPlayer'>;
+
+const AudioPlayer: React.FC = () => {
+  const route = useRoute<AudioPlayerRouteProp>();
+  const item = route.params?.item;
+
+  if (!item) {
+    return <Text>No audio data provided.</Text>;
+  }
+
+  const { title, artist, imageUrl, audioUrl } = item;
+
   const {
     play,
     pause,
@@ -33,13 +46,13 @@ const AudioPlayer = () => {
 
   useEffect(() => {
     // Only load if not already loaded
-    if (!duration) {
-      loadBuffer(
-        'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-01.mp3'
-      );
+    if (audioUrl && !duration) {
+      loadBuffer(audioUrl);
     }
-    setOnPositionChanged(pos => console.log('Audio Progress:', Math.round(pos * 100) + '%'));
-  }, [duration, loadBuffer, setOnPositionChanged]);
+    setOnPositionChanged(pos => {
+      console.log('Audio Progress:', Math.round(pos * 100) + '%');
+    });
+  }, [audioUrl, duration, loadBuffer, setOnPositionChanged]);
 
   return (
     <View>
@@ -47,14 +60,16 @@ const AudioPlayer = () => {
 
       <View style={styles.container}>
         {/* Album Art */}
-        <Image
-          source={{ uri: 'https://unsplash.it/400/400?image=1' }}
-          style={styles.albumArt}
-        />
+        {imageUrl && (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.albumArt}
+          />
+        )}
 
         {/* Song Info */}
-        <Text style={styles.title}>Shree Krishna Govind</Text>
-        <Text style={styles.subtitle}>Singer, composer names</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{artist}</Text>
 
         {/* <Text style={styles.status}>{isPlaying ? '🔊 Playing' : '⏸️ Paused'}</Text> */}
 

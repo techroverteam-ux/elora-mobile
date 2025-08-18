@@ -19,7 +19,14 @@ export type CategoriesStackParamList = {
 export type AccountStackParamList = {
   AccountMain: undefined;
   SelectLanguage: undefined;
-  AudioPlayer: { item: any };
+  AudioPlayer: {
+    item: {
+      title: string;
+      artist: string;
+      imageUrl: string;
+      audioUrl: string;
+    };
+  };
   VideoPlayer: { item: any };
   PdfViewer: undefined;
 };

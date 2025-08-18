@@ -47,7 +47,15 @@ const Account = () => {
           icon="home-sound-in-outline"
           onPress={() => {
             // openAudioPlayer()
-            navigate('AudioPlayer', { item: {} })
+
+            navigate('AudioPlayer', {
+              item: {
+                title: 'Shree Krishna Govind',
+                artist: 'Singer, Composer Names',
+                imageUrl: 'https://unsplash.it/400/400?image=1',
+                audioUrl: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-01.mp3'
+              }
+            })
           }}
         />
 
