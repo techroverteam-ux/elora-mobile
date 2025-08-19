@@ -1,10 +1,19 @@
-import { StyleSheet, Text, View, ViewStyle } from 'react-native'
-import React from 'react'
-import Video from 'react-native-video'
-import { useRoute } from '@react-navigation/native'
-import AppBarHeader from './AppBarHeader'
-import { useSelector } from 'react-redux'
-import { RootState } from '../data/redux/store'
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
+import React, { useRef, useState } from 'react';
+import Video from 'react-native-video';
+import { useRoute } from '@react-navigation/native';
+import AppBarHeader from './AppBarHeader';
+import { useSelector } from 'react-redux';
+import { RootState } from '../data/redux/store';
+import Slider from '@react-native-community/slider';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import Orientation from 'react-native-orientation-locker';
 
 interface VideoPlayerProps {
   videoUri?: string;
@@ -13,7 +22,6 @@ interface VideoPlayerProps {
   showDebugInfo?: boolean;
   params?: any;
   showHeaderFromRoutes?: string[];
-  isScreen?: boolean;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -26,49 +34,256 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 }) => {
   const route = useRoute<any>();
   const routeParams = route?.params?.item;
-  const data = params ?? routeParams;
-  // console.log('VideoPlayer data:', data);
+  const data = params ?? routeParams ?? {};
 
-  const resolvedVideoUri = videoUri ?? data?.videoUri ?? '';
-  const resolvedTitle = title ?? data?.title ?? 'Video Player';
-  const resolvedShowDebug = showDebugInfo !== undefined ? showDebugInfo : data?.showDebugInfo ?? false;
-  const resolvedShowHeaderRoutes = showHeaderFromRoutes?.length > 0 ? showHeaderFromRoutes : data?.showHeaderFromRoutes ?? [];
+  const resolvedVideoUri = videoUri ?? data.videoUri ?? '';
+  const resolvedTitle = title ?? data.title ?? 'Video Player';
+  const resolvedShowDebug = showDebugInfo ?? data.showDebugInfo ?? false;
+  const resolvedShowHeaderRoutes = showHeaderFromRoutes.length
+    ? showHeaderFromRoutes
+    : data.showHeaderFromRoutes ?? [];
 
-  const previousRoute = useSelector((state: RootState) => state.navigation.previousRoute);
+  const previousRoute = useSelector(
+    (state: RootState) => state.navigation.previousRoute
+  );
   const shouldShowHeader = resolvedShowHeaderRoutes.includes(previousRoute ?? '');
+
+  const [paused, setPaused] = useState(true);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [fullScreen, setFullScreen] = useState(false);
+
+  const videoRef = useRef<Video>(null);
+
+  const formatTime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60)
+      .toString()
+      .padStart(2, '0');
+    const s = Math.floor(seconds % 60)
+      .toString()
+      .padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const handleSeek = (value: number) => {
+    const seekTime = value * duration;
+    videoRef.current?.seek(seekTime);
+    setCurrentTime(seekTime);
+  };
+
+  const ActionButton = ({
+    icon,
+    label,
+    onPress,
+  }: {
+    icon: string;
+    label: string;
+    onPress?: () => void;
+  }) => (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <MaterialDesignIcons name={icon} size={24} color="#959595" />
+      <Text style={styles.actionLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+
+  const toggleFullScreen = () => {
+    const next = !fullScreen;
+    setFullScreen(next);
+    if (next) {
+      Orientation.lockToLandscape();  // lock to landscape (horizontal)
+    } else {
+      Orientation.lockToPortrait();   // back to portrait
+    }
+  };
 
   return (
     <View style={[styles.container, containerStyle]}>
       {shouldShowHeader && <AppBarHeader title={resolvedTitle} />}
-
       {resolvedShowDebug && (
-        <Text style={styles.debugText}>DATA: {JSON.stringify(data, null, 2)}</Text>
+        <Text style={styles.debugText}>{JSON.stringify(data, null, 2)}</Text>
       )}
 
-      <Video
-        source={{ uri: resolvedVideoUri }}
-        style={styles.video}
-        controls
-        resizeMode="contain"
-      />
+      <View style={fullScreen ? styles.fullScreenWrapper : styles.videoWrapper}>
+        <Video
+          ref={videoRef}
+          source={{ uri: resolvedVideoUri }}
+          style={styles.video}
+          controls={fullScreen ? true : false}
+          paused={paused}
+          resizeMode="contain"
+          onLoad={({ duration }) => setDuration(duration)}
+          onProgress={({ currentTime }) => setCurrentTime(currentTime)}
+        />
+
+        <TouchableOpacity onPress={toggleFullScreen} style={styles.fullscreenButton}>
+          <MaterialDesignIcons
+            name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
+            size={24}
+            color="#fff"
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.controlsContainer}>
+        <View style={styles.actionRow}>
+          <ActionButton icon="subtitles" label="Subtitle" />
+          <ActionButton icon="speedometer" label="Speed (1x)" />
+          <ActionButton icon="skip-next" label="Next Up" />
+        </View>
+
+        <Text style={styles.title}>{resolvedTitle}</Text>
+        <Text style={styles.subtitle}>{data?.subtitle ?? ''}</Text>
+
+        <Slider
+          style={styles.slider}
+          value={duration ? currentTime / duration : 0}
+          minimumValue={0}
+          maximumValue={1}
+          onSlidingComplete={handleSeek}
+          minimumTrackTintColor="#ff8a65"
+          maximumTrackTintColor="#ccc"
+          thumbTintColor="#ff8a65"
+        />
+
+        <View style={styles.timeRow}>
+          <Text style={styles.time}>{formatTime(currentTime)}</Text>
+          <Text style={styles.time}>{formatTime(duration)}</Text>
+        </View>
+
+        <View style={styles.controls}>
+          <MaterialDesignIcons name="shuffle" size={24} onPress={() => { }} />
+          <MaterialDesignIcons
+            name="rewind-10"
+            size={40}
+            onPress={() => videoRef.current?.seek(Math.max(currentTime - 10, 0))}
+          />
+          <TouchableOpacity
+            onPress={() => setPaused(!paused)}
+            style={styles.playPauseButton}
+          >
+            <MaterialDesignIcons
+              name={paused ? 'play' : 'pause'}
+              size={60}
+              color="#fff"
+            />
+          </TouchableOpacity>
+          <MaterialDesignIcons
+            name="fast-forward-10"
+            size={40}
+            onPress={() => videoRef.current?.seek(currentTime + 10)}
+          />
+          <MaterialDesignIcons name="repeat" size={24} onPress={() => { }} />
+        </View>
+      </View>
     </View>
   );
 };
 
-export default VideoPlayer
+export default VideoPlayer;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    alignItems: 'center',
   },
   video: {
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: '#000',
   },
+  videoWrapper: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  fullScreenWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    zIndex: 10000,
+  },
+  fullScreenVideo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+    zIndex: 9999,
+  },
   debugText: {
     color: '#000',
     margin: 10,
+    fontSize: 12,
+  },
+  controlsContainer: {
+    width: '90%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginVertical: 10,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionLabel: {
+    marginLeft: 5,
+    color: '#000',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 10,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#888',
+    marginBottom: 20,
+  },
+  slider: {
+    width: '100%',
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 10,
+  },
+  time: {
+    fontSize: 14,
+    color: '#333',
+  },
+  controls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  playPauseButton: {
+    backgroundColor: '#F8803B',
+    borderRadius: 100,
+    padding: 10,
   },
 });
