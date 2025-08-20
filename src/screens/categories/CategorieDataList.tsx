@@ -7,6 +7,7 @@ import AppBarHeader from '../../components/AppBarHeader';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import CustomFastImage from '../../components/CustomFastImage';
+import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
 
 // Define type for route params
 type CategorieDataList = {
@@ -26,40 +27,9 @@ const CategorieDataList = () => {
       <AppBarHeader title={title} />
 
       <View style={styles.container}>
-        <FlatList
+        <CustomVerticalFlatlist
           data={categoryListData}
-          renderItem={({ item }) => (
-            <View style={{ width: "90%", alignSelf: "center" }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingVertical: 12,
-                }}
-                onPress={() => { navigate("BlogPage", { item }) }}
-                activeOpacity={0.8}
-              >
-                <CustomFastImage
-                  style={{ width: 70, height: 70, borderRadius: 10 }}
-                  imageUrl={item.image}
-                  resizeMode='cover'
-                />
-
-                <View style={{ flex: 1, marginLeft: 15 }}>
-                  <Text style={{ fontSize: 16, fontWeight: "600", marginBottom: 4 }} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: "#6e6e6e", width: "75%" }} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                </View>
-
-                <MaterialDesignIcons name="chevron-right" size={24} color="#959595" />
-              </TouchableOpacity>
-
-              <View style={{ height: 1, backgroundColor: "#E5E5E5" }} />
-            </View>
-          )}
+          onItemPress={(item) => navigate("BlogPage", { item })}
         />
       </View>
     </View>

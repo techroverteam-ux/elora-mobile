@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Button } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../localization/i18n';
 
@@ -38,7 +38,7 @@ const Home = () => {
             titleKey="title"
             subtitleKey="subtitle"
             contentTagName="contentTag"
-            onSeeAll={() => console.log('See All')}
+            onSeeAll={() => Alert.alert("Coming soon!")}
             onItemPress={(item) => console.log('Pressed:', item)}
           />
           <CardSection<Book>
@@ -47,7 +47,7 @@ const Home = () => {
             imageKey="image"
             titleKey="title"
             subtitleKey="time"
-            onSeeAll={() => console.log('See All')}
+            onSeeAll={() => navigate("AllVideos")}
             onItemPress={(item) => {
               navigate('VideoPlayer', {
                 item: {
@@ -67,7 +67,7 @@ const Home = () => {
             imageKey="image"
             titleKey="title"
             subtitleKey="subtitle"
-            onSeeAll={() => console.log('See All')}
+            onSeeAll={() => navigate("AllAudios")}
             onItemPress={(item) => {
               navigate('AudioPlayer', { item })
               console.log('Pressed:', item)

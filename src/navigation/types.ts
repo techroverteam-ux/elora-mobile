@@ -5,7 +5,9 @@ export type RootStackParamList = {
 
 export type HomeStackParamList = {
   HomeMain: undefined;
-  HomeDetail: { id: string };
+  AllAudios: undefined;
+  AudioCategoryScreen: { title: any };
+  AllVideos: undefined;
   AudioPlayer: { item: any };
   VideoPlayer: { item: any };
 };
