@@ -2,11 +2,11 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import React from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { categoryListData } from '../../data/categoryData';
-import FastImage from 'react-native-fast-image';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import AppBarHeader from '../../components/AppBarHeader';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import CustomFastImage from '../../components/CustomFastImage';
 
 // Define type for route params
 type CategorieDataList = {
@@ -39,14 +39,10 @@ const CategorieDataList = () => {
                 onPress={() => { navigate("BlogPage", { item }) }}
                 activeOpacity={0.8}
               >
-                <FastImage
+                <CustomFastImage
                   style={{ width: 70, height: 70, borderRadius: 10 }}
-                  source={{
-                    uri: item.image,
-                    headers: { Authorization: 'someAuthToken' },
-                    priority: FastImage.priority.normal,
-                  }}
-                  resizeMode={FastImage.resizeMode.cover}
+                  imageUrl={item.image}
+                  resizeMode='cover'
                 />
 
                 <View style={{ flex: 1, marginLeft: 15 }}>

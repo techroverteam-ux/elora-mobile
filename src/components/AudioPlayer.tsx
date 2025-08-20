@@ -15,6 +15,7 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import Slider from '@react-native-community/slider';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { AccountStackParamList } from '../navigation/types';
+import CustomFastImage from './CustomFastImage';
 
 type AudioPlayerRouteProp = RouteProp<AccountStackParamList, 'AudioPlayer'>;
 
@@ -61,10 +62,7 @@ const AudioPlayer: React.FC = () => {
       <View style={styles.container}>
         {/* Album Art */}
         {imageUrl && (
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.albumArt}
-          />
+          <CustomFastImage style={styles.albumArt} imageUrl={imageUrl} />
         )}
 
         {/* Song Info */}

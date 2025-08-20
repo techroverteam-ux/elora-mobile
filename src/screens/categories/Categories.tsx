@@ -1,6 +1,5 @@
 import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useCallback } from 'react'
-import FastImage from 'react-native-fast-image'
 import { categoryData } from '../../data/categoryData';
 import { useNavigation } from '@react-navigation/native';
 import { CategoriesStackParamList } from '../../navigation/types';
@@ -52,8 +51,6 @@ const Categories = () => {
 
   return (
     <View style={styles.container}>
-      <Text>Categories</Text>
-
       <FlatList
         data={categoryData}
         renderItem={renderItem}

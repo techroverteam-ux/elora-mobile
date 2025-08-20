@@ -8,7 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import FastImage from 'react-native-fast-image';
+import CustomFastImage from './CustomFastImage';
 
 interface CardSectionProps<T> {
   title?: string;
@@ -71,15 +71,7 @@ function CardSection<T>({
           return (
             <TouchableOpacity style={styles.card} onPress={() => onItemPress?.(item)}>
               <View style={styles.imageContainer}>
-                <FastImage
-                  style={styles.image}
-                  source={{
-                    uri: imageUri,
-                    headers: { Authorization: 'someAuthToken' },
-                    priority: FastImage.priority.normal,
-                  }}
-                  resizeMode={FastImage.resizeMode.cover}
-                />
+                <CustomFastImage style={styles.image} imageUrl={imageUri} />
                 {contentTag ? (
                   <View style={[styles.trendingBadge, getTagStyle(contentTag)]}>
                     <Text style={styles.trendingText}>{contentTag}</Text>

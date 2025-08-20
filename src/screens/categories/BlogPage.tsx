@@ -2,9 +2,8 @@ import { ScrollView, StyleSheet, Text, View, Dimensions } from 'react-native';
 import React from 'react';
 import AppBarHeader from '../../components/AppBarHeader';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import FastImage from 'react-native-fast-image';
-import Video from 'react-native-video';
 import VideoPlayer from '../../components/VideoPlayer';
+import CustomFastImage from '../../components/CustomFastImage';
 
 // Type Definitions
 type BlogItem = {
@@ -28,15 +27,7 @@ const BlogPage = () => {
       <AppBarHeader title={item?.name || 'Blog'} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <FastImage
-          style={styles.mainImage}
-          source={{
-            uri: item?.image,
-            headers: { Authorization: 'someAuthToken' },
-            priority: FastImage.priority.normal,
-          }}
-          resizeMode={FastImage.resizeMode.stretch}
-        />
+        <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
 
         <View style={styles.contentWrapper}>
           <Text style={styles.title}>{item?.name}</Text>
@@ -66,18 +57,14 @@ const BlogPage = () => {
           </Text>
 
           <View style={styles.imageRow}>
-            {[...Array(2)].map((_, index) => (
-              <FastImage
-                key={index}
-                style={styles.sideImage}
-                source={{
-                  uri: item?.image,
-                  headers: { Authorization: 'someAuthToken' },
-                  priority: FastImage.priority.normal,
-                }}
-                resizeMode={FastImage.resizeMode.cover}
-              />
-            ))}
+            <CustomFastImage
+              style={styles.sideImage}
+              imageUrl={require('../../assets/images/1.png')}
+            />
+            <CustomFastImage
+              style={styles.sideImage}
+              imageUrl={require('../../assets/images/2.png')}
+            />
           </View>
         </View>
       </ScrollView>
