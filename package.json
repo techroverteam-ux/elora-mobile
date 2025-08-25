@@ -9,7 +9,8 @@
     "start": "react-native start",
     "test": "jest",
     "pod_install": "cd ios && pod install && cd ..",
-    "ios_icon": "npx rnvi-update-plist package.json ios/GeetaFinal/Info.plist && cd ios && pod install && cd .."
+    "ios_icon": "npx rnvi-update-plist package.json ios/GeetaFinal/Info.plist && cd ios && pod install && cd ..",
+    "build:apk": "cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.1.8",
