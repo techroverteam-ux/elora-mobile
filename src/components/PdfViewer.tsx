@@ -3,9 +3,11 @@ import React, { useRef } from 'react';
 import Pdf from 'react-native-pdf';
 import AppBarHeader from './AppBarHeader';
 import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
+import { useTheme } from 'react-native-paper';
 
 const PdfViewer = () => {
   const pdfRef = useRef(null);
+  const { colors } = useTheme();
 
   const source = Platform.OS === "android"
     ? { uri: "bundle-assets://thereactnativebook-sample.pdf" }
@@ -20,10 +22,12 @@ const PdfViewer = () => {
   //const source = {uri:"blob:xxxxxxxx-...?offset=0&size=xxx"};
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <AppBarHeader title="PDF Viewer" />
 
-      <Text>Source: {JSON.stringify(source)}</Text>
+      {/* <Text style={{ color: colors.onBackground }}>
+        Source: {JSON.stringify(source)}
+      </Text> */}
 
       <View style={styles.container}>
         <Pdf

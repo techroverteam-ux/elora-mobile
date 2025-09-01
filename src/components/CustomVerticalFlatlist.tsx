@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { useTheme } from 'react-native-paper';
 
 interface CustomVerticalFlatlistProps {
   title?: string;
@@ -22,8 +23,11 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
   onItemPress,
   scrollEnabled = true,
 }) => {
+
+  const { colors } = useTheme();
+
   const renderItem = ({ item }: { item: any }) => (
-    <View >
+    <View>
       <TouchableOpacity
         style={styles.row}
         onPress={() => onItemPress?.(item)}
@@ -36,24 +40,27 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
         />
 
         <View style={styles.textContainer}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: colors.onSurface }]} numberOfLines={1}>
             {item.name}
           </Text>
-          <Text style={styles.description} numberOfLines={2}>
+          <Text
+            style={[styles.description, { color: colors.onSurfaceVariant }]}
+            numberOfLines={2}
+          >
             {item.description}
           </Text>
         </View>
 
-        <MaterialDesignIcons name="chevron-right" size={24} color="#959595" />
+        <MaterialDesignIcons name="chevron-right" size={24} color={colors.outline} />
       </TouchableOpacity>
 
-      <View style={styles.separator} />
+      <View style={[styles.separator, { backgroundColor: colors.outline }]} />
     </View>
   );
 
   return (
     <View style={styles.itemContainer}>
-      {title && <Text style={styles.title}>{title}</Text>}
+      {title && <Text style={[styles.title, { color: colors.onSurface }]}>{title}</Text>}
       <FlatList
         data={data}
         renderItem={renderItem}

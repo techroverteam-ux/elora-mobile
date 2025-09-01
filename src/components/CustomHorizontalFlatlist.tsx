@@ -2,6 +2,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import CustomFastImage from './CustomFastImage'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
+import { useTheme } from 'react-native-paper'
 
 const data = [
   {
@@ -32,9 +33,11 @@ const data = [
 
 
 const CustomHorizontalFlatlist = () => {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Newly Added</Text>
+      <Text style={[styles.heading, { color: colors.onSurface }]}>Newly Added</Text>
       <FlatList
         data={data}
         horizontal
@@ -45,16 +48,25 @@ const CustomHorizontalFlatlist = () => {
           <View style={styles.card}>
             <View style={styles.imageContainer}>
               <CustomFastImage style={styles.image} imageUrl={item.image} />
-              <MaterialDesignIcons name="play-circle" size={36} color="white" style={styles.playIcon} />
+              <MaterialDesignIcons
+                name="play-circle"
+                size={36}
+                color={colors.onPrimary} // Usually white in dark theme or dark in light theme
+                style={styles.playIcon}
+              />
             </View>
-            <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.duration}>{item.duration}</Text>
+            <Text style={[styles.title, { color: colors.onSurface }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.duration, { color: colors.onSurfaceVariant }]}>
+              {item.duration}
+            </Text>
           </View>
         )}
       />
     </View>
-  )
-}
+  );
+};
 
 export default CustomHorizontalFlatlist
 

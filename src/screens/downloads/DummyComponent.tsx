@@ -9,9 +9,11 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useGetPostByIdQuery, useGetPostsQuery } from '../../data/redux/services/dummyApi';
+import { useTheme } from 'react-native-paper';
 
 const DummyComponent = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { colors } = useTheme();
 
   // Fetch all posts
   const {
@@ -31,7 +33,7 @@ const DummyComponent = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>All Posts</Text>
+      <Text style={[styles.heading, { color: colors.onBackground }]}>All Posts</Text>
 
       {postsLoading && <ActivityIndicator />}
       {postsError && <Text>Error fetching posts</Text>}
@@ -42,7 +44,7 @@ const DummyComponent = () => {
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <View style={styles.postItem}>
-              <Text style={styles.postTitle}>{item.title}</Text>
+              <Text style={[styles.postTitle, { color: colors.onBackground }]}>{item.title}</Text>
               <Button
                 title="View Details"
                 onPress={() => setSelectedId(item.id)}
@@ -54,15 +56,15 @@ const DummyComponent = () => {
 
       {selectedId && (
         <View style={styles.details}>
-          <Text style={styles.heading}>Post Details</Text>
+          <Text style={[styles.heading, { color: colors.onBackground }]}>Post Details</Text>
 
           {postLoading && <ActivityIndicator />}
           {postError && <Text>Error fetching post #{selectedId}</Text>}
 
           {post && (
             <>
-              <Text style={styles.postTitle}>{post.title}</Text>
-              <Text>{post.body}</Text>
+              <Text style={[styles.postTitle, { color: colors.onBackground }]}>{post.title}</Text>
+              <Text style={{ color: colors.onBackground }}>{post.body}</Text>
               <Button
                 title="Back to list"
                 onPress={() => setSelectedId(null)}

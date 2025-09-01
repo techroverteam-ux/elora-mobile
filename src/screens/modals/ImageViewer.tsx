@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, Image, Button, StyleSheet } from 'react-native';
+import { View, Image, Button, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { RootStackParamList } from '../../navigation/RootNavigation';
+import { RootStackParamList } from '../../navigation/types';
 
 type ImageViewerRouteProp = RouteProp<RootStackParamList, 'ImageViewer'>;
 
@@ -31,5 +31,7 @@ const styles = StyleSheet.create({
     width: '90%',
     height: '80%',
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "yellow"
   },
 });

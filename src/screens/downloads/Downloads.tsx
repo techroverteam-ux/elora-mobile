@@ -1,9 +1,9 @@
 import { Button, StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../navigation/RootNavigation';
 import { useNavigation } from '@react-navigation/native';
 import DummyComponent from './DummyComponent';
+import { RootStackParamList } from '../../navigation/types';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 

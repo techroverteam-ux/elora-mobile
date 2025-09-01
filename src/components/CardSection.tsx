@@ -9,6 +9,8 @@ import {
   TextStyle,
 } from 'react-native';
 import CustomFastImage from './CustomFastImage';
+import { useTheme } from 'react-native-paper';
+import { MD3Colors } from 'react-native-paper/lib/typescript/types';
 
 interface CardSectionProps<T> {
   title?: string;
@@ -21,7 +23,7 @@ interface CardSectionProps<T> {
   contentTagName?: keyof T;
 }
 
-const getTagStyle = (tag: string): ViewStyle => {
+const getTagStyle = (tag: string, colors: MD3Colors): ViewStyle => {
   switch (tag.toLowerCase()) {
     case 'trending':
       return { backgroundColor: '#fff' };
@@ -44,13 +46,18 @@ function CardSection<T>({
   subtitleKey,
   contentTagName,
 }: CardSectionProps<T>) {
+
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container]}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+          {title}
+        </Text>
         {onSeeAll && (
           <TouchableOpacity onPress={onSeeAll}>
-            <Text style={styles.seeAll}>See All</Text>
+            <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -69,20 +76,29 @@ function CardSection<T>({
           const contentTag = contentTagName ? String(item[contentTagName]) : '';
 
           return (
-            <TouchableOpacity style={styles.card} onPress={() => onItemPress?.(item)}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => onItemPress?.(item)}
+            >
               <View style={styles.imageContainer}>
                 <CustomFastImage style={styles.image} imageUrl={imageUri} />
                 {contentTag ? (
-                  <View style={[styles.trendingBadge, getTagStyle(contentTag)]}>
-                    <Text style={styles.trendingText}>{contentTag}</Text>
+                  <View style={[styles.trendingBadge, getTagStyle(contentTag, colors)]}>
+                    <Text style={[styles.trendingText, { color: colors.onSurface }]}>
+                      {contentTag}
+                    </Text>
                   </View>
                 ) : null}
               </View>
               <View style={styles.textContainer}>
-                <Text style={styles.title} numberOfLines={1}>
+                <Text style={[styles.title, { color: colors.onSurface }]} numberOfLines={1}>
                   {cardTitle}
                 </Text>
-                {cardSubtitle ? <Text style={styles.subtitle}>{cardSubtitle}</Text> : null}
+                {cardSubtitle ? (
+                  <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
+                    {cardSubtitle}
+                  </Text>
+                ) : null}
               </View>
             </TouchableOpacity>
           );

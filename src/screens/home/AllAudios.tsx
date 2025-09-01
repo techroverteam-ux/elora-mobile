@@ -9,6 +9,7 @@ import CustomTodaysPick from '../../components/CustomTodaysPick';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from 'react-native-paper';
 
 const buttons = [
   { label: 'Bhajans', color: '#f97316' },    // Orange
@@ -20,6 +21,7 @@ const buttons = [
 const AllAudios = () => {
   type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
   const { navigate } = useNavigation<HomeNavigationProp>();
+  const { colors } = useTheme();
 
   // Split buttons into rows of 2
   const rows = [];

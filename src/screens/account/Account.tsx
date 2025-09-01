@@ -17,7 +17,6 @@ const Account = () => {
   const { navigate } = useNavigation<AccountNavigationProp>();
   const { colors } = useTheme();
   const { logout } = useAuth();
-  const { preference, setPreference } = useThemeContext();
 
   const openAudioPlayer = () => {
     console.log('Opening sheet');

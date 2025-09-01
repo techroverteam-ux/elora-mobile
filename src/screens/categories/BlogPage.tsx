@@ -4,6 +4,7 @@ import AppBarHeader from '../../components/AppBarHeader';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import VideoPlayer from '../../components/VideoPlayer';
 import CustomFastImage from '../../components/CustomFastImage';
+import { useTheme } from 'react-native-paper';
 
 // Type Definitions
 type BlogItem = {
@@ -21,19 +22,20 @@ const { width } = Dimensions.get('window');
 const BlogPage = () => {
   const route = useRoute<RouteProp<BlogPageRouteParams, 'BlogPage'>>();
   const { item } = route.params;
+  const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.name || 'Blog'} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
 
         <View style={styles.contentWrapper}>
-          <Text style={styles.title}>{item?.name}</Text>
-          <Text style={styles.description}>{item?.description}</Text>
+          <Text style={[styles.title, { color: colors.primary }]}>{item?.name}</Text>
+          <Text style={[styles.description, { color: colors.onSurface }]}>{item?.description}</Text>
 
-          <Text style={styles.paragraph}>
+          <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
             perferendis quidem, laborum in ducimus optio, deleniti numquam a
             porro nam hic architecto ipsam vitae nemo esse cupiditate error
@@ -42,14 +44,10 @@ const BlogPage = () => {
 
           <VideoPlayer
             videoUri='https://www.w3schools.com/html/mov_bbb.mp4'
-            // showDebugInfo
-            // params={item}
-            // showHeaderFromRoutes={['CategorieDataList']}
-            // title='From Blog Page'
             containerStyle={styles.videoContainer}
           />
 
-          <Text style={styles.paragraph}>
+          <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
             perferendis quidem, laborum in ducimus optio, deleniti numquam a
             porro nam hic architecto ipsam vitae nemo esse cupiditate error

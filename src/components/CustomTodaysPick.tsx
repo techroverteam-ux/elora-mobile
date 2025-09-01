@@ -8,6 +8,7 @@ import {
   ImageSourcePropType,
 } from 'react-native';
 import CustomFastImage from './CustomFastImage';
+import { useTheme } from 'react-native-paper';
 
 interface CustomTodaysPickProps {
   imageSource: string | number;
@@ -24,18 +25,26 @@ const CustomTodaysPick: React.FC<CustomTodaysPickProps> = ({
   description,
   onPress,
 }) => {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Today's Pick</Text>
+      <Text style={[styles.header, { color: colors.onSurface }]}>Today's Pick</Text>
       <View style={styles.card}>
         <CustomFastImage imageUrl={imageSource} style={styles.image} />
         <TouchableOpacity style={styles.playButton} onPress={onPress}>
-          <MaterialDesignIcons name="play-circle" size={50} color="white" />
+          <MaterialDesignIcons name="play-circle" size={50} color={colors.onPrimary} />
         </TouchableOpacity>
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
-      <Text style={styles.description}>{description}</Text>
+      {title && (
+        <Text style={[styles.title, { color: colors.onSurface }]}>{title}</Text>
+      )}
+      {subtitle && (
+        <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>{subtitle}</Text>
+      )}
+      {description && (
+        <Text style={[styles.description, { color: colors.onSurfaceVariant }]}>{description}</Text>
+      )}
     </View>
   );
 };
