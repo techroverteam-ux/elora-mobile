@@ -1,42 +1,63 @@
-import { StatusBar, StyleSheet, useColorScheme } from 'react-native'
-import React from 'react'
-import "./src/localization/i18n";
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+import { StatusBar, StyleSheet } from 'react-native';
+import React from 'react';
+import './src/localization/i18n';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
 import { Provider } from 'react-redux';
 import { store } from './src/data/redux/store';
 import { AuthProvider } from './src/context/AuthContext';
 import RootNavigation from './src/navigation/RootNavigation';
-import { CombinedDarkNavigationTheme, CombinedDarkPaperTheme, CombinedLightNavigationTheme, CombinedLightPaperTheme } from './src/theme';
+import {
+  CombinedDarkNavigationTheme,
+  CombinedDarkPaperTheme,
+  CombinedLightNavigationTheme,
+  CombinedLightPaperTheme,
+} from './src/theme';
 import { AudioPlayerProvider } from './src/context/AudioPlayerContext';
+import { ThemeProvider, useThemeContext } from './src/context/ThemeContext';
 
-const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
+const ThemedApp = () => {
+  const { theme, isThemeLoaded } = useThemeContext();
+
+  if (!isThemeLoaded) {
+    return null; // Or render a splash/loading screen
+  }
+
+  const isDarkMode = theme === 'dark';
+
   const paperTheme = isDarkMode ? CombinedDarkPaperTheme : CombinedLightPaperTheme;
   const navigationTheme = isDarkMode ? CombinedDarkNavigationTheme : CombinedLightNavigationTheme;
 
   return (
-    <Provider store={store}>
-      <PaperProvider theme={paperTheme}>
-        <SafeAreaProvider>
-          <SafeAreaView
-            edges={['top']}
-            style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : "#F8803B" }}
-          >
-            <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-            <AuthProvider>
-              <AudioPlayerProvider>
-                <RootNavigation theme={navigationTheme} />
-              </AudioPlayerProvider>
-            </AuthProvider>
-          </SafeAreaView>
-        </SafeAreaProvider>
-      </PaperProvider>
-    </Provider>
-  )
-}
+    <PaperProvider theme={paperTheme}>
+      <SafeAreaProvider>
+        <SafeAreaView
+          edges={['top']}
+          style={{ flex: 1, backgroundColor: isDarkMode ? '#000' : '#F8803B' }}
+        >
+          <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+          <AuthProvider>
+            <AudioPlayerProvider>
+              <RootNavigation theme={navigationTheme} />
+            </AudioPlayerProvider>
+          </AuthProvider>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </PaperProvider>
+  );
+};
 
-export default App
+const App = () => {
+  return (
+    <Provider store={store}>
+      <ThemeProvider>
+        <ThemedApp />
+      </ThemeProvider>
+    </Provider>
+  );
+};
+
+export default App;
 
 const styles = StyleSheet.create({})
 

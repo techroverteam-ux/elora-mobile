@@ -6,12 +6,14 @@ import { AccountStackParamList } from '../types';
 import PdfViewer from '../../components/PdfViewer';
 import AudioPlayer from '../../components/AudioPlayer';
 import VideoPlayer from '../../components/VideoPlayer';
+import Appearence from '../../screens/account/Appearence';
 
 const Stack = createNativeStackNavigator<AccountStackParamList>();
 
 const AccountStack = () => (
   <Stack.Navigator>
     <Stack.Screen name="AccountMain" component={Account} options={{ headerShown: false }} />
+    <Stack.Screen name="Appearence" component={Appearence} options={{ headerShown: false }} />
     <Stack.Screen name="SelectLanguage" component={SelectLanguage} options={{ headerShown: false }} />
     <Stack.Screen name="PdfViewer" component={PdfViewer} options={{ headerShown: false }} />
     <Stack.Screen name="AudioPlayer" component={AudioPlayer} options={{ headerShown: false }} />

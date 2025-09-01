@@ -9,6 +9,7 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import BottomSheet from '@gorhom/bottom-sheet';
 import AudioBottomSheet from '../../components/AudioBottomSheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
+import { useThemeContext } from '../../context/ThemeContext';
 
 const Account = () => {
   type AccountNavigationProp = NativeStackNavigationProp<AccountStackParamList, 'AccountMain'>;
@@ -16,6 +17,7 @@ const Account = () => {
   const { navigate } = useNavigation<AccountNavigationProp>();
   const { colors } = useTheme();
   const { logout } = useAuth();
+  const { preference, setPreference } = useThemeContext();
 
   const openAudioPlayer = () => {
     console.log('Opening sheet');
@@ -30,6 +32,12 @@ const Account = () => {
       </View>
 
       <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+        <AccountOption
+          label="Appearence"
+          icon="theme-light-dark"
+          onPress={() => navigate('Appearence')}
+        />
+
         <AccountOption
           label="Select Language"
           icon="translate"
