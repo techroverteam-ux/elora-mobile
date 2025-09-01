@@ -14,6 +14,7 @@ import { RootState } from '../data/redux/store';
 import Slider from '@react-native-community/slider';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Orientation from 'react-native-orientation-locker';
+import { useTheme } from 'react-native-paper';
 
 interface VideoPlayerProps {
   videoUri?: string;
@@ -33,6 +34,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showHeaderFromRoutes = [],
 }) => {
   const route = useRoute<any>();
+  const { colors } = useTheme();
   const routeParams = route?.params?.item;
   const data = params ?? routeParams ?? {};
 
@@ -81,8 +83,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     onPress?: () => void;
   }) => (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <MaterialDesignIcons name={icon} size={24} color="#959595" />
-      <Text style={styles.actionLabel}>{label}</Text>
+      <MaterialDesignIcons name={icon} size={24} color={colors.onSurfaceVariant} />
+      <Text style={[styles.actionLabel, { color: colors.onSurfaceVariant }]}>{label}</Text>
     </TouchableOpacity>
   );
 
@@ -97,10 +99,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   return (
-    <View style={[styles.container, containerStyle]}>
+    <View style={[styles.container, containerStyle, { backgroundColor: colors.background }]}>
       {shouldShowHeader && <AppBarHeader title={resolvedTitle} />}
       {resolvedShowDebug && (
-        <Text style={styles.debugText}>{JSON.stringify(data, null, 2)}</Text>
+        <Text style={[styles.debugText, { color: colors.onSurfaceVariant }]}>
+          {JSON.stringify(data, null, 2)}
+        </Text>
       )}
 
       <View style={fullScreen ? styles.fullScreenWrapper : styles.videoWrapper}>
@@ -108,7 +112,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           ref={videoRef}
           source={{ uri: resolvedVideoUri }}
           style={styles.video}
-          controls={fullScreen ? true : false}
+          controls={fullScreen}
           paused={paused}
           resizeMode="contain"
           onLoad={({ duration }) => setDuration(duration)}
@@ -119,7 +123,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <MaterialDesignIcons
             name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
             size={24}
-            color="#fff"
+            color={colors.primary}
           />
         </TouchableOpacity>
       </View>
@@ -131,8 +135,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <ActionButton icon="skip-next" label="Next Up" />
         </View>
 
-        <Text style={styles.title}>{resolvedTitle}</Text>
-        <Text style={styles.subtitle}>{data?.subtitle ?? ''}</Text>
+        <Text style={[styles.title, { color: colors.onSurface }]}>{resolvedTitle}</Text>
+        <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
+          {data?.subtitle ?? ''}
+        </Text>
 
         <Slider
           style={styles.slider}
@@ -140,39 +146,45 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           minimumValue={0}
           maximumValue={1}
           onSlidingComplete={handleSeek}
-          minimumTrackTintColor="#ff8a65"
-          maximumTrackTintColor="#ccc"
-          thumbTintColor="#ff8a65"
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.onSurfaceVariant}
+          thumbTintColor={colors.primary}
         />
 
         <View style={styles.timeRow}>
-          <Text style={styles.time}>{formatTime(currentTime)}</Text>
-          <Text style={styles.time}>{formatTime(duration)}</Text>
+          <Text style={[styles.time, { color: colors.onSurfaceVariant }]}>
+            {formatTime(currentTime)}
+          </Text>
+          <Text style={[styles.time, { color: colors.onSurfaceVariant }]}>
+            {formatTime(duration)}
+          </Text>
         </View>
 
         <View style={styles.controls}>
-          <MaterialDesignIcons name="shuffle" size={24} onPress={() => { }} />
+          <MaterialDesignIcons name="shuffle" size={24} color={colors.onSurfaceVariant} />
           <MaterialDesignIcons
             name="rewind-10"
             size={40}
+            color={colors.onSurface}
             onPress={() => videoRef.current?.seek(Math.max(currentTime - 10, 0))}
           />
           <TouchableOpacity
             onPress={() => setPaused(!paused)}
-            style={styles.playPauseButton}
+            style={[styles.playPauseButton, { backgroundColor: colors.primary }]}
           >
             <MaterialDesignIcons
               name={paused ? 'play' : 'pause'}
               size={60}
-              color="#fff"
+              color={colors.onSurfaceVariant}
             />
           </TouchableOpacity>
           <MaterialDesignIcons
             name="fast-forward-10"
             size={40}
+            color={colors.onSurface}
             onPress={() => videoRef.current?.seek(currentTime + 10)}
           />
-          <MaterialDesignIcons name="repeat" size={24} onPress={() => { }} />
+          <MaterialDesignIcons name="repeat" size={24} color={colors.onSurfaceVariant} />
         </View>
       </View>
     </View>
