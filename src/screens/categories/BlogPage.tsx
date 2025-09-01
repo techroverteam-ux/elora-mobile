@@ -5,6 +5,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import VideoPlayer from '../../components/VideoPlayer';
 import CustomFastImage from '../../components/CustomFastImage';
 import { useTheme } from 'react-native-paper';
+import BlogVideo from '../../components/BlogVideo';
 
 // Type Definitions
 type BlogItem = {
@@ -42,10 +43,12 @@ const BlogPage = () => {
             nihil ipsum?
           </Text>
 
-          <VideoPlayer
+          {/* <VideoPlayer
             videoUri='https://www.w3schools.com/html/mov_bbb.mp4'
             containerStyle={styles.videoContainer}
-          />
+          /> */}
+
+          <BlogVideo uri="https://www.w3schools.com/html/mov_bbb.mp4" />
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla

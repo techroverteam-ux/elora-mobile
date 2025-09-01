@@ -55,7 +55,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
 
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<React.ComponentRef<typeof Video>>(null);
 
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60)
