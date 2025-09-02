@@ -9,7 +9,7 @@ import {
 import React, { useEffect } from 'react';
 import { useAudioPlayerContext } from '../context/AudioPlayerContext';
 import AppBarHeader from './AppBarHeader';
-import { ProgressBar } from 'react-native-paper';
+import { ProgressBar, useTheme } from 'react-native-paper';
 import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Slider from '@react-native-community/slider';
@@ -20,11 +20,12 @@ import CustomFastImage from './CustomFastImage';
 type AudioPlayerRouteProp = RouteProp<AccountStackParamList, 'AudioPlayer'>;
 
 const AudioPlayer: React.FC = () => {
+  const { colors } = useTheme();
   const route = useRoute<AudioPlayerRouteProp>();
   const item = route.params?.item;
 
   if (!item) {
-    return <Text>No audio data provided.</Text>;
+    return <Text style={{ color: colors.onSurface }}>No audio data provided.</Text>;
   }
 
   const { title, artist, imageUrl, audioUrl } = item;
@@ -46,7 +47,6 @@ const AudioPlayer: React.FC = () => {
   const progress = duration ? currentTime / duration : 0;
 
   useEffect(() => {
-    // Only load if not already loaded
     if (audioUrl && !duration) {
       loadBuffer(audioUrl);
     }
@@ -56,91 +56,91 @@ const AudioPlayer: React.FC = () => {
   }, [audioUrl, duration, loadBuffer, setOnPositionChanged]);
 
   return (
-    <View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <AppBarHeader title="Audio Player" />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
 
-      <View style={styles.container}>
-        {/* Album Art */}
-        {imageUrl && (
-          <CustomFastImage style={styles.albumArt} imageUrl={imageUrl} />
-        )}
+        <View style={styles.innerContainer}>
+          {/* Album Art */}
+          {imageUrl && (
+            <CustomFastImage style={styles.albumArt} imageUrl={imageUrl} />
+          )}
 
-        {/* Song Info */}
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{artist}</Text>
+          {/* Song Info */}
+          <Text style={[styles.title, { color: colors.onSurface }]}>{title}</Text>
+          <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>{artist}</Text>
 
-        {/* <Text style={styles.status}>{isPlaying ? '🔊 Playing' : '⏸️ Paused'}</Text> */}
-
-        {/* <ProgressBar
-          progress={progress}
-          color="#6200ee"
-          style={styles.progress}
-        /> */}
-
-        <Slider
-          style={styles.slider}
-          value={progress}
-          minimumValue={0}
-          maximumValue={1}
-          onSlidingComplete={(val) => {
-            if (duration != null) {
-              seekTo(val * duration);
-            }
-          }}
-          minimumTrackTintColor="#ff8a65"
-          maximumTrackTintColor="#ccc"
-          thumbTintColor="#ff8a65"
-        />
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: "90%" }}>
-          <Text style={styles.time}>
-            {formatTime(currentTime)}
-          </Text>
-          <Text style={styles.time}>
-            {formatTime(duration ?? 0)}
-          </Text>
-        </View>
-
-        <View style={styles.controls}>
-          <MaterialDesignIcons
-            name="shuffle"
-            size={24}
-            color="#000"
-            onPress={() => console.log('Shuffle')}
+          {/* Slider */}
+          <Slider
+            style={styles.slider}
+            value={progress}
+            minimumValue={0}
+            maximumValue={1}
+            onSlidingComplete={(val) => {
+              if (duration != null) {
+                seekTo(val * duration);
+              }
+            }}
+            minimumTrackTintColor={colors.primary}
+            maximumTrackTintColor={colors.onSurfaceVariant}
+            thumbTintColor={colors.primary}
           />
 
-          <MaterialDesignIcons
-            name="rewind-10"
-            size={40}
-            color="#000"
-            onPress={() => seekBy(-10)}
-          />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: "90%" }}>
+            <Text style={[styles.time, { color: colors.onSurfaceVariant }]}>
+              {formatTime(currentTime)}
+            </Text>
+            <Text style={[styles.time, { color: colors.onSurfaceVariant }]}>
+              {formatTime(duration ?? 0)}
+            </Text>
+          </View>
 
-          <MaterialDesignIcons
-            name={isPlaying ? 'pause' : 'play'}
-            size={60}
-            color="#fff"
-            onPress={isPlaying ? pause : play}
-            style={{ backgroundColor: "#F8803B", borderRadius: 100 }}
-          />
+          <View style={styles.controls}>
+            <MaterialDesignIcons
+              name="shuffle"
+              size={24}
+              color={colors.onSurfaceVariant}
+              onPress={() => console.log('Shuffle')}
+            />
 
-          <MaterialDesignIcons
-            name="fast-forward-10"
-            size={40}
-            color="#000"
-            onPress={() => seekBy(10)}
-          />
+            <MaterialDesignIcons
+              name="rewind-10"
+              size={40}
+              color={colors.onSurface}
+              onPress={() => seekBy(-10)}
+            />
 
-          <MaterialDesignIcons
-            name="repeat" size={24}
-            color="#000"
-            onPress={() => console.log('Repeat')}
-          />
-        </View>
+            <TouchableOpacity
+              onPress={isPlaying ? pause : play}
+              style={[styles.playPauseButton, { backgroundColor: colors.primary }]}
+            >
+              <MaterialDesignIcons
+                name={isPlaying ? 'pause' : 'play'}
+                size={60}
+                color={colors.onSurfaceVariant}
+              />
+            </TouchableOpacity>
 
-        {/* <TouchableOpacity style={styles.resetButton} onPress={reset}>
-          <Text style={styles.resetText}>🔄 Reset</Text>
+            <MaterialDesignIcons
+              name="fast-forward-10"
+              size={40}
+              color={colors.onSurface}
+              onPress={() => seekBy(10)}
+            />
+
+            <MaterialDesignIcons
+              name="repeat"
+              size={24}
+              color={colors.onSurfaceVariant}
+              onPress={() => console.log('Repeat')}
+            />
+          </View>
+
+          {/* Uncomment if you want Reset button */}
+          {/* <TouchableOpacity style={styles.resetButton} onPress={reset}>
+          <Text style={[styles.resetText, { color: colors.onSurfaceVariant }]}>🔄 Reset</Text>
         </TouchableOpacity> */}
+        </View>
       </View>
     </View>
   );
@@ -150,71 +150,90 @@ export default AudioPlayer;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
-    // backgroundColor: '#fff',
-    // borderRadius: 12,
-    // elevation: 3,
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 20,
   },
   albumArt: {
     width: WIDTH - 48,
-    height: WIDTH - 58,
-    borderRadius: 12,
-    marginTop: 20,
+    height: WIDTH - 48,
+    borderRadius: 16,
+    marginTop: 12,
+    // Add subtle shadow for depth on iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    // Shadow for Android
+    elevation: 8,
+    backgroundColor: '#fff', // Helps shadow show up on Android
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 20,
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 24,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 20,
-  },
-  status: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 28,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 12,
-  },
-  progress: {
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 10,
   },
   time: {
-    textAlign: 'center',
-    marginBottom: 16,
     fontSize: 14,
-    color: '#333',
+    fontWeight: '500',
+    marginBottom: 0,
   },
   slider: {
     width: '100%',
-    marginTop: 10,
+    height: 40,
+    marginBottom: 12,
   },
   controls: {
     flexDirection: 'row',
-    width: "90%",
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    width: '90%',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
+    marginBottom: 24,
   },
-  button: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#6200ee',
-    borderRadius: 8,
+  playPauseButton: {
+    borderRadius: 100,
+    padding: 14,
+    backgroundColor: '#6200ee', // fallback color if using theme
+    shadowColor: '#6200ee',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
+  controlIcon: {
+    padding: 10,
   },
   resetButton: {
     alignSelf: 'center',
+    marginBottom: 16,
   },
   resetText: {
-    color: '#888',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressTimesContainer: {
+    width: '90%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 8,
   },
 });
