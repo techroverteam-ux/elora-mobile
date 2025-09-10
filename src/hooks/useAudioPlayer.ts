@@ -115,7 +115,7 @@ export default function useAudioPlayer() {
       .then(res => res.arrayBuffer())
       .then(arrBuf => audioContext.current.decodeAudioData(arrBuf))
       .catch(err => {
-        console.error('Error decoding audio:', err);
+        console.log('Error decoding audio:', err);
         return null;
       });
 

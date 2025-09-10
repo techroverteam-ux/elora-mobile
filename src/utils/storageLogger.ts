@@ -9,7 +9,7 @@ export const fetchAndFormatStorage = async (): Promise<string[]> => {
 
     return formatted;
   } catch (error) {
-    console.error('Error reading AsyncStorage:', error);
+    console.log('Error reading AsyncStorage:', error);
     return [];
   }
 };

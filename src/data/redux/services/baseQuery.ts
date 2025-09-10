@@ -5,7 +5,8 @@ import {
   type FetchBaseQueryError
 } from '@reduxjs/toolkit/query/react';
 
-const BASE_URL = 'https://jsonplaceholder.typicode.com';
+// const BASE_URL = 'https://jsonplaceholder.typicode.com';
+const BASE_URL = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api';
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
@@ -49,9 +50,9 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
 
   if (process.env.NODE_ENV === 'development') {
     if (result.error) {
-      console.error('%c[API ERROR] <---', 'color: red; font-weight: bold;');
-      console.error('  Status:', result.error.status);
-      console.error('  Message:');
+      console.log('%c[API ERROR] <---', 'color: red; font-weight: bold;');
+      console.log('  Status:', result.error.status);
+      console.log('  Message:');
       console.dir(result.error.data, { depth: null });
     } else {
       console.log('%c[API RESPONSE] <---', 'color: green; font-weight: bold;');

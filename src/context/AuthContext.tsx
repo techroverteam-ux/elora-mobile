@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
         }
         setLoading(false); // add delay
       } catch (e) {
-        console.error("Failed to load auth state", e); // add delay
+        console.log("Failed to load auth state", e); // add delay
       } finally {
         setLoading(false);
       }
@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       setUser(userData);
       setIsAuthenticated(true);
     } catch (e) {
-      console.error("Failed to persist login", e);
+      console.log("Failed to persist login", e);
     }
   };
 
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
       setIsAuthenticated(false);
       await fetchAndFormatStorage();
     } catch (e) {
-      console.error("Failed to persist logout", e);
+      console.log("Failed to persist logout", e);
     }
   };
 

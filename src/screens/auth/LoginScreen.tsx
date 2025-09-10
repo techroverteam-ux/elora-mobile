@@ -1,63 +1,112 @@
 import React, { useState } from 'react';
-import { Alert, Button, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useAuth, UserType } from '../../context/AuthContext';
+import {
+  Alert,
+  Button,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  TouchableOpacity,
+} from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import TestUserPicker from '../../utils/TestUserPicker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
-
-const testUsers: UserType[] = [
-  { name: 'Neel', email: 'neel@gmail.com' },
-  { name: 'Alice', email: 'alice@example.com' },
-  { name: 'Bob', email: 'bob@example.com' },
-];
+import { useGetLoginUserMutation } from '../../data/redux/services/authApi';
 
 type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
+
+const dummyUsers = [
+  { email: 'test@admin.com', password: '123456' },
+  { email: 'neel@test.com', password: 'password123' },
+  { email: 'bob@test.com', password: 'bob123' },
+];
 
 const LoginScreen = () => {
   const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
 
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // 👈 toggle state
 
-  const handleLogin = () => {
-    if (email && name) {
-      login({ name, email });
-    } else {
-      Alert.alert('Validation Error', 'Please enter both name and email.');
+  const [loginUser, { isLoading }] = useGetLoginUserMutation();
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Validation Error', 'Please enter both email and password.');
+      return;
+    }
+
+    console.log('Trying login with:', { email, password });
+
+    try {
+      const response = await loginUser({ email, password }).unwrap();
+      console.log('Login Response:', response);
+
+      // If your API returns { data: { user, token } }
+      login(response.data || response);
+    } catch (error: any) {
+      // console.log('Login Error:', error);
+      const message =
+        error?.data?.message ||
+        (error?.status === 401 ? 'Invalid credentials. Please try again.' : 'Something went wrong');
+      Alert.alert('Login Failed', message);
     }
   };
 
-  const handleSelectUser = (user: UserType) => {
-    setName(user.name);
+  const handleSelectUser = (user: { email: string; password: string }) => {
     setEmail(user.email);
+    setPassword(user.password);
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome Back!</Text>
 
-      {/* Test user picker component */}
-      <TestUserPicker users={testUsers} onSelectUser={handleSelectUser} />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        value={name}
-        onChangeText={setName}
-      />
+      {/* Dummy User Quick Fill */}
+      <View style={styles.dummyContainer}>
+        {dummyUsers.map((user, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.dummyButton}
+            onPress={() => handleSelectUser(user)}
+          >
+            <Text style={styles.dummyText}>{user.email}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <TextInput
         style={styles.input}
         placeholder="Email"
         value={email}
         keyboardType="email-address"
+        autoCapitalize="none"
         onChangeText={setEmail}
       />
 
+      {/* Password input with eye toggle */}
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={[styles.input, { flex: 1, marginBottom: 0 }]}
+          placeholder="Password"
+          value={password}
+          secureTextEntry={!showPassword}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity
+          style={styles.eyeButton}
+          onPress={() => setShowPassword(!showPassword)}
+        >
+          <Text style={{ fontSize: 16 }}>
+            {showPassword ? '🙈' : '👁️'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.buttonContainer}>
-        <Button title="Login" onPress={handleLogin} />
+        <Button title={isLoading ? 'Logging in...' : 'Login'} onPress={handleLogin} />
       </View>
 
       <Text style={styles.link} onPress={() => navigation.navigate('Register')}>
@@ -83,6 +132,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333',
   },
+  dummyContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  dummyButton: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  dummyText: {
+    color: '#333',
+    fontSize: 14,
+  },
   input: {
     height: 50,
     borderColor: '#ccc',
@@ -91,6 +155,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
     fontSize: 16,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 16,
+    height: 50,
+    paddingRight: 10,
+  },
+  eyeButton: {
+    marginLeft: 10,
   },
   buttonContainer: {
     marginTop: 10,

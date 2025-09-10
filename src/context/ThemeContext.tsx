@@ -46,7 +46,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         setPreferenceState(finalPref);
         resolveTheme(finalPref);
       } catch (e) {
-        console.error('Failed to load theme preference', e);
+        console.log('Failed to load theme preference', e);
       } finally {
         setIsThemeLoaded(true);
       }
@@ -71,7 +71,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       setPreferenceState(pref);
       resolveTheme(pref);
     } catch (e) {
-      console.error('Failed to save theme preference', e);
+      console.log('Failed to save theme preference', e);
     }
   };
 
