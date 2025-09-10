@@ -10,8 +10,16 @@ const BASE_URL = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecont
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
-  prepareHeaders: (headers) => {
-    // headers.set('Authorization', `Bearer token`);
+  prepareHeaders: (headers, { getState }) => {
+    // Example: Grab token from redux state (e.g. auth slice)
+    const token = (getState() as any).auth?.token;
+
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    headers.set('Content-Type', 'application/json');
+
     return headers;
   },
 });

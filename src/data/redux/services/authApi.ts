@@ -1,29 +1,44 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './baseQuery';
+import { AuthResponse, LoginUserRequest } from './types/auth';
 
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery,
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getRegisterUser: builder.mutation<any, any>({
-      query: () => '/auth/register',
+      query: (body) => ({
+        url: '/auth/register',
+        method: 'POST',
+        body,
+      }),
     }),
-    getLoginUser: builder.mutation<any, { email: string; password: string }>({
+    getLoginUser: builder.mutation<AuthResponse, LoginUserRequest>({
       query: (body) => ({
         url: '/auth/login',
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body,
       }),
     }),
     getForgotPassword: builder.mutation<any, any>({
-      query: () => `/auth/forgot-password`,
+      query: (body) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body,
+      }),
     }),
     getResetPassword: builder.mutation<any, any>({
-      query: () => `/auth/reset-password`,
+      query: (body) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body,
+      }),
     }),
     getAccess: builder.mutation<any, any>({
-      query: () => `/auth/getAccess`,
+      query: () => ({
+        url: '/auth/getAccess',
+        method: 'GET',
+      }),
     }),
   }),
 });
