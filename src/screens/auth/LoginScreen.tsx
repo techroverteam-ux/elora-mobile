@@ -18,7 +18,7 @@ type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 
 const dummyUsers = [
   { email: 'test@admin.com', password: '123456' },
-  { email: 'neel@test.com', password: 'password123' },
+  { email: 'neel@test.com', password: '123456' },
   { email: 'bob@test.com', password: 'bob123' },
 ];
 
