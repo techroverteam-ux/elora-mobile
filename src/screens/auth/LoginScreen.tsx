@@ -52,7 +52,9 @@ const LoginScreen = () => {
         token,
       };
 
+      // Save to AuthContext
       login(loggedInUser);
+
     } catch (error: any) {
       const message =
         error?.data?.message ||
@@ -60,6 +62,7 @@ const LoginScreen = () => {
       Alert.alert('Login Failed', message);
     }
   };
+
 
   const handleSelectUser = (user: { email: string; password: string }) => {
     setEmail(user.email);

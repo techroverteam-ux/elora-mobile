@@ -19,6 +19,9 @@ import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
 
 const Home = () => {
+  const { user } = useAuth();
+  console.log("user:", user);
+
   type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
   const { navigate } = useNavigation<HomeNavigationProp>();
 

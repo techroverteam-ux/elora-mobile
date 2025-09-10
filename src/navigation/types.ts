@@ -1,3 +1,5 @@
+import { UserType } from "../context/AuthContext";
+
 export type RootStackParamList = {
   App: undefined;
   ImageViewer: { uri: string };
@@ -37,4 +39,5 @@ export type AccountStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  HomeMain: { user: UserType };
 };
