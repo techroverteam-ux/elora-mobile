@@ -2,7 +2,11 @@ import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 
-const MainAppHeader = () => {
+interface MainAppHeaderProps {
+  username: string;
+}
+
+const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
   return (
     <View style={{ backgroundColor: "#F8803B", width: "100%", marginBottom: 20, padding: 20, borderBottomStartRadius: 20, borderBottomEndRadius: 20 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -27,7 +31,7 @@ const MainAppHeader = () => {
           />
         </View>
       </View>
-      <Text style={{ marginTop: 15, color: "#fff", fontSize: 22, fontWeight: "bold", }}>Welcome Neel</Text>
+      <Text style={{ marginTop: 15, color: "#fff", fontSize: 22, fontWeight: "bold", }}>Welcome {username}</Text>
     </View>
   )
 }

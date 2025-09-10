@@ -20,14 +20,14 @@ import { useNavigation } from '@react-navigation/native';
 
 const Home = () => {
   const { user } = useAuth();
-  console.log("user:", user);
+  console.log("UserDataOnLogin:", user);
 
   type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
   const { navigate } = useNavigation<HomeNavigationProp>();
 
   return (
     <View style={{ flex: 1 }}>
-      <MainAppHeader />
+      <MainAppHeader username={user?.name || ''} />
 
       <View style={styles.root}>
         <ScrollView showsVerticalScrollIndicator={false}>
