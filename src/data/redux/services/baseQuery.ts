@@ -4,6 +4,7 @@ import {
   type FetchArgs,
   type FetchBaseQueryError
 } from '@reduxjs/toolkit/query/react';
+import { _log, colorLog } from '../../../utils/logger';
 
 // const BASE_URL = 'https://jsonplaceholder.typicode.com';
 const BASE_URL = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api';
@@ -11,63 +12,40 @@ const BASE_URL = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecont
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
   prepareHeaders: (headers, { getState }) => {
-    // Example: Grab token from redux state (e.g. auth slice)
     const token = (getState() as any).auth?.token;
-
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-
     headers.set('Content-Type', 'application/json');
-
     return headers;
   },
 });
 
-export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
-  args,
-  api,
-  extraOptions
-) => {
+export const baseQuery: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
   const path = typeof args === 'string' ? args : args.url;
   const method = typeof args === 'string' ? 'GET' : args.method ?? 'GET';
   const body = typeof args === 'string' ? undefined : args.body;
-
   const fullUrl = `${BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
-
-  if (process.env.NODE_ENV === 'development') {
-    const logLines = [
-      '%c[API CALL] --->',
-      'color: green; font-weight: bold;',
-      `  Full URL: ${fullUrl}`,
-      `  Method: ${method}`,
-    ];
-
-    if (body) {
-      logLines.push(`  Payload:\n${JSON.stringify(body, null, 2)}`);
-    }
-
-    // First argument: styled line, second: style, rest: normal
-    console.log(
-      [logLines[0], ...logLines.slice(2)].join('\n'),
-      logLines[1]
-    );
-  }
 
   const result = await rawBaseQuery(args, api, extraOptions);
 
+  // Response log
   if (process.env.NODE_ENV === 'development') {
-    if (result.error) {
-      console.log('%c[API ERROR] <---', 'color: red; font-weight: bold;');
-      console.log('  Status:', result.error.status);
-      console.log('  Message:');
-      console.dir(result.error.data, { depth: null });
-    } else {
-      console.log('%c[API RESPONSE] <---', 'color: green; font-weight: bold;');
-      console.dir(result.data, { depth: null });
-    }
-  }
+    //! un-comment this if needed
+    // colorLog("cyan", "[API CALL] --->", { url: fullUrl, method, body });
+    // if (result.error) {
+    //   colorLog("red", "[API ERROR] <---", result.error);
+    // } else {
+    //   colorLog("green", "[API RESPONSE] <---", result.data);
+    // }
 
+    // Extra detailed log block
+    _log(result, body);
+  }
 
   return result;
 };

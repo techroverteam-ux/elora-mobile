@@ -25,7 +25,7 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   const { buildHref } = useLinkBuilder();
 
   // Only show tab bar if there is only one route
-  console.log("state.routes", state);
+  // console.log("state.routes", state);
   if (state.routes[state.index]?.state?.routes?.length > 1) return null;
 
   return (
