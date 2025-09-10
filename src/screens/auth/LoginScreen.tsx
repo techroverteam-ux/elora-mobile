@@ -8,7 +8,7 @@ import {
   View,
   TouchableOpacity,
 } from 'react-native';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth, UserType } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
@@ -38,16 +38,22 @@ const LoginScreen = () => {
       return;
     }
 
-    console.log('Trying login with:', { email, password });
-
     try {
       const response = await loginUser({ email, password }).unwrap();
       console.log('Login Response:', response);
 
-      // If your API returns { data: { user, token } }
-      login(response.data || response);
+      const { token, user } = response.data;
+
+      const loggedInUser: UserType = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token,
+      };
+
+      login(loggedInUser);
     } catch (error: any) {
-      // console.log('Login Error:', error);
       const message =
         error?.data?.message ||
         (error?.status === 401 ? 'Invalid credentials. Please try again.' : 'Something went wrong');

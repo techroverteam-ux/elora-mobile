@@ -4,10 +4,13 @@ import { fetchAndFormatStorage } from '../utils/storageLogger';
 import { AUTH_KEY, USER_KEY } from '../constants/storageKeys';
 
 export interface UserType {
+  id?: string;
   name: string;
   email: string;
-  // Add more fields as needed
+  role?: string;
+  token?: string;
 }
+
 export interface AuthContextType {
   isAuthenticated: boolean;
   user: UserType | null;

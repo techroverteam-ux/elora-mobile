@@ -23,12 +23,16 @@ export interface ResetPasswordRequest {
 
 // Response types
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
+  success: boolean;
+  message: string;
+  data: {
+    token: string;
+    user: {
+      _id: string;
+      name: string;
+      email: string;
+      role: string;
+    };
   };
 }
 
