@@ -11,16 +11,6 @@ type RootNav = NativeStackNavigationProp<RootStackParamList>;
 const Downloads = () => {
   const navigation = useNavigation<RootNav>();
 
-  const [getSectionRequest, { data, isLoading }] = useGetSectionsMutation();
-
-  useEffect(() => {
-    getSectionRequest({});
-  }, []);
-
-  useEffect(() => {
-    console.log('Section Data: ', data?.data.map((item: any) => item.title));
-  }, [data]);
-
   return (
     <View style={{ flex: 1 }}>
       <View>
