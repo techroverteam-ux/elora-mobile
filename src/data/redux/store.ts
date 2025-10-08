@@ -4,6 +4,7 @@ import navigationReducer from './slices/navigationSlice'
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { dummyApi } from './services/dummyApi';
 import { authApi } from './services/authApi';
+import { sectionsApi } from './services/sectionsApi';
 
 export const store = configureStore({
   reducer: {
@@ -11,11 +12,13 @@ export const store = configureStore({
     navigation: navigationReducer,
     [dummyApi.reducerPath]: dummyApi.reducer,
     [authApi.reducerPath]: authApi.reducer,
+    [sectionsApi.reducerPath]: sectionsApi.reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       dummyApi.middleware,
-      authApi.middleware
+      authApi.middleware,
+      sectionsApi.middleware
     ),
 });
 

@@ -4,11 +4,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native'
 import React, { useState } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import { useGetRegisterUserMutation } from '../../data/redux/services/authApi'
+import { getErrorMessage } from '../../data/redux/services/baseQuery'
 
 const RegisterScreen = () => {
   const { goBack } = useNavigation()
@@ -23,7 +25,14 @@ const RegisterScreen = () => {
     try {
       const result = await registerUser({ name, email, password }).unwrap()
       console.log('Registered:', result)
-      goBack()
+
+      Alert.alert(
+        'Success',
+        'Registration successful!',
+        [
+          { text: 'OK', onPress: () => goBack() } // only goBack when user presses OK
+        ]
+      )
     } catch (err) {
       console.error('Register failed:', err)
     }
@@ -73,7 +82,12 @@ const RegisterScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {error && <Text style={styles.error}>Registration failed. Try again.</Text>}
+      {error &&
+        <View>
+          <Text style={styles.error}>Registration failed. Try again.</Text>
+          <Text style={styles.error}>{getErrorMessage(error)}</Text>
+        </View>
+      }
 
       <TouchableOpacity
         style={[styles.button, isLoading && styles.buttonDisabled]}

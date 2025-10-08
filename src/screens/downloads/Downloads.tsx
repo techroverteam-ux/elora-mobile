@@ -1,14 +1,26 @@
 import { Button, StyleSheet, Text, View } from 'react-native'
-import React from 'react'
+import React, { use, useEffect } from 'react'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import DummyComponent from './DummyComponent';
 import { RootStackParamList } from '../../navigation/types';
+import { useGetSectionsMutation } from '../../data/redux/services/sectionsApi';
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
 const Downloads = () => {
   const navigation = useNavigation<RootNav>();
+
+  const [getSectionRequest, { data, isLoading }] = useGetSectionsMutation();
+
+  useEffect(() => {
+    getSectionRequest({});
+  }, []);
+
+  useEffect(() => {
+    console.log('Section Data: ', data?.data.map((item: any) => item.title));
+  }, [data]);
+
   return (
     <View style={{ flex: 1 }}>
       <View>
