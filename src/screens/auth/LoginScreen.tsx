@@ -22,7 +22,7 @@ const dummyUsers = [
   { email: 'bob@test.com', password: 'bob123' },
 ];
 
-const LoginScreen = () => {
+const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
 
@@ -54,6 +54,13 @@ const LoginScreen = () => {
 
       // Save to AuthContext
       login(loggedInUser);
+
+      // ✅ Close modal + redirect if provided
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else {
+        navigation.goBack();
+      }
 
     } catch (error: any) {
       const message =

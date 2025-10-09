@@ -3,6 +3,7 @@ import { UserType } from "../context/AuthContext";
 export type RootStackParamList = {
   App: undefined;
   ImageViewer: { uri: string };
+  AuthModal: undefined;
 };
 
 export type HomeStackParamList = {
@@ -15,6 +16,7 @@ export type HomeStackParamList = {
 };
 
 export type CategoriesStackParamList = {
+  AuthModal: undefined;
   CategoriesMain: undefined;
   CategorieDataList: { title: string, id: string };
   BlogPage: { item: any };

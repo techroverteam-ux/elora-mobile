@@ -7,6 +7,8 @@ import ImageViewer from '../screens/modals/ImageViewer';
 import { store } from '../data/redux/store';
 import { setPreviousRoute } from '../data/redux/slices/navigationSlice';
 import { RootStackParamList } from './types';
+import AuthNavigator from './AuthNavigator';
+import AuthModalWrapper from './AuthModalWrapper';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 
@@ -49,6 +51,16 @@ const RootNavigation: React.FC<Props> = ({ theme }) => {
           name="ImageViewer"
           component={ImageViewer}
           options={{ presentation: 'modal' }}
+        />
+        <RootStack.Screen
+          name="AuthModal"
+          component={AuthModalWrapper}
+          options={{
+            presentation: 'containedTransparentModal', // allows custom height
+            animation: 'slide_from_bottom',
+            gestureEnabled: true,
+            headerShown: false,
+          }}
         />
       </RootStack.Navigator>
     </NavigationContainer>

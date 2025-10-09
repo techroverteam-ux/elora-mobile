@@ -12,7 +12,8 @@ const AppNavigator = () => {
   }
 
   return (
-    isAuthenticated ? <DashboardNavigator /> : <AuthNavigator />
+    // isAuthenticated ? <DashboardNavigator /> : <AuthNavigator />
+    <DashboardNavigator />
   );
 };
 
