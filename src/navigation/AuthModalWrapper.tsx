@@ -1,19 +1,19 @@
 import React from 'react';
 import { View, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import AuthNavigator from './AuthNavigator';
+import { useRedirect } from '../context/RedirectContext';
 
-const AuthModalWrapper = ({ navigation, route }: any) => {
-  const { redirectTo, redirectParams } = route.params || {};
+const AuthModalWrapper = ({ navigation }: any) => {
+  const { redirectTo, redirectParams, clearRedirect } = useRedirect();
 
-  const handleCloseAfterLogin = () => {
-    // Close modal
+  const handleLoginSuccess = () => {
     navigation.goBack();
 
-    // If redirect target exists, navigate there
     if (redirectTo) {
       setTimeout(() => {
-        navigation.navigate(redirectTo, redirectParams);
-      }, 100); // small delay to ensure modal closes smoothly
+        navigation.navigate(redirectTo as never, redirectParams as never);
+        clearRedirect();
+      }, 250);
     }
   };
 
@@ -22,10 +22,8 @@ const AuthModalWrapper = ({ navigation, route }: any) => {
       <TouchableWithoutFeedback onPress={() => navigation.goBack()}>
         <View style={styles.backdrop} />
       </TouchableWithoutFeedback>
-
       <View style={styles.modalContainer}>
-        {/* 👇 Pass the callback into AuthNavigator */}
-        <AuthNavigator onLoginSuccess={handleCloseAfterLogin} />
+        <AuthNavigator onLoginSuccess={handleLoginSuccess} />
       </View>
     </View>
   );
@@ -34,15 +32,10 @@ const AuthModalWrapper = ({ navigation, route }: any) => {
 export default AuthModalWrapper;
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject },
   modalContainer: {
-    height: '70%', // 70% height modal
+    height: '70%',
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,

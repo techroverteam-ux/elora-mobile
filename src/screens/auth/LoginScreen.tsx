@@ -56,10 +56,8 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
       login(loggedInUser);
 
       // ✅ Close modal + redirect if provided
-      if (onLoginSuccess) {
+      if (typeof onLoginSuccess === 'function') {
         onLoginSuccess();
-      } else {
-        navigation.goBack();
       }
 
     } catch (error: any) {

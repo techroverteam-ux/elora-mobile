@@ -15,6 +15,7 @@ import {
 } from './src/theme';
 import { AudioPlayerProvider } from './src/context/AudioPlayerContext';
 import { ThemeProvider, useThemeContext } from './src/context/ThemeContext';
+import { RedirectProvider } from './src/context/RedirectContext';
 
 const ThemedApp = () => {
   const { theme, isThemeLoaded } = useThemeContext();
@@ -37,9 +38,11 @@ const ThemedApp = () => {
         >
           <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
           <AuthProvider>
-            <AudioPlayerProvider>
-              <RootNavigation theme={navigationTheme} />
-            </AudioPlayerProvider>
+            <RedirectProvider>
+              <AudioPlayerProvider>
+                <RootNavigation theme={navigationTheme} />
+              </AudioPlayerProvider>
+            </RedirectProvider>
           </AuthProvider>
         </SafeAreaView>
       </SafeAreaProvider>

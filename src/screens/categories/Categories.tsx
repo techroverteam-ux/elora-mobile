@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetSectionsMutation } from '../../data/redux/services/sectionsApi';
 import { useAuth } from '../../context/AuthContext';
+import { useRequireAuth } from '../../hooks/useRequireAuth';
 
 const { width } = Dimensions.get('window');
 
@@ -79,19 +80,23 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
     'CategoriesMain'
   >;
   const navigation = useNavigation<CategoriesNavigationProp>();
-  const { isAuthenticated } = useAuth();
+  const { requireAuth } = useRequireAuth();
 
-  const handlePress = useCallback(() => {
-    if (!isAuthenticated) {
-      navigation.navigate('AuthModal');
-      return;
-    }
+  const handlePress = () => {
+    if (!requireAuth('App', {
+      screen: 'Categories',   // tab navigator screen
+      params: {
+        screen: 'CategorieDataList', // stack screen inside the tab
+        params: { title: item.title, id: item._id },
+      },
+    })) return;
 
+    // If already logged in, navigate directly
     navigation.navigate('CategorieDataList', {
       title: item.title,
       id: item._id,
     });
-  }, [isAuthenticated, item._id, item.title, navigation]);
+  };
 
   return (
     <TouchableOpacity
