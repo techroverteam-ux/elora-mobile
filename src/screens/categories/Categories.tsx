@@ -80,7 +80,10 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
   const navigation = useNavigation<CategoriesNavigationProp>();
 
   const handlePress = useCallback(() => {
-    navigation.navigate('CategorieDataList', { title: item.title });
+    navigation.navigate('CategorieDataList', {
+      title: item.title,
+      id: item._id,
+    });
   }, [item.title, navigation]);
 
   return (

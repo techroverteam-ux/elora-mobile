@@ -1,5 +1,5 @@
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { categoryListData } from '../../data/categoryData';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
@@ -8,23 +8,30 @@ import { CategoriesStackParamList } from '../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import CustomFastImage from '../../components/CustomFastImage';
 import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
-
-// Define type for route params
-type CategorieDataList = {
-  CategorieDataList: { title: string };
-};
+import { useGetCategoriesMutation } from '../../data/redux/services/sectionsApi';
+import { getErrorMessage } from '../../data/redux/services/baseQuery';
 
 const CategorieDataList = () => {
-  const route = useRoute<RouteProp<CategorieDataList, 'CategorieDataList'>>();
-  const { title } = route.params;
+  const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
+  const { title, id } = route.params;
 
   type CategorieDataListNavigationProp = NativeStackNavigationProp<CategoriesStackParamList, 'CategorieDataList'>;
   const { navigate } = useNavigation<CategorieDataListNavigationProp>();
+
+  const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
+
+  useEffect(() => {
+    getCategoriesRequest(id);
+  }, [getCategoriesRequest]);
 
   return (
     <View style={{ flex: 1 }}>
 
       <AppBarHeader title={title} />
+
+      <Text>{JSON.stringify(id)}</Text>
+      <Text>{getErrorMessage(error)}</Text>
+      <Text>{JSON.stringify(data, null, 2)}</Text>
 
       <View style={styles.container}>
         <CustomVerticalFlatlist

@@ -11,9 +11,16 @@ export const sectionsApi = createApi({
         method: 'GET',
       }),
     }),
+    getCategories: builder.mutation<any, any>({
+      query: (id) => ({
+        url: `/categories/${id}`,
+        method: 'GET',
+      }),
+    })
   }),
 });
 
 export const {
   useGetSectionsMutation,
+  useGetCategoriesMutation
 } = sectionsApi;
