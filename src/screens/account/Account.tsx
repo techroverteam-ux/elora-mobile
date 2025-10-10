@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -83,7 +83,21 @@ const Account = () => {
         <AccountOption
           label="Logout"
           icon="logout"
-          onPress={logout}
+          onPress={() => {
+            Alert.alert(
+              'Logout',
+              'Are you sure you want to log out?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Logout',
+                  style: 'destructive',
+                  onPress: logout,
+                },
+              ],
+              { cancelable: true }
+            );
+          }}
         />
       </ScrollView>
 

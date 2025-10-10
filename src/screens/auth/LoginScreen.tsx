@@ -16,12 +16,6 @@ import { useGetLoginUserMutation } from '../../data/redux/services/authApi';
 
 type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 
-const dummyUsers = [
-  { email: 'test@admin.com', password: '123456' },
-  { email: 'neel@test.com', password: '123456' },
-  { email: 'bob@test.com', password: 'bob123' },
-];
-
 const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
@@ -74,22 +68,37 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
     setPassword(user.password);
   };
 
+  const AutoLogin = () => {
+    const dummyUsers = [
+      { email: 'test@admin.com', password: '123456' },
+      { email: 'neel@test.com', password: '123456' },
+      { email: 'bob@test.com', password: 'bob123' },
+      { email: 'bob@test.com', password: 'bob123' },
+    ];
+
+    return (
+      <View style={styles.dummyContainer}>
+        {
+          dummyUsers.map((user, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.dummyButton}
+              onPress={() => handleSelectUser(user)}
+            >
+              <Text style={styles.dummyText}>{user.email}</Text>
+            </TouchableOpacity>
+          ))
+        }
+      </View>
+    )
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back!</Text>
+      <Text style={styles.title}>Welcome To Geeta Bal Sanskar</Text>
 
-      {/* Dummy User Quick Fill */}
-      <View style={styles.dummyContainer}>
-        {dummyUsers.map((user, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.dummyButton}
-            onPress={() => handleSelectUser(user)}
-          >
-            <Text style={styles.dummyText}>{user.email}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* AUTO LOGIN */}
+      <AutoLogin />
 
       <TextInput
         style={styles.input}
@@ -148,14 +157,16 @@ const styles = StyleSheet.create({
   },
   dummyContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    // backgroundColor: "red",
+    // justifyContent: 'space-around',
     marginBottom: 20,
   },
   dummyButton: {
     backgroundColor: '#f0f0f0',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    padding: 8,
     borderRadius: 6,
+    margin: 1
   },
   dummyText: {
     color: '#333',

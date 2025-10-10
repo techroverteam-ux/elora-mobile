@@ -113,6 +113,7 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
       <Text style={styles.title}>
         {item.title}
       </Text>
+      {/* <Text>{item.contentType}</Text> */}
     </TouchableOpacity>
   );
 });
