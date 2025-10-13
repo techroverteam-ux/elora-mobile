@@ -56,14 +56,14 @@ export const baseQuery: BaseQueryFn<
 
   // ✅ Log requests/responses in development
   if (__DEV__) {
-    colorLog('cyan', '[API CALL] --->', { url: fullUrl, method, body })
+    // colorLog('cyan', '[API CALL] --->', { url: fullUrl, method, body })
 
-    if (result.error) {
-      const message = getErrorMessage(result.error)
-      colorLog('red', '[API ERROR] <---', { status: result.error.status, message })
-    } else {
-      colorLog('green', '[API RESPONSE] <---', result.data)
-    }
+    // if (result.error) {
+    //   const message = getErrorMessage(result.error)
+    //   colorLog('red', '[API ERROR] <---', { status: result.error.status, message })
+    // } else {
+    //   colorLog('green', '[API RESPONSE] <---', result.data)
+    // }
 
     _log(result, body)
   }
