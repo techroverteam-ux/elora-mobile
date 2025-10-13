@@ -31,7 +31,7 @@ const BlogPage = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.title || 'Blog'} />
 
-      <Text>{JSON.stringify(item, null, 2)}</Text>
+      {/* <Text>{JSON.stringify(item, null, 2)}</Text> */}
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
