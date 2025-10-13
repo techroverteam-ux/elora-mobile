@@ -11,6 +11,8 @@ import BlogVideo from '../../components/BlogVideo';
 type BlogItem = {
   title: string;
   subtitle: string;
+  description1: string;
+  description2: string;
   image: string;
 };
 
@@ -29,6 +31,8 @@ const BlogPage = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.title || 'Blog'} />
 
+      <Text>{JSON.stringify(item, null, 2)}</Text>
+
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
 
@@ -37,10 +41,11 @@ const BlogPage = () => {
           <Text style={[styles.description, { color: colors.onSurface }]}>{item?.subtitle}</Text>
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
+            {item?.description1}
+            {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
             perferendis quidem, laborum in ducimus optio, deleniti numquam a
             porro nam hic architecto ipsam vitae nemo esse cupiditate error
-            nihil ipsum?
+            nihil ipsum? */}
           </Text>
 
           {/* <VideoPlayer
@@ -51,10 +56,11 @@ const BlogPage = () => {
           <BlogVideo uri="https://www.w3schools.com/html/mov_bbb.mp4" />
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
+            {item?.description2}
+            {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
             perferendis quidem, laborum in ducimus optio, deleniti numquam a
             porro nam hic architecto ipsam vitae nemo esse cupiditate error
-            nihil ipsum?
+            nihil ipsum? */}
           </Text>
 
           <View style={styles.imageRow}>
