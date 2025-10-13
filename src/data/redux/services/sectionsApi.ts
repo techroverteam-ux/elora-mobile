@@ -13,7 +13,7 @@ export const sectionsApi = createApi({
     }),
     getCategories: builder.mutation<any, any>({
       query: (id) => ({
-        url: `/categories/${id}`,
+        url: `/mobile/sections/${id}/categories`,
         method: 'GET',
       }),
     })

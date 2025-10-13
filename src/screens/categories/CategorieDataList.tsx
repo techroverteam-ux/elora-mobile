@@ -31,11 +31,12 @@ const CategorieDataList = () => {
 
       <Text>{JSON.stringify(id)}</Text>
       <Text>{getErrorMessage(error)}</Text>
-      <Text>{JSON.stringify(data, null, 2)}</Text>
+      <Text>DATA: {JSON.stringify(data, null, 2)}</Text>
 
       <View style={styles.container}>
         <CustomVerticalFlatlist
-          data={categoryListData}
+          // data={categoryListData}
+          data={data?.data}
           onItemPress={(item) => navigate("BlogPage", { item })}
         />
       </View>

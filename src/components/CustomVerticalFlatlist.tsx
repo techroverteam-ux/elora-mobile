@@ -41,13 +41,13 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
 
         <View style={styles.textContainer}>
           <Text style={[styles.name, { color: colors.onSurface }]} numberOfLines={1}>
-            {item.name}
+            {item.title}
           </Text>
           <Text
             style={[styles.description, { color: colors.onSurfaceVariant }]}
             numberOfLines={2}
           >
-            {item.description}
+            {item.subtitle}
           </Text>
         </View>
 

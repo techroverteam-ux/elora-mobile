@@ -11,18 +11,18 @@ export const categoryData = [
 
 export const categoryListData = [
   {
-    "name": "Swami Vivekananda",
-    "description": "Pioneer of Vedantic philosophy globally.",
+    "title": "Swami Vivekananda",
+    "subtitle": "Pioneer of Vedantic philosophy globally.",
     "image": require('../assets/images/sub1.png')
   },
   {
-    "name": "Ramakrishna Paramhansa",
-    "description": "A key figure in 19th-century spiritualism.",
+    "title": "Ramakrishna Paramhansa",
+    "subtitle": "A key figure in 19th-century spiritualism.",
     "image": require('../assets/images/sub2.png')
   },
   {
-    "name": "Acharya Vinoba Bhave",
-    "description": "Simplified Bhagavad Gita for the masses.",
+    "title": "Acharya Vinoba Bhave",
+    "subtitle": "Simplified Bhagavad Gita for the masses.",
     "image": require('../assets/images/sub3.png')
   }
 ]
