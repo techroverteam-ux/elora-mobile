@@ -9,8 +9,8 @@ import BlogVideo from '../../components/BlogVideo';
 
 // Type Definitions
 type BlogItem = {
-  name: string;
-  description: string;
+  title: string;
+  subtitle: string;
   image: string;
 };
 
@@ -27,14 +27,14 @@ const BlogPage = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title={item?.name || 'Blog'} />
+      <AppBarHeader title={item?.title || 'Blog'} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
 
         <View style={styles.contentWrapper}>
-          <Text style={[styles.title, { color: colors.primary }]}>{item?.name}</Text>
-          <Text style={[styles.description, { color: colors.onSurface }]}>{item?.description}</Text>
+          <Text style={[styles.title, { color: colors.primary }]}>{item?.title}</Text>
+          <Text style={[styles.description, { color: colors.onSurface }]}>{item?.subtitle}</Text>
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
