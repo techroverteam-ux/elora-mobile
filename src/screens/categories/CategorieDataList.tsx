@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import React, { useEffect } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { categoryListData } from '../../data/categoryData';
@@ -22,24 +22,31 @@ const CategorieDataList = () => {
 
   useEffect(() => {
     getCategoriesRequest(id);
-  }, [getCategoriesRequest]);
+  }, [getCategoriesRequest, id]);
 
   return (
     <View style={{ flex: 1 }}>
-
       <AppBarHeader title={title} />
 
-      <Text>{JSON.stringify(id)}</Text>
-      <Text>{getErrorMessage(error)}</Text>
-      <Text>DATA: {JSON.stringify(data, null, 2)}</Text>
+      {/* Show loading indicator */}
+      {isLoading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading categories...</Text>
+        </View>
+      ) : (
+        <View style={styles.container}>
+          {/* Debug info (optional, can remove later) */}
+          {/* <Text>{JSON.stringify(id)}</Text> */}
+          {/* {error && <Text style={{ color: 'red' }}>{getErrorMessage(error)}</Text>} */}
+          <Text>DATA: {JSON.stringify(data, null, 2)}</Text>
 
-      <View style={styles.container}>
-        <CustomVerticalFlatlist
-          // data={categoryListData}
-          data={data?.data}
-          onItemPress={(item) => navigate("BlogPage", { item })}
-        />
-      </View>
+          <CustomVerticalFlatlist
+            data={data?.data}
+            onItemPress={(item) => navigate("BlogPage", { item })}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -49,6 +56,16 @@ export default CategorieDataList;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loaderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#555',
   },
   text: {
     fontSize: 18,
