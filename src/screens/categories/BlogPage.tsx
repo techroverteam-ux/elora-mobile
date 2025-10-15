@@ -6,6 +6,7 @@ import VideoPlayer from '../../components/VideoPlayer';
 import CustomFastImage from '../../components/CustomFastImage';
 import { useTheme } from 'react-native-paper';
 import BlogVideo from '../../components/BlogVideo';
+import { useAzureBlobImage } from '../../hooks/useAzureBlobImage';
 
 // Type Definitions
 type BlogItem = {
@@ -13,7 +14,11 @@ type BlogItem = {
   subtitle: string;
   description1: string;
   description2: string;
-  image: string;
+  mainImage: string;
+  video: string;
+  collegeFrame: {
+    files: string[];
+  }
 };
 
 type BlogPageRouteParams = {
@@ -27,14 +32,22 @@ const BlogPage = () => {
   const { item } = route.params;
   const { colors } = useTheme();
 
+  // --- Fetch Azure Blob image and video URLs
+  const { imageUrl: mainImageUrl } = useAzureBlobImage(item?.mainImage);
+  const { imageUrl: videoUrl } = useAzureBlobImage(item?.video);
+  const { imageUrl: collageOne } = useAzureBlobImage(item?.collegeFrame?.files[0]);
+  const { imageUrl: collageTwo } = useAzureBlobImage(item?.collegeFrame?.files[0]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.title || 'Blog'} />
 
-      {/* <Text>{JSON.stringify(item, null, 2)}</Text> */}
-
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <CustomFastImage style={styles.mainImage} imageUrl={require('../../assets/images/swamiVivekanand.png')} />
+        <Text>{JSON.stringify(item.collegeFrame, null, 2)}</Text>
+
+        {mainImageUrl && (
+          <CustomFastImage style={styles.mainImage} imageUrl={mainImageUrl} />
+        )}
 
         <View style={styles.contentWrapper}>
           <Text style={[styles.title, { color: colors.primary }]}>{item?.title}</Text>
@@ -53,7 +66,11 @@ const BlogPage = () => {
             containerStyle={styles.videoContainer}
           /> */}
 
-          <BlogVideo uri="https://www.w3schools.com/html/mov_bbb.mp4" />
+          {videoUrl ? (
+            <BlogVideo uri={videoUrl} />
+          ) : (
+            <Text style={{ color: colors.onSurfaceVariant }}>Loading video...</Text>
+          )}
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             {item?.description2}
@@ -64,14 +81,30 @@ const BlogPage = () => {
           </Text>
 
           <View style={styles.imageRow}>
-            <CustomFastImage
-              style={styles.sideImage}
-              imageUrl={require('../../assets/images/1.png')}
-            />
-            <CustomFastImage
-              style={styles.sideImage}
-              imageUrl={require('../../assets/images/2.png')}
-            />
+            {collageOne && (
+              <CustomFastImage
+                style={styles.sideImage}
+                imageUrl={collageOne}
+              />
+            )}
+            {collageTwo && (
+              <CustomFastImage
+                style={styles.sideImage}
+                imageUrl={collageTwo}
+              />
+            )}
+            {collageTwo && (
+              <CustomFastImage
+                style={[styles.sideImage, { width: "100%" }]}
+                imageUrl={collageTwo}
+              />
+            )}
+            {collageTwo && (
+              <CustomFastImage
+                style={[styles.sideImage]}
+                imageUrl={collageTwo}
+              />
+            )}
           </View>
         </View>
       </ScrollView>
@@ -126,10 +159,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
+    flexWrap: 'wrap',
   },
   sideImage: {
     width: (width - 48) / 2, // Considering 16px padding on both sides + 16px between
     height: 200,
     borderRadius: 8,
+    marginBottom: 16,
   },
 });
