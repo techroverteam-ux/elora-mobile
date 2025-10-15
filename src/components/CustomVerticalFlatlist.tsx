@@ -10,7 +10,7 @@ import {
 import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
-import { useAzureBlobImage } from '../hooks/useAzureBlobImage';
+import { useAzureBlobImages } from '../hooks/useAzureBlobImage';
 
 interface CustomVerticalFlatlistProps {
   title?: string;
@@ -28,7 +28,16 @@ const VerticalListItem = ({
   onItemPress?: (item: any) => void;
 }) => {
   const { colors } = useTheme();
-  const { imageUrl, isLoading } = useAzureBlobImage(item.headerImage);
+
+  // Get the image URL using the custom hook
+  const blobUrls = {
+    headerImage: item?.headerImage,
+  };
+
+  const azureData = useAzureBlobImages(blobUrls);
+
+  // Destructure to get imageUrl from the response
+  const { imageUrl, isLoading } = azureData?.headerImage || {};
 
   return (
     <View>
@@ -37,6 +46,7 @@ const VerticalListItem = ({
         onPress={() => onItemPress?.(item)}
         activeOpacity={0.8}
       >
+        {/* If imageUrl is available, render the image */}
         {isLoading ? (
           <View style={[styles.image, styles.imageLoader]}>
             <ActivityIndicator size="small" color={colors.primary} />

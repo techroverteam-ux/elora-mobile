@@ -1,40 +1,63 @@
 import { useEffect, useState } from 'react';
 import { useGetAzureBlobMutation } from '../data/redux/services/sectionsApi';
 
-/**
- * Custom hook for resolving Azure Blob images.
- * Supports either generating a direct API URL or fetching Base64 data.
- */
-export const useAzureBlobImage = (blobUrl?: string) => {
+interface UseAzureBlobImageReturn {
+  imageUrl: string | null;
+  base64Image: string | null;
+  isLoading: boolean;
+}
+
+export const useAzureBlobImages = (
+  blobUrls: Record<string, string | undefined>
+): Record<string, UseAzureBlobImageReturn> => {
   const [getAzureBlobRequest, { isLoading }] = useGetAzureBlobMutation();
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [base64Image, setBase64Image] = useState<string | null>(null);
+  const [imageData, setImageData] = useState<Record<string, UseAzureBlobImageReturn>>({});
 
   useEffect(() => {
-    if (!blobUrl) return;
+    const fetchImageData = async () => {
+      const newData: Record<string, UseAzureBlobImageReturn> = {};
 
-    // --- Option 1: Generate a reusable API URL directly (fastest & simplest)
-    const encodedUrl = encodeURIComponent(blobUrl);
-    const azureApiUrl = `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodedUrl}`;
-    setImageUrl(azureApiUrl);
+      // Iterate over each blob URL and fetch image data
+      for (const [key, blobUrl] of Object.entries(blobUrls)) {
+        if (!blobUrl) continue;
 
-    // --- Option 2: (Optional) Fetch as Base64, if needed elsewhere
-    // Uncomment if you want to prefetch the base64 data.
-    /*
-    getAzureBlobRequest(encodedUrl)
-      .unwrap()
-      .then((res) => {
-        if (res?.data) {
-          setBase64Image(res.data);
+        const encodedUrl = encodeURIComponent(blobUrl);
+        const azureApiUrl = `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodedUrl}`;
+
+        // Update initial data with the image URL and loading state
+        if (!imageData[key]) {
+          newData[key] = {
+            imageUrl: azureApiUrl,
+            base64Image: null,
+            isLoading, // Maintain loading state
+          };
         }
-      })
-      .catch(() => {});
-    */
-  }, [blobUrl]);
 
-  return {
-    imageUrl,      // ready-to-use API URL
-    base64Image,   // optional base64 data
-    isLoading,
-  };
+        // Fetch base64 data asynchronously
+        // try {
+        //   const res = await getAzureBlobRequest(encodedUrl).unwrap();
+        //   if (res?.data) {
+        //     newData[key].base64Image = res.data;
+        //   }
+        // } catch (error) {
+        //   console.error("Error fetching base64 image data", error);
+        // }
+      }
+
+      // Only update state if new data has been fetched
+      setImageData((prevData) => {
+        const hasChanges = Object.keys(newData).some(
+          (key) => JSON.stringify(newData[key]) !== JSON.stringify(prevData[key])
+        );
+        return hasChanges ? newData : prevData;
+      });
+    };
+
+    // Only fetch data if `blobUrls` has changed
+    if (Object.keys(blobUrls).length > 0) {
+      fetchImageData();
+    }
+  }, [blobUrls, isLoading, getAzureBlobRequest]); // Dependencies: fetch new data when `blobUrls` or `isLoading` changes
+
+  return imageData;
 };

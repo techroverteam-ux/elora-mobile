@@ -18,6 +18,8 @@ const BlogVideo = ({ uri }: { uri: string }) => {
         resizeMode="contain"
         paused={paused}
         controls
+        onError={(e) => console.log('Video error:', e)}
+        onLoad={(e) => console.log('Video loaded successfully:', e)}
       />
 
       {/* <TouchableOpacity

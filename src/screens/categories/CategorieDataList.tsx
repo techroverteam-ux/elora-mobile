@@ -20,8 +20,6 @@ import {
   useGetAzureBlobMutation,
   useGetCategoriesMutation,
 } from '../../data/redux/services/sectionsApi';
-import { getErrorMessage } from '../../data/redux/services/baseQuery';
-import { useAzureBlobImage } from '../../hooks/useAzureBlobImage';
 
 const CategorieDataList = () => {
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();

@@ -1,14 +1,12 @@
-import { ScrollView, StyleSheet, Text, View, Dimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Dimensions, Linking } from 'react-native';
 import React from 'react';
 import AppBarHeader from '../../components/AppBarHeader';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import VideoPlayer from '../../components/VideoPlayer';
+import BlogVideo from '../../components/BlogVideo';
 import CustomFastImage from '../../components/CustomFastImage';
 import { useTheme } from 'react-native-paper';
-import BlogVideo from '../../components/BlogVideo';
-import { useAzureBlobImage } from '../../hooks/useAzureBlobImage';
+import { useAzureBlobImages } from '../../hooks/useAzureBlobImage';
 
-// Type Definitions
 type BlogItem = {
   title: string;
   subtitle: string;
@@ -18,7 +16,7 @@ type BlogItem = {
   video: string;
   collegeFrame: {
     files: string[];
-  }
+  };
 };
 
 type BlogPageRouteParams = {
@@ -32,39 +30,57 @@ const BlogPage = () => {
   const { item } = route.params;
   const { colors } = useTheme();
 
-  // --- Fetch Azure Blob image and video URLs
-  const { imageUrl: mainImageUrl } = useAzureBlobImage(item?.mainImage);
-  const { imageUrl: videoUrl } = useAzureBlobImage(item?.video);
-  const { imageUrl: collageOne } = useAzureBlobImage(item?.collegeFrame?.files[0]);
-  const { imageUrl: collageTwo } = useAzureBlobImage(item?.collegeFrame?.files[0]);
+  // Create the blob URLs object
+  const blobUrls = {
+    mainImage: item?.mainImage,
+    video: item?.video,
+    collageOne: item?.collegeFrame?.files[0],
+    collageTwo: item?.collegeFrame?.files[1],
+  };
+
+  // Fetch all the image data from the blob URLs
+  const azureData = useAzureBlobImages(blobUrls);
+
+  // Destructure imageUrl from the data
+  const { mainImage, video, collageOne, collageTwo } = azureData;
+
+  // Use safe checks to ensure data is available
+  const mainImageUrl = mainImage?.imageUrl;
+  const videoUrl = video?.imageUrl;
+  const collageOneUrl = collageOne?.imageUrl;
+  const collageTwoUrl = collageTwo?.imageUrl;
+
+  const handleVideoClick = () => {
+    if (!videoUrl) return;
+    Linking.openURL(videoUrl).catch((err) => console.error('Failed to open URL', err));
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.title || 'Blog'} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text>{JSON.stringify(item.collegeFrame, null, 2)}</Text>
+        {/* Display raw collegeFrame for debugging */}
+        <Text style={{ color: colors.onSurface }}>{JSON.stringify(item.collegeFrame, null, 2)}</Text>
 
+        {/* Main Image */}
         {mainImageUrl && (
           <CustomFastImage style={styles.mainImage} imageUrl={mainImageUrl} />
         )}
 
+        {/* Blog Content */}
         <View style={styles.contentWrapper}>
           <Text style={[styles.title, { color: colors.primary }]}>{item?.title}</Text>
           <Text style={[styles.description, { color: colors.onSurface }]}>{item?.subtitle}</Text>
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             {item?.description1}
-            {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
-            perferendis quidem, laborum in ducimus optio, deleniti numquam a
-            porro nam hic architecto ipsam vitae nemo esse cupiditate error
-            nihil ipsum? */}
           </Text>
 
-          {/* <VideoPlayer
-            videoUri='https://www.w3schools.com/html/mov_bbb.mp4'
-            containerStyle={styles.videoContainer}
-          /> */}
+          {/* Video Handling */}
+          <Text onPress={handleVideoClick} style={{ color: colors.primary }}>
+            {videoUrl ? 'Watch Video' : 'Loading video...'}
+          </Text>
 
           {videoUrl ? (
             <BlogVideo uri={videoUrl} />
@@ -74,36 +90,15 @@ const BlogPage = () => {
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
             {item?.description2}
-            {/* Lorem ipsum dolor sit amet consectetur adipisicing elit. Nulla
-            perferendis quidem, laborum in ducimus optio, deleniti numquam a
-            porro nam hic architecto ipsam vitae nemo esse cupiditate error
-            nihil ipsum? */}
           </Text>
 
+          {/* Collage Images */}
           <View style={styles.imageRow}>
-            {collageOne && (
-              <CustomFastImage
-                style={styles.sideImage}
-                imageUrl={collageOne}
-              />
+            {collageOneUrl && (
+              <CustomFastImage style={styles.sideImage} imageUrl={collageOneUrl} />
             )}
-            {collageTwo && (
-              <CustomFastImage
-                style={styles.sideImage}
-                imageUrl={collageTwo}
-              />
-            )}
-            {collageTwo && (
-              <CustomFastImage
-                style={[styles.sideImage, { width: "100%" }]}
-                imageUrl={collageTwo}
-              />
-            )}
-            {collageTwo && (
-              <CustomFastImage
-                style={[styles.sideImage]}
-                imageUrl={collageTwo}
-              />
+            {collageTwoUrl && (
+              <CustomFastImage style={styles.sideImage} imageUrl={collageTwoUrl} />
             )}
           </View>
         </View>
@@ -148,13 +143,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginVertical: 10,
   },
-  videoContainer: {
-    marginVertical: 20,
-  },
-  video: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-  },
   imageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -162,7 +150,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   sideImage: {
-    width: (width - 48) / 2, // Considering 16px padding on both sides + 16px between
+    width: (width - 48) / 2,
     height: 200,
     borderRadius: 8,
     marginBottom: 16,
