@@ -89,7 +89,7 @@ const DashboardNavigator = () => {
     >
       <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Categories" component={CategoriesStack} />
-      <Tab.Screen name="Downloads" component={DownloadsStack} />
+      {/* <Tab.Screen name="Downloads" component={DownloadsStack} /> */}
       <Tab.Screen name="Account" component={AccountStack} />
     </Tab.Navigator>
   );

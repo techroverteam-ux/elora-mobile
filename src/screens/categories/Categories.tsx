@@ -79,7 +79,7 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
     CategoriesStackParamList,
     'CategoriesMain'
   >;
-  const navigation = useNavigation<CategoriesNavigationProp>();
+  const { navigate } = useNavigation<CategoriesNavigationProp>();
   const { requireAuth } = useRequireAuth();
 
   const handlePress = () => {
@@ -92,7 +92,7 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
     })) return;
 
     // If already logged in, navigate directly
-    navigation.navigate('CategorieDataList', {
+    navigate('CategorieDataList', {
       title: item.title,
       id: item._id,
     });

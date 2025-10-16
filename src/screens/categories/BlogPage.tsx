@@ -1,11 +1,13 @@
 import { ScrollView, StyleSheet, Text, View, Dimensions, Linking } from 'react-native';
 import React from 'react';
 import AppBarHeader from '../../components/AppBarHeader';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import BlogVideo from '../../components/BlogVideo';
 import CustomFastImage from '../../components/CustomFastImage';
 import { useTheme } from 'react-native-paper';
 import { useAzureBlobImages } from '../../hooks/useAzureBlobImage';
+import { CategoriesStackParamList } from '../../navigation/types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type BlogItem = {
   title: string;
@@ -27,6 +29,11 @@ const { width } = Dimensions.get('window');
 
 const BlogPage = () => {
   const route = useRoute<RouteProp<BlogPageRouteParams, 'BlogPage'>>();
+  type CategoriesNavigationProp = NativeStackNavigationProp<
+    CategoriesStackParamList,
+    'CategoriesMain'
+  >;
+  const { navigate } = useNavigation<CategoriesNavigationProp>()
   const { item } = route.params;
   const { colors } = useTheme();
 
@@ -61,7 +68,7 @@ const BlogPage = () => {
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Display raw collegeFrame for debugging */}
-        <Text style={{ color: colors.onSurface }}>{JSON.stringify(item.collegeFrame, null, 2)}</Text>
+        {/* <Text style={{ color: colors.onSurface }}>{JSON.stringify(item.collegeFrame, null, 2)}</Text> */}
 
         {/* Main Image */}
         {mainImageUrl && (
@@ -78,9 +85,9 @@ const BlogPage = () => {
           </Text>
 
           {/* Video Handling */}
-          <Text onPress={handleVideoClick} style={{ color: colors.primary }}>
+          {/* <Text onPress={handleVideoClick} style={{ color: colors.primary }}>
             {videoUrl ? 'Watch Video' : 'Loading video...'}
-          </Text>
+          </Text> */}
 
           {videoUrl ? (
             <BlogVideo uri={videoUrl} />
@@ -101,6 +108,13 @@ const BlogPage = () => {
               <CustomFastImage style={styles.sideImage} imageUrl={collageTwoUrl} />
             )}
           </View>
+
+          <Text
+            onPress={() => { navigate("SubCategorie", { item: item }) }}
+            style={{ color: colors.primary }}
+          >
+            Learn More
+          </Text>
         </View>
       </ScrollView>
     </View>

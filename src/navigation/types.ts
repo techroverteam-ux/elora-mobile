@@ -22,6 +22,7 @@ export type CategoriesStackParamList = {
   CategoriesMain: undefined;
   CategorieDataList: { title: string, id: string };
   BlogPage: { item: any };
+  SubCategorie: { item: any };
 };
 
 export type AccountStackParamList = {
