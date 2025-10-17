@@ -24,7 +24,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const { login } = useAuth();
   const { colors } = useTheme();
 
-  const [isAutoLoginOn, setIsAutoLoginOn] = useState(false);
+  const [isAutoLoginOn, setIsAutoLoginOn] = useState(__DEV__);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
