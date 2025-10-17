@@ -1,186 +1,130 @@
+import React, { useState } from 'react';
 import {
+  Alert,
+  Button,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
-  ActivityIndicator,
-  Alert
-} from 'react-native'
-import React, { useState } from 'react'
-import { useNavigation } from '@react-navigation/native'
-import { useGetRegisterUserMutation } from '../../data/redux/services/authApi'
-import { getErrorMessage } from '../../data/redux/services/baseQuery'
+  TouchableOpacity,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from 'react-native-paper';
+
+import { useGetRegisterUserMutation } from '../../data/redux/services/authApi';
+import { getErrorMessage } from '../../data/redux/services/baseQuery';
+import CustomTextInput from '../../components/CustomTextInput';
+import { AuthStackParamList } from '../../navigation/types';
+
+type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 
 const RegisterScreen = () => {
-  const { goBack } = useNavigation()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const navigation = useNavigation<AuthNav>();
+  const { colors } = useTheme();
 
-  const [registerUser, { isLoading, error }] = useGetRegisterUserMutation()
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [registerUser, { isLoading }] = useGetRegisterUserMutation();
 
   const handleRegister = async () => {
-    try {
-      const result = await registerUser({ name, email, password }).unwrap()
-      console.log('Registered:', result)
-
-      Alert.alert(
-        'Success',
-        'Registration successful!',
-        [
-          { text: 'OK', onPress: () => goBack() } // only goBack when user presses OK
-        ]
-      )
-    } catch (err) {
-      console.error('Register failed:', err)
+    if (!name || !email || !password) {
+      Alert.alert('Validation Error', 'All fields are required.');
+      return;
     }
-  }
+
+    try {
+      const result = await registerUser({ name, email, password }).unwrap();
+      console.log('Registered:', result);
+
+      Alert.alert('Success', 'Registration successful!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err: any) {
+      console.error('Register failed:', err);
+      const message = getErrorMessage(err) || 'Something went wrong. Please try again.';
+      Alert.alert('Registration Failed', message);
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-      <Text style={styles.subtitle}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.onBackground }]}>
+        Create Account
+      </Text>
+      <Text style={[styles.subtitle, { color: colors.onBackground }]}>
         Please fill the form below to sign up
       </Text>
 
-      <TextInput
-        style={styles.input}
+      <CustomTextInput
         placeholder="Full Name"
         value={name}
         onChangeText={setName}
-        placeholderTextColor="#999"
       />
-      <TextInput
-        style={styles.input}
+      <CustomTextInput
         placeholder="Email Address"
         value={email}
         onChangeText={setEmail}
-        autoCapitalize="none"
         keyboardType="email-address"
-        placeholderTextColor="#999"
+        autoCapitalize="none"
+      />
+      <CustomTextInput
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry={!showPassword}
+        showToggle
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
       />
 
-      {/* 🔑 Updated password input with show/hide */}
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={[styles.input, { flex: 1, marginBottom: 0 }]}
-          placeholder="Password"
-          value={password}
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-          placeholderTextColor="#999"
+      <View style={styles.buttonContainer}>
+        <Button
+          title={isLoading ? 'Registering...' : 'Register'}
+          onPress={handleRegister}
+          color={colors.primary}
+          disabled={isLoading}
         />
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowPassword(!showPassword)}
-        >
-          <Text style={{ fontSize: 16 }}>
-            {showPassword ? '🙈' : '👁️'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
-      {error &&
-        <View>
-          <Text style={styles.error}>Registration failed. Try again.</Text>
-          <Text style={styles.error}>{getErrorMessage(error)}</Text>
-        </View>
-      }
-
-      <TouchableOpacity
-        style={[styles.button, isLoading && styles.buttonDisabled]}
-        onPress={handleRegister}
-        disabled={isLoading}
+      <Text
+        style={[styles.link, { color: colors.primary }]}
+        onPress={() => navigation.goBack()}
       >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={() => goBack()}>
-        <Text style={styles.link}>
-          Already have an account? <Text style={styles.linkHighlight}>Login</Text>
-        </Text>
-      </TouchableOpacity>
+        Already have an account? Login
+      </Text>
     </View>
-  )
-}
+  );
+};
 
-export default RegisterScreen
+export default RegisterScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
-    padding: 20,
+    padding: 24,
     justifyContent: 'center',
   },
   title: {
     fontSize: 28,
-    fontWeight: '600',
-    marginBottom: 5,
+    fontWeight: 'bold',
+    marginBottom: 8,
     textAlign: 'center',
-    color: '#333',
   },
   subtitle: {
     fontSize: 14,
-    marginBottom: 25,
     textAlign: 'center',
-    color: '#666',
+    marginBottom: 24,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-    paddingRight: 10, // spacing for the eye icon
-  },
-  eyeButton: {
-    padding: 8,
-  },
-  error: {
-    color: 'red',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginBottom: 15,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#8fbdf0',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  buttonContainer: {
+    marginTop: 10,
+    marginBottom: 20,
   },
   link: {
     textAlign: 'center',
-    fontSize: 14,
-    color: '#666',
+    marginTop: 10,
+    fontSize: 16,
   },
-  linkHighlight: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-})
+});

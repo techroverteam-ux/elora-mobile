@@ -13,12 +13,18 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useGetLoginUserMutation } from '../../data/redux/services/authApi';
+import AutoLoginCredentials from '../AutoLoginCredentials';
+import { useTheme } from 'react-native-paper';
+import CustomTextInput from '../../components/CustomTextInput';
 
 type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 
 const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
+  const { colors } = useTheme();
+
+  const [isAutoLoginOn, setIsAutoLoginOn] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,77 +68,56 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
     }
   };
 
-
   const handleSelectUser = (user: { email: string; password: string }) => {
     setEmail(user.email);
     setPassword(user.password);
   };
 
-  const AutoLogin = () => {
-    const dummyUsers = [
-      { email: 'test@admin.com', password: '123456' },
-      { email: 'neel@test.com', password: '123456' },
-      { email: 'bob@test.com', password: 'bob123' },
-      { email: 'bob@test.com', password: 'bob123' },
-    ];
-
-    return (
-      <View style={styles.dummyContainer}>
-        {
-          dummyUsers.map((user, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.dummyButton}
-              onPress={() => handleSelectUser(user)}
-            >
-              <Text style={styles.dummyText}>{user.email}</Text>
-            </TouchableOpacity>
-          ))
-        }
-      </View>
-    )
-  }
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome To Geeta Bal Sanskar</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.onBackground }]}>
+        Welcome To Geeta Bal Sanskar
+      </Text>
 
-      {/* AUTO LOGIN */}
-      <AutoLogin />
+      {/* Auto Login Component */}
+      {isAutoLoginOn && (
+        <AutoLoginCredentials
+          onSelectUser={handleSelectUser}
+          isAutoLoginOn={isAutoLoginOn}
+          setIsAutoLoginOn={setIsAutoLoginOn}
+        />
+      )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
+      <CustomTextInput
         value={email}
-        keyboardType="email-address"
-        autoCapitalize="none"
         onChangeText={setEmail}
+        placeholder="Email"
+        keyboardType="email-address"
       />
 
-      {/* Password input with eye toggle */}
-      <View style={styles.passwordContainer}>
-        <TextInput
-          style={[styles.input, { flex: 1, marginBottom: 0 }]}
-          placeholder="Password"
-          value={password}
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowPassword(!showPassword)}
-        >
-          <Text style={{ fontSize: 16 }}>
-            {showPassword ? '🙈' : '👁️'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <CustomTextInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Password"
+        secureTextEntry={!showPassword}
+        showToggle
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+      />
 
       <View style={styles.buttonContainer}>
-        <Button title={isLoading ? 'Logging in...' : 'Login'} onPress={handleLogin} />
+        <Button
+          title={isLoading ? 'Logging in...' : 'Login'}
+          onPress={handleLogin}
+          color={colors.primary}
+          disabled={isLoading}
+        />
       </View>
 
-      <Text style={styles.link} onPress={() => navigation.navigate('Register')}>
+      <Text
+        style={[styles.link, { color: colors.primary }]}
+        onPress={() => navigation.navigate('Register')}
+      >
         Don’t have an account? Register
       </Text>
     </View>
@@ -146,35 +131,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#fff',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 32,
     textAlign: 'center',
-    color: '#333',
-  },
-  dummyContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    // backgroundColor: "red",
-    // justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  dummyButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 8,
-    borderRadius: 6,
-    margin: 1
-  },
-  dummyText: {
-    color: '#333',
-    fontSize: 14,
   },
   input: {
     height: 50,
-    borderColor: '#ccc',
     borderWidth: 1,
     paddingHorizontal: 15,
     borderRadius: 8,
@@ -184,7 +149,6 @@ const styles = StyleSheet.create({
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 16,
@@ -199,7 +163,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   link: {
-    color: '#007bff',
     textAlign: 'center',
     marginTop: 10,
     fontSize: 16,

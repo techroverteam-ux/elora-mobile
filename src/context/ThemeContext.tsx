@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { Appearance, ColorSchemeName } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Types
 type ThemePreference = 'light' | 'dark' | 'system';
 type ThemeType = 'light' | 'dark';
 
@@ -12,6 +19,7 @@ interface ThemeContextType {
   isThemeLoaded: boolean;
 }
 
+// Context
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'light',
   preference: 'system',
@@ -19,10 +27,12 @@ const ThemeContext = createContext<ThemeContextType>({
   isThemeLoaded: false,
 });
 
+// Hook to access context
 export const useThemeContext = () => useContext(ThemeContext);
 
 const STORAGE_KEY = 'user-theme-preference';
 
+// Provider
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [preference, setPreferenceState] = useState<ThemePreference>('system');
   const [theme, setTheme] = useState<ThemeType>('light');
@@ -30,7 +40,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const resolveTheme = (pref: ThemePreference, systemScheme?: ColorSchemeName) => {
     if (pref === 'system') {
-      // Use provided systemScheme or fallback to Appearance.getColorScheme()
       const system = systemScheme || Appearance.getColorScheme();
       setTheme(system === 'dark' ? 'dark' : 'light');
     } else {
@@ -41,7 +50,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const storedPref = await AsyncStorage.getItem(STORAGE_KEY) as ThemePreference | null;
+        const storedPref = (await AsyncStorage.getItem(STORAGE_KEY)) as ThemePreference | null;
         const finalPref: ThemePreference = storedPref || 'system';
         setPreferenceState(finalPref);
         resolveTheme(finalPref);
@@ -54,14 +63,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
     loadTheme();
 
-    // Subscribe to system theme changes
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
       if (preference === 'system') {
         resolveTheme('system', colorScheme);
       }
     });
 
-    // Cleanup subscription on unmount
     return () => subscription.remove();
   }, [preference]);
 
@@ -80,4 +87,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </ThemeContext.Provider>
   );
+};
+
+// ✅ New hook to export isDarkMode directly
+export const useIsDarkMode = (): boolean => {
+  const { theme } = useThemeContext();
+  return theme === 'dark';
 };
