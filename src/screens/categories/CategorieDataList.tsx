@@ -1,25 +1,17 @@
 import {
-  FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   ActivityIndicator,
-  ScrollView,
-  Image,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 import AppBarHeader from '../../components/AppBarHeader';
 import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
 import { CategoriesStackParamList } from '../../navigation/types';
-import {
-  useGetAzureBlobMutation,
-  useGetCategoriesMutation,
-} from '../../data/redux/services/sectionsApi';
+import { useGetCategoriesMutation } from '../../data/redux/services/sectionsApi';
 
 const CategorieDataList = () => {
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
@@ -32,7 +24,6 @@ const CategorieDataList = () => {
   const { navigate } = useNavigation<CategorieDataListNavigationProp>();
 
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
-  const [getAsureBlobRequest, { isLoading: isBlobLoading }] = useGetAzureBlobMutation();
 
   useEffect(() => {
     getCategoriesRequest(id);
@@ -52,7 +43,7 @@ const CategorieDataList = () => {
 
           <CustomVerticalFlatlist
             data={data?.data}
-            onItemPress={(item) => navigate('BlogPage', { item })}
+            onItemPress={(item) => navigate('BlogPage', { categoryData: item })}
           />
         </View>
       )}

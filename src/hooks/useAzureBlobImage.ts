@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGetAzureBlobMutation } from '../data/redux/services/sectionsApi';
 
 interface UseAzureBlobImageReturn {
-  imageUrl: string | null;
+  resourceUrl: string | null;
   base64Image: string | null;
   isLoading: boolean;
 }
@@ -27,7 +27,7 @@ export const useAzureBlobImages = (
         // Update initial data with the image URL and loading state
         if (!imageData[key]) {
           newData[key] = {
-            imageUrl: azureApiUrl,
+            resourceUrl: azureApiUrl,
             base64Image: null,
             isLoading, // Maintain loading state
           };

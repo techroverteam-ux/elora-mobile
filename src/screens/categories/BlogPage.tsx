@@ -5,11 +5,14 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import BlogVideo from '../../components/BlogVideo';
 import CustomFastImage from '../../components/CustomFastImage';
 import { useTheme } from 'react-native-paper';
-import { useAzureBlobImages } from '../../hooks/useAzureBlobImage';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { WIDTH } from '../../utils/HelperFunctions';
+import { useAzureAssets } from '../../hooks/useAzureAssets';
+import CollageFrame from '../../components/CollageFrame';
 
 type BlogItem = {
+  _id: string;
   title: string;
   subtitle: string;
   description1: string;
@@ -17,15 +20,14 @@ type BlogItem = {
   mainImage: string;
   video: string;
   collegeFrame: {
+    type: number;
     files: string[];
   };
 };
 
 type BlogPageRouteParams = {
-  BlogPage: { item: BlogItem };
+  BlogPage: { categoryData: BlogItem };
 };
-
-const { width } = Dimensions.get('window');
 
 const BlogPage = () => {
   const route = useRoute<RouteProp<BlogPageRouteParams, 'BlogPage'>>();
@@ -34,28 +36,14 @@ const BlogPage = () => {
     'CategoriesMain'
   >;
   const { navigate } = useNavigation<CategoriesNavigationProp>()
-  const { item } = route.params;
+  const { categoryData } = route.params;
   const { colors } = useTheme();
 
-  // Create the blob URLs object
-  const blobUrls = {
-    mainImage: item?.mainImage,
-    video: item?.video,
-    collageOne: item?.collegeFrame?.files[0],
-    collageTwo: item?.collegeFrame?.files[1],
-  };
-
-  // Fetch all the image data from the blob URLs
-  const azureData = useAzureBlobImages(blobUrls);
-
-  // Destructure imageUrl from the data
-  const { mainImage, video, collageOne, collageTwo } = azureData;
-
-  // Use safe checks to ensure data is available
-  const mainImageUrl = mainImage?.imageUrl;
-  const videoUrl = video?.imageUrl;
-  const collageOneUrl = collageOne?.imageUrl;
-  const collageTwoUrl = collageTwo?.imageUrl;
+  const { azureData, resourceUrls } = useAzureAssets(categoryData);
+  const {
+    mainImage: mainImageUrl,
+    video: videoUrl
+  } = resourceUrls;
 
   const handleVideoClick = () => {
     if (!videoUrl) return;
@@ -64,11 +52,11 @@ const BlogPage = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title={item?.title || 'Blog'} />
+      <AppBarHeader title={categoryData?.title || 'Blog'} />
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Display raw collegeFrame for debugging */}
-        {/* <Text style={{ color: colors.onSurface }}>{JSON.stringify(item.collegeFrame, null, 2)}</Text> */}
+        {/* <Text style={{ color: colors.onSurface }}>{JSON.stringify(categoryData.collegeFrame, null, 2)}</Text> */}
 
         {/* Main Image */}
         {mainImageUrl && (
@@ -77,11 +65,11 @@ const BlogPage = () => {
 
         {/* Blog Content */}
         <View style={styles.contentWrapper}>
-          <Text style={[styles.title, { color: colors.primary }]}>{item?.title}</Text>
-          <Text style={[styles.description, { color: colors.onSurface }]}>{item?.subtitle}</Text>
+          <Text style={[styles.title, { color: colors.primary }]}>{categoryData?.title}</Text>
+          <Text style={[styles.description, { color: colors.onSurface }]}>{categoryData?.subtitle}</Text>
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-            {item?.description1}
+            {categoryData?.description1}
           </Text>
 
           {/* Video Handling */}
@@ -96,21 +84,18 @@ const BlogPage = () => {
           )}
 
           <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-            {item?.description2}
+            {categoryData?.description2}
           </Text>
 
-          {/* Collage Images */}
-          <View style={styles.imageRow}>
-            {collageOneUrl && (
-              <CustomFastImage style={styles.sideImage} imageUrl={collageOneUrl} />
-            )}
-            {collageTwoUrl && (
-              <CustomFastImage style={styles.sideImage} imageUrl={collageTwoUrl} />
-            )}
-          </View>
+          {categoryData?.collegeFrame?.type && (
+            <CollageFrame
+              resourceUrls={resourceUrls}
+              type={categoryData.collegeFrame.type}
+            />
+          )}
 
           <Text
-            onPress={() => { navigate("SubCategorie", { item: item }) }}
+            onPress={() => { navigate("SubCategorie", { categoryId: categoryData?._id }) }}
             style={{ color: colors.primary }}
           >
             Learn More
@@ -164,7 +149,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   sideImage: {
-    width: (width - 48) / 2,
+    width: (WIDTH - 48) / 2,
     height: 200,
     borderRadius: 8,
     marginBottom: 16,

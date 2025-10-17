@@ -5,12 +5,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  ActivityIndicator, // ✅ added
 } from 'react-native';
 import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
-import { useAzureBlobImages } from '../hooks/useAzureBlobImage';
+import { useAzureAssets } from '../hooks/useAzureAssets';
 
 interface CustomVerticalFlatlistProps {
   title?: string;
@@ -29,15 +28,8 @@ const VerticalListItem = ({
 }) => {
   const { colors } = useTheme();
 
-  // Get the image URL using the custom hook
-  const blobUrls = {
-    headerImage: item?.headerImage,
-  };
-
-  const azureData = useAzureBlobImages(blobUrls);
-
-  // Destructure to get imageUrl from the response
-  const { imageUrl, isLoading } = azureData?.headerImage || {};
+  const { resourceUrls } = useAzureAssets(item);
+  const { headerImage: headerImageUrl } = resourceUrls;
 
   return (
     <View>
@@ -46,21 +38,13 @@ const VerticalListItem = ({
         onPress={() => onItemPress?.(item)}
         activeOpacity={0.8}
       >
-        {/* If imageUrl is available, render the image */}
-        {isLoading ? (
-          <View style={[styles.image, styles.imageLoader]}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        ) : imageUrl ? (
+
+        {headerImageUrl && (
           <CustomFastImage
             style={styles.image}
-            imageUrl={imageUrl}
+            imageUrl={headerImageUrl}
             resizeMode="cover"
           />
-        ) : (
-          <View style={[styles.image, styles.noImageContainer]}>
-            <Text style={styles.noImageText}>No Image</Text>
-          </View>
         )}
 
         <View style={styles.textContainer}>

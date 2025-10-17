@@ -21,8 +21,8 @@ export type HomeStackParamList = {
 export type CategoriesStackParamList = {
   CategoriesMain: undefined;
   CategorieDataList: { title: string, id: string };
-  BlogPage: { item: any };
-  SubCategorie: { item: any };
+  BlogPage: { categoryData: any };
+  SubCategorie: { categoryId: any };
 };
 
 export type AccountStackParamList = {
