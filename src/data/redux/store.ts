@@ -5,6 +5,7 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { dummyApi } from './services/dummyApi';
 import { authApi } from './services/authApi';
 import { sectionsApi } from './services/sectionsApi';
+import { dashboardApi } from './services/dashboardApi';
 
 export const store = configureStore({
   reducer: {
@@ -12,13 +13,15 @@ export const store = configureStore({
     navigation: navigationReducer,
     [dummyApi.reducerPath]: dummyApi.reducer,
     [authApi.reducerPath]: authApi.reducer,
-    [sectionsApi.reducerPath]: sectionsApi.reducer
+    [sectionsApi.reducerPath]: sectionsApi.reducer,
+    [dashboardApi.reducerPath]: dashboardApi.reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       dummyApi.middleware,
       authApi.middleware,
-      sectionsApi.middleware
+      sectionsApi.middleware,
+      dashboardApi.middleware
     ),
 });
 

@@ -2,6 +2,9 @@ import { extractBlobUrls, extractResourceUrls } from '../utils/extractAzureUrls'
 import { useAzureBlobImages } from './useAzureBlobImage';
 
 export interface ResourceUrls {
+  thumbnailImage?: string;
+  streamingUrl?: string;
+  downloadUrl?: string;
   headerImage?: string;
   mainImage?: string;
   video?: string;

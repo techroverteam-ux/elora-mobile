@@ -11,6 +11,7 @@ import {
 import CustomFastImage from './CustomFastImage';
 import { useTheme } from 'react-native-paper';
 import { MD3Colors } from 'react-native-paper/lib/typescript/types';
+import { useAzureAssets } from '../hooks/useAzureAssets';
 
 interface CardSectionProps<T> {
   title?: string;
@@ -23,16 +24,25 @@ interface CardSectionProps<T> {
   contentTagName?: keyof T;
 }
 
+//
+// 🔹 Theme-aware tag color logic
+//
 const getTagStyle = (tag: string, colors: MD3Colors): ViewStyle => {
+  const base = {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  };
+
   switch (tag.toLowerCase()) {
     case 'trending':
-      return { backgroundColor: '#fff' };
+      return { ...base, backgroundColor: colors.primaryContainer };
     case 'best seller':
-      return { backgroundColor: '#FBE08E' };
+      return { ...base, backgroundColor: colors.tertiaryContainer };
     case 'new':
-      return { backgroundColor: '#00BFFF' };
+      return { ...base, backgroundColor: colors.secondaryContainer };
     default:
-      return { backgroundColor: '#ccc' };
+      return { ...base, backgroundColor: colors.surfaceVariant };
   }
 };
 
@@ -46,22 +56,29 @@ function CardSection<T>({
   subtitleKey,
   contentTagName,
 }: CardSectionProps<T>) {
-
   const { colors } = useTheme();
+  const { resourceUrls } = useAzureAssets(data);
+  const { thumbnailImage: thumbnailUrl, streamingUrl: streamingUrl, downloadUrl: downloadUrl } = resourceUrls;
+
+  // console.log("resourceUrls: ", resourceUrls);
 
   return (
-    <View style={[styles.container]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
           {title}
         </Text>
         {onSeeAll && (
           <TouchableOpacity onPress={onSeeAll}>
-            <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+            <Text style={[styles.seeAll, { color: colors.primary }]}>
+              See All
+            </Text>
           </TouchableOpacity>
         )}
       </View>
 
+      {/* List */}
       <FlatList
         data={data}
         horizontal
@@ -77,25 +94,43 @@ function CardSection<T>({
 
           return (
             <TouchableOpacity
-              style={styles.card}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.outlineVariant,
+                },
+              ]}
+              activeOpacity={0.8}
               onPress={() => onItemPress?.(item)}
             >
+              {/* Image + Badge */}
               <View style={styles.imageContainer}>
                 <CustomFastImage style={styles.image} imageUrl={imageUri} />
                 {contentTag ? (
                   <View style={[styles.trendingBadge, getTagStyle(contentTag, colors)]}>
-                    <Text style={[styles.trendingText, { color: colors.onSurface }]}>
+                    <Text
+                      style={[styles.trendingText, { color: colors.onPrimaryContainer }]}
+                    >
                       {contentTag}
                     </Text>
                   </View>
                 ) : null}
               </View>
+
+              {/* Text Content */}
               <View style={styles.textContainer}>
-                <Text style={[styles.title, { color: colors.onSurface }]} numberOfLines={1}>
+                <Text
+                  style={[styles.title, { color: colors.onSurface }]}
+                  numberOfLines={1}
+                >
                   {cardTitle}
                 </Text>
                 {cardSubtitle ? (
-                  <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
+                  <Text
+                    style={[styles.subtitle, { color: colors.onSurfaceVariant }]}
+                    numberOfLines={2}
+                  >
                     {cardSubtitle}
                   </Text>
                 ) : null}
@@ -110,26 +145,31 @@ function CardSection<T>({
 
 export default CardSection;
 
+//
+// 🔹 Styles
+//
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-  } as ViewStyle,
+    marginTop: 16,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  } as ViewStyle,
+    paddingHorizontal: 16,
+  },
   sectionTitle: {
-    fontWeight: 'bold',
-    fontSize: 16,
-  } as TextStyle,
+    fontWeight: '700',
+    fontSize: 18,
+  },
   seeAll: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     textDecorationLine: 'underline',
-    fontSize: 12,
-  } as TextStyle,
+    fontSize: 13,
+  },
   flatList: {
-    marginTop: 20,
+    marginTop: 12,
   },
   flatListContent: {
     gap: 16,
@@ -137,39 +177,37 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 170,
-  } as ViewStyle,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 1,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
   image: {
     width: '100%',
     height: 170,
-    borderRadius: 10,
-  },
-  textContainer: {
-    padding: 10,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  } as TextStyle,
-  subtitle: {
-    fontSize: 14,
-    color: '#555',
-  } as TextStyle,
-  imageContainer: {
-    position: 'relative',
   },
   trendingBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: "#fff",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 10,
   },
   trendingText: {
-    color: '#000',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
+  textContainer: {
+    padding: 10,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+  }
 });

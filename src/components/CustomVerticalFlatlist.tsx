@@ -16,20 +16,30 @@ interface CustomVerticalFlatlistProps {
   data: any[];
   onItemPress?: (item: any) => void;
   scrollEnabled?: boolean;
+  imageUrl?: string | ((item: any) => string | undefined); // ✅ can be a URL or a function that returns one
 }
 
-// ✅ Subcomponent for each row — this CAN use hooks safely
+// ✅ Subcomponent for each row
 const VerticalListItem = ({
   item,
   onItemPress,
+  imageUrl,
 }: {
   item: any;
   onItemPress?: (item: any) => void;
+  imageUrl?: string | ((item: any) => string | undefined);
 }) => {
   const { colors } = useTheme();
 
+  // get azure assets only if no custom image URL is passed
   const { resourceUrls } = useAzureAssets(item);
-  const { headerImage: headerImageUrl } = resourceUrls;
+  const { headerImage: headerImageUrl, thumbnailImage: thumbnailUrl } = resourceUrls;
+
+  // ✅ Prefer custom imageUrl if provided
+  const finalImageUrl =
+    typeof imageUrl === 'function'
+      ? imageUrl(item)
+      : imageUrl || headerImageUrl || thumbnailUrl;
 
   return (
     <View>
@@ -38,14 +48,13 @@ const VerticalListItem = ({
         onPress={() => onItemPress?.(item)}
         activeOpacity={0.8}
       >
-
-        {headerImageUrl && (
+        {finalImageUrl ? (
           <CustomFastImage
             style={styles.image}
-            imageUrl={headerImageUrl}
+            imageUrl={finalImageUrl}
             resizeMode="cover"
           />
-        )}
+        ) : null}
 
         <View style={styles.textContainer}>
           <Text
@@ -79,6 +88,7 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
   data,
   onItemPress,
   scrollEnabled = true,
+  imageUrl,
 }) => {
   const { colors } = useTheme();
 
@@ -91,7 +101,7 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
       <FlatList
         data={data}
         renderItem={({ item }) => (
-          <VerticalListItem item={item} onItemPress={onItemPress} />
+          <VerticalListItem item={item} onItemPress={onItemPress} imageUrl={imageUrl} />
         )}
         keyExtractor={(item, index) =>
           item?.id?.toString?.() || index.toString()
@@ -126,20 +136,6 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 10,
     overflow: 'hidden',
-  },
-  imageLoader: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f0f0',
-  },
-  noImageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#e0e0e0',
-  },
-  noImageText: {
-    fontSize: 10,
-    color: '#666',
   },
   textContainer: {
     flex: 1,

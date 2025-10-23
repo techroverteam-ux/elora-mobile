@@ -1,5 +1,5 @@
 import React from 'react'
-import FastImage from 'react-native-fast-image'
+import FastImage, { Source, ResizeMode as FastImageResizeMode } from 'react-native-fast-image'
 
 type ResizeMode = 'contain' | 'cover' | 'stretch' | 'center'
 
@@ -14,17 +14,20 @@ const CustomFastImage: React.FC<CustomFastImageProps> = ({
   style,
   resizeMode = 'stretch',
 }) => {
-  const isRemoteImage = typeof imageUrl === 'string' && imageUrl.startsWith('http')
+  let source: number | Source
 
-  const source = isRemoteImage
-    ? {
+  if (typeof imageUrl === 'string' && imageUrl.startsWith('http')) {
+    source = {
       uri: imageUrl,
       headers: { Authorization: 'someAuthToken' },
       priority: FastImage.priority.normal,
     }
-    : imageUrl
+  } else {
+    // local asset (require('path/to/image'))
+    source = imageUrl as number
+  }
 
-  return <FastImage source={source} style={style} resizeMode={resizeMode} />
+  return <FastImage source={source} style={style} resizeMode={resizeMode as FastImageResizeMode} />
 }
 
 export default CustomFastImage

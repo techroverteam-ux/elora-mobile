@@ -13,7 +13,7 @@ export type HomeStackParamList = {
   HomeMain: undefined;
   AllAudios: undefined;
   AudioCategoryScreen: { title: any };
-  AllVideos: undefined;
+  AllVideos: { item: any };
   AudioPlayer: { item: any };
   VideoPlayer: { item: any };
 };

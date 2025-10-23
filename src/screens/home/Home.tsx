@@ -1,102 +1,155 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Button, Alert } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import i18n from '../../localization/i18n';
+import React, { useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from 'react-native-paper';
 
-import CounterControls from '../../components/CounterControls';
-import LanguageSwitcher from '../../components/LanguageSwitcher';
-import StorageViewer from '../../components/StorageViewer';
-import { fetchAndFormatStorage } from '../../utils/storageLogger';
 import CardSection from '../../components/CardSection';
-import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import MainAppHeader from '../../components/MainAppHeader';
 import CardCarousel from '../../components/CardCarousel';
-import PagerView from 'react-native-pager-view';
-import { Book, books } from '../../data/bookData';
 import { useAuth } from '../../context/AuthContext';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
-import { useNavigation } from '@react-navigation/native';
+import { useGetDashboardMutation } from '../../data/redux/services/dashboardApi';
 
-const Home = () => {
+type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
+
+const Home: React.FC = () => {
+  const { colors } = useTheme(); // 👈 pulls dynamic theme colors
   const { user } = useAuth();
-  console.log("UserDataOnLogin:", user);
+  const navigation = useNavigation<HomeNavigationProp>();
 
-  type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
-  const { navigate } = useNavigation<HomeNavigationProp>();
+  const [getDashboardRequest, { data, isLoading, isError, error }] = useGetDashboardMutation();
+
+  const fetchDashboard = useCallback(() => {
+    getDashboardRequest([]);
+  }, [getDashboardRequest]);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  if (isLoading) return <LoadingState colors={colors} />;
+  if (isError) {
+    console.error('Dashboard fetch error:', error);
+    return <ErrorState colors={colors} onRetry={fetchDashboard} />;
+  }
+
+  const dashboardData = data?.data || {};
+  const { recentUploads = [], topVideos = [], topAudios = [] } = dashboardData;
+
+  const handleVideoPress = (item: any) => {
+    navigation.navigate('VideoPlayer', {
+      item: {
+        videoUri: 'https://www.w3schools.com/html/mov_bbb.mp4',
+        title: item.title,
+        showHeaderFromRoutes: ['HomeMain'],
+      },
+    });
+  };
+
+  const handleAudioPress = (item: any) => {
+    navigation.navigate('AudioPlayer', { item });
+  };
 
   return (
-    <View style={{ flex: 1 }}>
-      <MainAppHeader username={user?.name || ''} />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <MainAppHeader username={user?.name || 'User'} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <CardCarousel />
 
-      <View style={styles.root}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <CardSection
+          title="Recently Uploaded"
+          data={recentUploads}
+          imageKey="streamingUrl"
+          titleKey="title"
+          subtitleKey="description"
+          contentTagName="tags"
+          onSeeAll={() => Alert.alert('Coming soon!')}
+          onItemPress={(item) => console.log('Pressed:', item)}
+        />
 
-          <CardCarousel />
+        <CardSection
+          title="Videos"
+          data={topVideos}
+          imageKey="thumbnailUrl"
+          titleKey="title"
+          subtitleKey="description"
+          contentTagName="tags"
+          onSeeAll={() => navigation.navigate('AllVideos', { item: topVideos })}
+          onItemPress={handleVideoPress}
+        />
 
-          <CardSection<Book>
-            title="Recently Viewed"
-            data={books}
-            imageKey="image"
-            titleKey="title"
-            subtitleKey="subtitle"
-            contentTagName="contentTag"
-            onSeeAll={() => Alert.alert("Coming soon!")}
-            onItemPress={(item) => console.log('Pressed:', item)}
-          />
-          <CardSection<Book>
-            title="Videos"
-            data={books}
-            imageKey="image"
-            titleKey="title"
-            subtitleKey="time"
-            onSeeAll={() => navigate("AllVideos")}
-            onItemPress={(item) => {
-              navigate('VideoPlayer', {
-                item: {
-                  videoUri: 'https://www.w3schools.com/html/mov_bbb.mp4',
-                  title: item.title,
-                  // showDebugInfo: true,
-                  // params: { item },
-                  showHeaderFromRoutes: ['HomeMain'],
-                }
-              })
-              console.log('Pressed:', item)
-            }}
-          />
-          <CardSection<Book>
-            title="Audios"
-            data={books}
-            imageKey="image"
-            titleKey="title"
-            subtitleKey="subtitle"
-            onSeeAll={() => navigate("AllAudios")}
-            onItemPress={(item) => {
-              navigate('AudioPlayer', { item })
-              console.log('Pressed:', item)
-            }}
-          />
-        </ScrollView>
-      </View>
+        <CardSection
+          title="Audios"
+          data={topAudios}
+          imageKey="thumbnailUrl"
+          titleKey="title"
+          subtitleKey="description"
+          contentTagName="tags"
+          onSeeAll={() => navigation.navigate('AllAudios')}
+          onItemPress={handleAudioPress}
+        />
+      </ScrollView>
     </View>
   );
 };
 
 export default Home;
 
+//
+// 🔹 Themed UI Helpers
+//
+const LoadingState = ({ colors }: { colors: any }) => (
+  <View style={styles.centered}>
+    <ActivityIndicator size="large" color={colors.primary} />
+    <Text style={[styles.statusText, { color: colors.text }]}>Loading Dashboard...</Text>
+  </View>
+);
+
+const ErrorState = ({
+  colors,
+  onRetry,
+}: {
+  colors: any;
+  onRetry: () => void;
+}) => (
+  <View style={styles.centered}>
+    <Text style={[styles.statusText, { color: colors.error }]}>Failed to load dashboard.</Text>
+    <Text
+      style={[styles.retryText, { color: colors.primary }]}
+      onPress={onRetry}
+    >
+      Tap to retry
+    </Text>
+  </View>
+);
+
+//
+// 🔹 Styles (mostly static)
+//
 const styles = StyleSheet.create({
-  root: {
+  container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  scrollContainer: {
     paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  langSwitcher: {
-    width: '50%',
-    marginVertical: 10,
-  },
-  translation: {
-    marginVertical: 10,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  statusText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  retryText: {
+    marginTop: 8,
+    fontSize: 15,
+    textDecorationLine: 'underline',
   },
 });
