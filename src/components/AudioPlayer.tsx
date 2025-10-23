@@ -57,10 +57,14 @@ const AudioPlayer: React.FC = () => {
   // Loading state for the play button
   const [isLoading, setIsLoading] = useState(true);
 
+  const audioDataURL = audioUrl || streamingUrl
+  console.log("audioDataURL: ", audioDataURL);
+
+
   useEffect(() => {
-    if (audioUrl && !duration) {
+    if (audioDataURL && !duration) {
       setIsLoading(true); // Set loading true when the audio starts loading
-      loadBuffer(audioUrl);
+      loadBuffer(audioDataURL);
     }
 
     setOnPositionChanged(pos => {
