@@ -5,8 +5,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator, // Add ActivityIndicator
 } from 'react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAudioPlayerContext } from '../context/AudioPlayerContext';
 import AppBarHeader from './AppBarHeader';
 import { ProgressBar, useTheme } from 'react-native-paper';
@@ -16,6 +17,7 @@ import Slider from '@react-native-community/slider';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { AccountStackParamList } from '../navigation/types';
 import CustomFastImage from './CustomFastImage';
+import { useAzureAssets } from '../hooks/useAzureAssets';
 
 type AudioPlayerRouteProp = RouteProp<AccountStackParamList, 'AudioPlayer'>;
 
@@ -23,6 +25,12 @@ const AudioPlayer: React.FC = () => {
   const { colors } = useTheme();
   const route = useRoute<AudioPlayerRouteProp>();
   const item = route.params?.item;
+
+  const { resourceUrls } = useAzureAssets(item);
+  const { downloadUrl, streamingUrl } = resourceUrls;
+
+  // console.log("AUDIO Item: ", item);
+  console.log("resourceUrls: ", resourceUrls);
 
   if (!item) {
     return <Text style={{ color: colors.onSurface }}>No audio data provided.</Text>;
@@ -46,20 +54,29 @@ const AudioPlayer: React.FC = () => {
 
   const progress = duration ? currentTime / duration : 0;
 
+  // Loading state for the play button
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     if (audioUrl && !duration) {
+      setIsLoading(true); // Set loading true when the audio starts loading
       loadBuffer(audioUrl);
     }
+
     setOnPositionChanged(pos => {
       console.log('Audio Progress:', Math.round(pos * 100) + '%');
     });
+
+    // Once the audio is loaded, set isLoading to false
+    if (duration) {
+      setIsLoading(false);
+    }
   }, [audioUrl, duration, loadBuffer, setOnPositionChanged]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <AppBarHeader title="Audio Player" />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-
         <View style={styles.innerContainer}>
           {/* Album Art */}
           {imageUrl && (
@@ -112,13 +129,24 @@ const AudioPlayer: React.FC = () => {
 
             <TouchableOpacity
               onPress={isPlaying ? pause : play}
-              style={[styles.playPauseButton, { backgroundColor: colors.primary }]}
+              style={[
+                styles.playPauseButton,
+                { backgroundColor: colors.primary, width: 90, height: 90 }, // fixed dimensions
+              ]}
+              disabled={isLoading} // disable while loading
+              activeOpacity={0.8}
             >
-              <MaterialDesignIcons
-                name={isPlaying ? 'pause' : 'play'}
-                size={60}
-                color={colors.onSurfaceVariant}
-              />
+              <View style={styles.playPauseContent}>
+                {isLoading ? (
+                  <ActivityIndicator size="large" color={colors.onSurfaceVariant} />
+                ) : (
+                  <MaterialDesignIcons
+                    name={isPlaying ? 'pause' : 'play'}
+                    size={60}
+                    color={colors.onSurfaceVariant}
+                  />
+                )}
+              </View>
             </TouchableOpacity>
 
             <MaterialDesignIcons
@@ -210,13 +238,20 @@ const styles = StyleSheet.create({
   },
   playPauseButton: {
     borderRadius: 100,
-    padding: 14,
-    backgroundColor: '#6200ee', // fallback color if using theme
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#6200ee',
     shadowColor: '#6200ee',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 10,
+  },
+  playPauseContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   controlIcon: {
     padding: 10,

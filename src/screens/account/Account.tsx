@@ -60,7 +60,8 @@ const Account = () => {
                 title: 'Shree Krishna Govind',
                 artist: 'Singer, Composer Names',
                 imageUrl: require('../../assets/images/shreeKrishna.png'),
-                audioUrl: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-01.mp3'
+                // audioUrl: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-01.mp3'
+                audioUrl: 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=https%3A%2F%2Fgbsprod.blob.core.windows.net%https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=https%3A%2F%2Fgbsprod.blob.core.windows.net%2Fgbsdata%2Fmedia%2FEducational%2Ffile_01.-Preface_1761104410521_p2ikti.mp3'
               }
             })
           }}

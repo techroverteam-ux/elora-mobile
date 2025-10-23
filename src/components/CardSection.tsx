@@ -57,6 +57,7 @@ function CardSection<T>({
   contentTagName,
 }: CardSectionProps<T>) {
   const { colors } = useTheme();
+
   const { resourceUrls } = useAzureAssets(data);
   const { thumbnailImage: thumbnailUrl, streamingUrl: streamingUrl, downloadUrl: downloadUrl } = resourceUrls;
 
