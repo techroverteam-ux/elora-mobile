@@ -28,20 +28,20 @@ const Home: React.FC = () => {
 
   const dashboardData = data?.data || {};
   const { recentUploads = [], topVideos = [], topAudios = [], topBooks = [] } = dashboardData;
-  
+
   // Use only real API data from Azure
   const displayTopAudios = topAudios;
   const displayTopVideos = topVideos;
   const displayTopBooks = topBooks;
   const displayRecentUploads = recentUploads;
-  
+
   console.log('Home - Dashboard data:', {
     topAudios: topAudios.length,
     topVideos: topVideos.length,
     topBooks: topBooks.length,
     recentUploads: recentUploads.length
   });
-  
+
   // Debug Azure URLs for audio items
   if (topAudios.length > 0) {
     console.log('Home - Sample audio item:', topAudios[0]);
@@ -58,7 +58,7 @@ const Home: React.FC = () => {
       console.error('Home - Video item is null/undefined');
       return;
     }
-    
+
     try {
       navigation.navigate('EnhancedVideoPlayer', {
         item: {
@@ -82,7 +82,7 @@ const Home: React.FC = () => {
       console.error('Home - Audio item is null/undefined');
       return;
     }
-    
+
     console.log('Home - Audio item pressed:', item);
     console.log('Home - Audio URLs being passed:', {
       streamingUrl: item.streamingUrl,
@@ -90,7 +90,7 @@ const Home: React.FC = () => {
       thumbnailUrl: item.thumbnailUrl,
       imageUrl: item.imageUrl
     });
-    
+
     try {
       navigation.navigate('EnhancedAudioPlayer', {
         item: {

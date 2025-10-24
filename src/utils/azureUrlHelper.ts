@@ -2,51 +2,51 @@
 // Check if URL needs Azure API proxy
 export const needsAzureProxy = (url: string): boolean => {
   if (!url) return false;
-  
+
   // If it's a direct blob URL without SAS token, it needs proxy
   if (url.includes('blob.core.windows.net') && !url.includes('?') && !url.includes('sv=')) {
     return true;
   }
-  
+
   return false;
 };
 
 export const processAzureUrl = (url: string): string => {
   if (!url) {
-    console.log('processAzureUrl: Empty URL provided');
+    // console.log('processAzureUrl: Empty URL provided');
     return '';
   }
-  
-  console.log('processAzureUrl: Processing URL:', url);
-  
+
+  // console.log('processAzureUrl: Processing URL:', url);
+
   // If it's already a direct blob URL, convert to API proxy URL
   if (url.includes('blob.core.windows.net')) {
-    console.log('processAzureUrl: Direct blob URL detected, converting to proxy');
+    // console.log('processAzureUrl: Direct blob URL detected, converting to proxy');
     // Always use the API proxy for Azure blob URLs to ensure proper access
     return createAzureProxyUrl(url);
   }
-  
+
   // If it's already an API proxy URL, return as is
   if (url.includes('/azure-blob/file?blobUrl=')) {
-    console.log('processAzureUrl: API proxy URL detected, returning as-is');
+    // console.log('processAzureUrl: API proxy URL detected, returning as-is');
     return url;
   }
-  
+
   // Handle other Azure patterns
   if (url.includes('azure') || url.includes('blob')) {
-    console.log('processAzureUrl: Azure-related URL detected:', url);
+    // console.log('processAzureUrl: Azure-related URL detected:', url);
   } else {
-    console.log('processAzureUrl: Non-Azure URL, returning as-is:', url);
+    // console.log('processAzureUrl: Non-Azure URL, returning as-is:', url);
   }
-  
+
   return url;
 };
 
 // Get streaming URL with fallbacks
 export const getStreamingUrl = (item: any, type: 'audio' | 'video' = 'audio'): string => {
-  console.log('getStreamingUrl: Getting streaming URL for item:', { 
-    id: item?._id, 
-    title: item?.title, 
+  console.log('getStreamingUrl: Getting streaming URL for item:', {
+    id: item?._id,
+    title: item?.title,
     type,
     availableUrls: {
       streamingUrl: item?.streamingUrl,
@@ -56,27 +56,27 @@ export const getStreamingUrl = (item: any, type: 'audio' | 'video' = 'audio'): s
       url: item?.url
     }
   });
-  
+
   const urls = [
     item?.streamingUrl,
     type === 'audio' ? item?.audioUrl : item?.videoUrl,
     item?.videoUri,
     item?.url
   ].filter(Boolean);
-  
-  console.log('getStreamingUrl: Available URLs to process:', urls);
-  
+
+  // console.log('getStreamingUrl: Available URLs to process:', urls);
+
   // Process each URL to handle Azure blob URLs
   for (const url of urls) {
-    console.log('getStreamingUrl: Processing URL:', url);
+    // console.log('getStreamingUrl: Processing URL:', url);
     const processedUrl = processAzureUrl(url);
     if (processedUrl) {
-      console.log('getStreamingUrl: Using processed URL:', processedUrl);
+      // console.log('getStreamingUrl: Using processed URL:', processedUrl);
       return processedUrl;
     }
   }
-  
-  console.log('getStreamingUrl: No valid URLs found, returning empty string');
+
+  // console.log('getStreamingUrl: No valid URLs found, returning empty string');
   return '';
 };
 
@@ -90,31 +90,31 @@ export const getImageUrl = (item: any): string => {
     item?.coverImage,
     item?.image
   ].filter(Boolean);
-  
-  console.log('getImageUrl: Available image URLs:', urls);
-  
+
+  // console.log('getImageUrl: Available image URLs:', urls);
+
   // Process each URL to handle Azure blob URLs
   for (const url of urls) {
     const processedUrl = processAzureUrl(url);
     if (processedUrl) {
-      console.log('getImageUrl: Using processed image URL:', processedUrl);
+      // console.log('getImageUrl: Using processed image URL:', processedUrl);
       return processedUrl;
     }
   }
-  
-  console.log('getImageUrl: No valid image URLs found');
+
+  // console.log('getImageUrl: No valid image URLs found');
   return ''; // No fallback image
 };
 
 // Debug function to test Azure URLs
 export const testAzureUrl = async (url: string): Promise<boolean> => {
   try {
-    console.log(`testAzureUrl: Testing URL - ${url}`);
+    // console.log(`testAzureUrl: Testing URL - ${url}`);
     const response = await fetch(url, { method: 'HEAD' });
-    console.log(`testAzureUrl: Response - ${url}: ${response.status}`);
+    // console.log(`testAzureUrl: Response - ${url}: ${response.status}`);
     return response.ok;
   } catch (error) {
-    console.error(`testAzureUrl: Failed - ${url}:`, error);
+    // console.error(`testAzureUrl: Failed - ${url}:`, error);
     return false;
   }
 };
@@ -122,12 +122,12 @@ export const testAzureUrl = async (url: string): Promise<boolean> => {
 // Helper to create proper Azure API proxy URL
 export const createAzureProxyUrl = (blobUrl: string): string => {
   if (!blobUrl) return '';
-  
+
   const baseApiUrl = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api';
   const encodedBlobUrl = encodeURIComponent(blobUrl);
   const proxyUrl = `${baseApiUrl}/azure-blob/file?blobUrl=${encodedBlobUrl}`;
-  
-  console.log('createAzureProxyUrl: Original blob URL:', blobUrl);
-  console.log('createAzureProxyUrl: Created proxy URL:', proxyUrl);
+
+  // console.log('createAzureProxyUrl: Original blob URL:', blobUrl);
+  // console.log('createAzureProxyUrl: Created proxy URL:', proxyUrl);
   return proxyUrl;
 };

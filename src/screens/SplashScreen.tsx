@@ -69,7 +69,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
       style={styles.container}
     >
       <StatusBar backgroundColor="#FF9933" barStyle="light-content" />
-      
+
       {/* Logo Container */}
       <View style={styles.logoContainer}>
         <Animated.View
@@ -82,8 +82,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           ]}
         >
           <View style={styles.iconContainer}>
-            <Image 
-              source={require('../assets/images/shreeKrishna.png')}
+            <Image
+              source={require('../assets/images/AppIcon.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />

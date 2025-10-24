@@ -18,7 +18,7 @@ interface UnifiedMediaCardProps {
 const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type = 'audio' }) => {
   const { colors } = useTheme();
   const { resourceUrls } = useAzureAssets(item || {});
-  
+
   const getIcon = () => {
     switch (type) {
       case 'video': return 'play-circle';
@@ -37,18 +37,18 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
       item?.headerImage,
       item?.mainImage
     ];
-    
+
     // Try processed Azure URLs
     for (const url of urls) {
       if (url) {
         const processedUrl = processAzureUrl(url);
         if (processedUrl) {
-          console.log('UnifiedMediaCard - Using processed URL:', processedUrl, 'for item:', item?.title);
+          // console.log('UnifiedMediaCard - Using processed URL:', processedUrl, 'for item:', item?.title);
           return processedUrl;
         }
       }
     }
-    
+
     // Try direct URLs
     for (const url of urls) {
       if (url) {
@@ -56,44 +56,44 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
         return url;
       }
     }
-    
+
     console.log('UnifiedMediaCard - No image URL found for item:', item?.title);
     return '';
   };
 
   return (
-    <TouchableOpacity 
-      style={[styles.card, { backgroundColor: colors.surface }]} 
+    <TouchableOpacity
+      style={[styles.card, { backgroundColor: colors.surface }]}
       onPress={() => onPress(item)}
       activeOpacity={0.8}
     >
       <View style={styles.imageContainer}>
         {getImageUrl() ? (
-          <CustomFastImage 
-            style={styles.image} 
+          <CustomFastImage
+            style={styles.image}
             imageUrl={getImageUrl()}
           />
         ) : (
           <View style={[styles.placeholderImage, { backgroundColor: colors.surfaceVariant }]}>
-            <MaterialDesignIcons 
-              name={getIcon()} 
-              size={40} 
-              color={colors.primary} 
+            <MaterialDesignIcons
+              name={getIcon()}
+              size={40}
+              color={colors.primary}
             />
           </View>
         )}
 
       </View>
-      
+
       <View style={styles.content}>
-        <Text 
-          style={[styles.title, { color: colors.onSurface }]} 
+        <Text
+          style={[styles.title, { color: colors.onSurface }]}
           numberOfLines={2}
         >
           {item.title || 'Untitled'}
         </Text>
-        <Text 
-          style={[styles.subtitle, { color: colors.onSurfaceVariant }]} 
+        <Text
+          style={[styles.subtitle, { color: colors.onSurfaceVariant }]}
           numberOfLines={1}
         >
           {item.artist || item.description || item.subtitle || 'Unknown'}

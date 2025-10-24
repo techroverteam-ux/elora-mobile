@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native'
 import PagerView from 'react-native-pager-view'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
@@ -33,12 +33,16 @@ type CardItemProps = {
 
 const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
   const { resourceUrls } = useAzureAssets(item || {})
-  const imageUrl = resourceUrls?.headerImage || resourceUrls?.mainImage || processAzureUrl(item?.headerImage) || processAzureUrl(item?.mainImage) || processAzureUrl(item?.thumbnailUrl) || processAzureUrl(item?.imageUrl) || getImageUrl(item || {})
+  const imageUrl =
+    resourceUrls?.headerImage ||
+    resourceUrls?.mainImage ||
+    processAzureUrl(item?.headerImage) ||
+    processAzureUrl(item?.mainImage) ||
+    processAzureUrl(item?.thumbnailUrl) ||
+    processAzureUrl(item?.imageUrl) ||
+    getImageUrl(item || {})
   const truncatedTitle = item.title.length > 35 ? item.title.substring(0, 35) + '...' : item.title
-  
-  console.log('CardItem - Processed Image URL:', imageUrl, 'for item:', item.title)
-  console.log('CardItem - Resource URLs:', resourceUrls)
-  
+
   return (
     <TouchableOpacity style={styles.cardContainer} onPress={() => onPress(item)} activeOpacity={0.9}>
       {imageUrl ? (
@@ -50,13 +54,15 @@ const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
       )}
       <View style={styles.overlay}>
         <View>
-          <Text style={styles.text} numberOfLines={1}>{truncatedTitle}</Text>
+          <Text style={styles.text} numberOfLines={1}>
+            {truncatedTitle}
+          </Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.actionButton}
           onPress={(e) => {
-            e.stopPropagation();
-            onReadMore(item);
+            e.stopPropagation()
+            onReadMore(item)
           }}
         >
           <Text style={styles.actionText}>Read More</Text>
@@ -70,19 +76,13 @@ const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
 const CardCarousel: React.FC = () => {
   const { colors } = useTheme()
   const navigation = useNavigation()
-  
+  const [currentPage, setCurrentPage] = useState(0)
+
   // Fetch top 6 recently added categories
   const { data: categories = [], isLoading, error } = useGetRecentCategoriesQuery({ limit: 6 })
-  
-  console.log('CardCarousel - Categories loaded:', categories?.length || 0)
-  console.log('CardCarousel - Loading:', isLoading)
-  if (error) {
-    console.error('CardCarousel - Error:', error)
-  }
-  
+
   const handleItemPress = (item: Category) => {
-    console.log('CardCarousel - Category pressed:', item.title)
-    ;(navigation as any).navigate('Categories', {
+    ; (navigation as any).navigate('Categories', {
       screen: 'BlogPage',
       params: {
         categoryData: {
@@ -93,26 +93,24 @@ const CardCarousel: React.FC = () => {
           name: item.title,
           title: item.title,
           description: item.description1 || item.subtitle,
-          type: 'blog'
-        }
-      }
+          type: 'blog',
+        },
+      },
     })
   }
 
   const handleReadMorePress = (item: Category) => {
-    console.log('CardCarousel - Read More pressed:', item.title)
-    console.log('CardCarousel - Item data:', item)
-    ;(navigation as any).navigate('Categories', {
+    ; (navigation as any).navigate('Categories', {
       screen: 'CategorieDataList',
       params: {
         title: item.title,
         id: item.sectionId?._id || item._id,
         categoryId: item._id,
-        sectionId: item.sectionId?._id
-      }
+        sectionId: item.sectionId?._id,
+      },
     })
   }
-  
+
   if (isLoading) {
     return (
       <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -121,7 +119,7 @@ const CardCarousel: React.FC = () => {
       </View>
     )
   }
-  
+
   if (error) {
     return (
       <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -131,7 +129,7 @@ const CardCarousel: React.FC = () => {
       </View>
     )
   }
-  
+
   if (categories.length === 0) {
     return (
       <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -140,18 +138,36 @@ const CardCarousel: React.FC = () => {
       </View>
     )
   }
-  
+
   return (
     <View>
       <View style={styles.headerContainer}>
         <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Featured Categories</Text>
         <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>Recently Added</Text>
       </View>
-      <PagerView style={styles.pagerView} initialPage={0}>
+
+      <PagerView
+        style={styles.pagerView}
+        initialPage={0}
+        onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
+      >
         {categories.map((item: Category) => (
           <CardItem key={item._id} item={item} onPress={handleItemPress} onReadMore={handleReadMorePress} />
         ))}
       </PagerView>
+
+      {/* Pagination Dots */}
+      <View style={styles.dotsContainer}>
+        {categories.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              { backgroundColor: index === currentPage ? colors.primary : colors.outlineVariant },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   )
 }
@@ -160,87 +176,122 @@ export default CardCarousel
 
 const styles = StyleSheet.create({
   headerContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 2,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     opacity: 0.7,
+    fontStyle: 'italic',
   },
   pagerView: {
-    height: 200,
-    marginBottom: 24,
+    height: 240,
+    marginBottom: 12,
   },
   cardContainer: {
+    marginHorizontal: 10,
+    borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: '#fff',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   image: {
     width: '100%',
-    height: 200,
-    borderRadius: 20,
+    height: 240,
   },
   placeholderImage: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#e6e6e6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    padding: 16,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     justifyContent: 'space-between',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-  },
-  actionText: {
-    color: '#000',
-    fontWeight: '600',
   },
   text: {
     color: '#fff',
     fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   subtitle: {
-    color: '#fff',
+    color: '#f0f0f0',
+    fontSize: 15,
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  actionText: {
+    color: '#000',
+    fontWeight: '700',
     fontSize: 14,
+    marginRight: 2,
   },
   loadingText: {
-    marginTop: 10,
-    fontSize: 14,
+    marginTop: 12,
+    fontSize: 15,
+    opacity: 0.7,
   },
   errorText: {
     marginTop: 10,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     textAlign: 'center',
   },
   errorSubtext: {
     marginTop: 5,
-    fontSize: 12,
+    fontSize: 13,
     textAlign: 'center',
+    opacity: 0.7,
   },
   emptyText: {
     marginTop: 10,
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
+    opacity: 0.7,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 5,
   },
 })
