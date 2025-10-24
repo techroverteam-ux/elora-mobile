@@ -35,23 +35,23 @@ const Home: React.FC = () => {
   const displayTopBooks = topBooks;
   const displayRecentUploads = recentUploads;
 
-  console.log('Home - Dashboard data:', {
-    topAudios: topAudios.length,
-    topVideos: topVideos.length,
-    topBooks: topBooks.length,
-    recentUploads: recentUploads.length
-  });
+  // console.log('Home - Dashboard data:', {
+  //   topAudios: topAudios.length,
+  //   topVideos: topVideos.length,
+  //   topBooks: topBooks.length,
+  //   recentUploads: recentUploads.length
+  // });
 
   // Debug Azure URLs for audio items
-  if (topAudios.length > 0) {
-    console.log('Home - Sample audio item:', topAudios[0]);
-    console.log('Home - Audio URLs check:', {
-      streamingUrl: topAudios[0]?.streamingUrl,
-      audioUrl: topAudios[0]?.audioUrl,
-      thumbnailUrl: topAudios[0]?.thumbnailUrl,
-      imageUrl: topAudios[0]?.imageUrl
-    });
-  }
+  // if (topAudios.length > 0) {
+  //   console.log('Home - Sample audio item:', topAudios[0]);
+  //   console.log('Home - Audio URLs check:', {
+  //     streamingUrl: topAudios[0]?.streamingUrl,
+  //     audioUrl: topAudios[0]?.audioUrl,
+  //     thumbnailUrl: topAudios[0]?.thumbnailUrl,
+  //     imageUrl: topAudios[0]?.imageUrl
+  //   });
+  // }
 
   const handleVideoPress = (item: any, playlist?: any[]) => {
     if (!item) {

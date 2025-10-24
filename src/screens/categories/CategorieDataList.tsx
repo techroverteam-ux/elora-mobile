@@ -17,9 +17,6 @@ const CategorieDataList = () => {
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
   const { title, id } = route.params;
 
-  console.log('CategorieDataList - Route params:', route.params);
-  console.log('CategorieDataList - Title:', title, 'ID:', id);
-
   type CategorieDataListNavigationProp = NativeStackNavigationProp<
     CategoriesStackParamList,
     'CategorieDataList'
@@ -29,13 +26,8 @@ const CategorieDataList = () => {
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
 
   useEffect(() => {
-    console.log('CategorieDataList - Making API call with ID:', id);
     getCategoriesRequest(id);
   }, [getCategoriesRequest, id]);
-
-  useEffect(() => {
-    console.log('CategorieDataList - API Response:', { data, error, isLoading });
-  }, [data, error, isLoading]);
 
   return (
     <View style={{ flex: 1 }}>

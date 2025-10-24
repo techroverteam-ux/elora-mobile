@@ -25,7 +25,7 @@ export const useAzureAssets = (apiData: Record<string, any>) => {
 
   // console.log("blobUrls: ", blobUrls);
   // console.log("azureData: ", azureData);
-  console.log("resourceUrls: ", resourceUrls);
+  // console.log("resourceUrls: ", resourceUrls);
 
   return { azureData, resourceUrls };
 };
