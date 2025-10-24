@@ -4,12 +4,17 @@ import Pdf from 'react-native-pdf';
 import AppBarHeader from './AppBarHeader';
 import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
 import { useTheme } from 'react-native-paper';
+import { useRoute } from '@react-navigation/native';
 
 const PdfViewer = () => {
   const pdfRef = useRef(null);
   const { colors } = useTheme();
+  const route = useRoute();
+  const item = (route.params as any)?.item;
 
-  const source = Platform.OS === "android"
+  const source = item?.pdfUrl 
+    ? { uri: item.pdfUrl, cache: true }
+    : Platform.OS === "android"
     ? { uri: "bundle-assets://thereactnativebook-sample.pdf" }
     : { uri: "bundle-assets://thereactnativebook-sample.pdf" }
 
@@ -23,7 +28,7 @@ const PdfViewer = () => {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="PDF Viewer" />
+      <AppBarHeader title={item?.title || "PDF Viewer"} />
 
       {/* <Text style={{ color: colors.onBackground }}>
         Source: {JSON.stringify(source)}

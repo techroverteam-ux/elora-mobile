@@ -1,4 +1,5 @@
 import React from 'react';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, useLinkBuilder } from '@react-navigation/native';
@@ -10,8 +11,18 @@ import HomeStack from './stack/HomeStack';
 import CategoriesStack from './stack/CategoriesStack';
 import DownloadsStack from './stack/DownloadsStack';
 import AccountStack from './stack/AccountStack';
+import CustomDrawer from '../components/CustomDrawer';
+import SettingsScreen from '../screens/SettingsScreen';
+import AboutScreen from '../screens/AboutScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
+import SearchScreen from '../screens/SearchScreen';
+import ReportIssueScreen from '../screens/ReportIssueScreen';
+import FeatureRequestScreen from '../screens/FeatureRequestScreen';
+import MiniPlayer from '../components/MiniPlayer';
+import { useCurrentPlayer } from '../context/CurrentPlayerContext';
 
 const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 
 const ICONS_MAP: Record<string, string> = {
   Home: 'home-outline',
@@ -24,9 +35,10 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   const { colors } = useTheme();
   const { buildHref } = useLinkBuilder();
 
-  // Only show tab bar if there is only one route
-  // console.log("state.routes", state);
-  if (state.routes[state.index]?.state?.routes?.length > 1) return null;
+  // Hide tab bar only on specific screens like audio/video players
+  const currentRoute = state.routes[state.index]?.state?.routes?.[state.routes[state.index]?.state?.index];
+  const hideTabBarScreens = ['EnhancedAudioPlayer', 'EnhancedVideoPlayer'];
+  if (currentRoute && hideTabBarScreens.includes(currentRoute.name)) return null;
 
   return (
     <View style={[styles.tabBarContainer, { backgroundColor: colors.card }]}>
@@ -81,17 +93,80 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   );
 }
 
+// Tab Navigator Component
+const TabNavigator = () => {
+  const { 
+    currentAudioItem, 
+    currentVideoItem,
+    isAudioPlayerVisible,
+    isVideoPlayerVisible,
+    clearAudioPlayer,
+    clearVideoPlayer
+  } = useCurrentPlayer();
+  
+  const handleCloseMiniPlayer = () => {
+    if (currentAudioItem) {
+      clearAudioPlayer();
+    }
+    if (currentVideoItem) {
+      clearVideoPlayer();
+    }
+  };
+  
+  return (
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        tabBar={(props) => <MyTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="Categories" component={CategoriesStack} />
+        <Tab.Screen name="Account" component={AccountStack} />
+      </Tab.Navigator>
+      
+      {/* Show audio mini player when audio is playing and not in full screen */}
+      {currentAudioItem && isAudioPlayerVisible && (
+        <MiniPlayer 
+          currentItem={currentAudioItem} 
+          onClose={handleCloseMiniPlayer}
+          type="audio"
+        />
+      )}
+      
+      {/* Show video mini player when video is playing and not in full screen */}
+      {currentVideoItem && isVideoPlayerVisible && (
+        <MiniPlayer 
+          currentItem={currentVideoItem} 
+          onClose={handleCloseMiniPlayer}
+          type="video"
+        />
+      )}
+    </View>
+  );
+};
+
+// Main Dashboard with Drawer
 const DashboardNavigator = () => {
   return (
-    <Tab.Navigator
-      tabBar={(props) => <MyTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawer {...props} />}
+      screenOptions={{
+        headerShown: false,
+        drawerType: 'front',
+        drawerStyle: {
+          width: 280,
+        },
+      }}
     >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="Categories" component={CategoriesStack} />
-      {/* <Tab.Screen name="Downloads" component={DownloadsStack} /> */}
-      <Tab.Screen name="Account" component={AccountStack} />
-    </Tab.Navigator>
+      <Drawer.Screen name="MainTabs" component={TabNavigator} />
+      <Drawer.Screen name="Downloads" component={DownloadsStack} />
+      <Drawer.Screen name="Settings" component={SettingsScreen} />
+      <Drawer.Screen name="About" component={AboutScreen} />
+      <Drawer.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Drawer.Screen name="SearchScreen" component={SearchScreen} />
+      <Drawer.Screen name="ReportIssue" component={ReportIssueScreen} />
+      <Drawer.Screen name="FeatureRequest" component={FeatureRequestScreen} />
+    </Drawer.Navigator>
   );
 };
 

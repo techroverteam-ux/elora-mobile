@@ -32,6 +32,12 @@ const Account = () => {
 
       <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <AccountOption
+          label="Settings"
+          icon="cog-outline"
+          onPress={() => navigate('Settings')}
+        />
+
+        <AccountOption
           label="Appearence"
           icon="theme-light-dark"
           onPress={() => navigate('Appearence')}
@@ -41,6 +47,18 @@ const Account = () => {
           label="Select Language"
           icon="translate"
           onPress={() => navigate('SelectLanguage')}
+        />
+
+        <AccountOption
+          label="About"
+          icon="information-outline"
+          onPress={() => navigate('About')}
+        />
+
+        <AccountOption
+          label="Help & Support"
+          icon="help-circle-outline"
+          onPress={() => navigate('HelpSupport')}
         />
 
         <AccountOption
@@ -80,6 +98,61 @@ const Account = () => {
             }
           })}
         />
+
+        {/* Bottom Action Buttons */}
+        <View style={styles.bottomActions}>
+          <View style={styles.actionRow}>
+            <AccountActionButton
+              label="Downloads"
+              icon="download"
+              onPress={() => Alert.alert('Downloads', 'View your downloaded content')}
+            />
+            <AccountActionButton
+              label="Favorites"
+              icon="heart"
+              onPress={() => Alert.alert('Favorites', 'View your favorite content')}
+            />
+          </View>
+          
+          <View style={styles.actionRow}>
+            <AccountActionButton
+              label="History"
+              icon="history"
+              onPress={() => Alert.alert('History', 'View your listening/viewing history')}
+            />
+            <AccountActionButton
+              label="Playlists"
+              icon="playlist-music"
+              onPress={() => Alert.alert('Playlists', 'Manage your playlists')}
+            />
+          </View>
+          
+          <View style={styles.actionRow}>
+            <AccountActionButton
+              label="Notifications"
+              icon="bell"
+              onPress={() => Alert.alert('Notifications', 'Manage notification settings')}
+            />
+            <AccountActionButton
+              label="Privacy"
+              icon="shield-account"
+              onPress={() => Alert.alert('Privacy', 'Privacy and security settings')}
+            />
+          </View>
+          
+          <View style={styles.actionRow}>
+            <AccountActionButton
+              label="Feedback"
+              icon="message-text"
+              onPress={() => navigate('ReportIssue')}
+            />
+            <AccountActionButton
+              label="Share App"
+              icon="share-variant"
+              onPress={() => Alert.alert('Share', 'Share Geeta Bal Sanskar app with friends')}
+            />
+          </View>
+        </View>
 
         <AccountOption
           label="Logout"
@@ -137,6 +210,34 @@ const AccountOption = ({
   );
 };
 
+const AccountActionButton = ({
+  label,
+  icon,
+  onPress,
+}: {
+  label: string;
+  icon: any;
+  onPress: () => void;
+}) => {
+  const { colors } = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionButton,
+        { 
+          backgroundColor: pressed ? colors.primaryContainer : colors.surface,
+          borderColor: colors.outline 
+        },
+      ]}
+    >
+      <MaterialDesignIcons name={icon} size={20} color={colors.primary} />
+      <Text style={[styles.actionText, { color: colors.onSurface }]}>{label}</Text>
+    </Pressable>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -170,5 +271,30 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 12,
+  },
+  bottomActions: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: 4,
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 6,
   },
 });

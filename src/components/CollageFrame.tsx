@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, ImageStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, ImageStyle, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import CustomFastImage from './CustomFastImage';
 import { WIDTH } from '../utils/HelperFunctions';
 import { ResourceUrls } from '../hooks/useAzureAssets';
@@ -9,6 +10,7 @@ type CollageFrameProps = {
   type: number;
   containerStyle?: ViewStyle;
   imageStyle?: ImageStyle;
+  title?: string;
 };
 
 const CollageFrame: React.FC<CollageFrameProps> = ({
@@ -16,7 +18,9 @@ const CollageFrame: React.FC<CollageFrameProps> = ({
   type,
   containerStyle,
   imageStyle,
+  title = 'Gallery',
 }) => {
+  const navigation = useNavigation();
   // Filter and sort collegeFrame URLs
   const collageImages = Object.entries(resourceUrls)
     .filter(([key]) => key.startsWith('collegeFrame'))
@@ -29,14 +33,37 @@ const CollageFrame: React.FC<CollageFrameProps> = ({
 
   if (collageImages.length === 0) return null;
 
+  const handleImagePress = (index: number) => {
+    try {
+      const imageUrls = collageImages.map(([, url]) => url);
+      console.log('CollageFrame - Navigating to ImageViewer with:', {
+        images: imageUrls,
+        initialIndex: index,
+        title: title,
+      });
+      (navigation as any).navigate('ImageViewer', {
+        images: imageUrls,
+        initialIndex: index,
+        title: title,
+      });
+    } catch (error) {
+      console.error('CollageFrame - Error navigating to ImageViewer:', error);
+    }
+  };
+
   return (
     <View style={[styles.imageRow, containerStyle]}>
       {collageImages.map(([key, url], index) => (
-        <CustomFastImage
+        <TouchableOpacity
           key={index}
-          imageUrl={url}
-          style={[styles.sideImage, imageStyle]}
-        />
+          onPress={() => handleImagePress(index)}
+          activeOpacity={0.8}
+        >
+          <CustomFastImage
+            imageUrl={url}
+            style={[styles.sideImage, imageStyle]}
+          />
+        </TouchableOpacity>
       ))}
     </View>
   );

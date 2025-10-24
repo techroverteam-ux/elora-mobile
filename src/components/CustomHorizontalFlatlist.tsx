@@ -1,8 +1,13 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native'
+import { FlatList, StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import React from 'react'
+import { useNavigation } from '@react-navigation/native'
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import CustomFastImage from './CustomFastImage'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 import { useTheme } from 'react-native-paper'
+import { HomeStackParamList } from '../navigation/types'
+
+type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
 const data = [
   {
@@ -34,6 +39,20 @@ const data = [
 
 const CustomHorizontalFlatlist = () => {
   const { colors } = useTheme();
+  const navigation = useNavigation<NavigationProp>();
+  
+  const handleItemPress = (item: any) => {
+    navigation.navigate('EnhancedAudioPlayer', {
+      item: {
+        _id: item.id,
+        title: item.title,
+        artist: 'Various Artists',
+        duration: item.duration,
+        imageUrl: item.image,
+        audioUrl: 'https://example.com/audio.mp3',
+      }
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -45,13 +64,13 @@ const CustomHorizontalFlatlist = () => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <TouchableOpacity style={styles.card} onPress={() => handleItemPress(item)} activeOpacity={0.8}>
             <View style={styles.imageContainer}>
               <CustomFastImage style={styles.image} imageUrl={item.image} />
               <MaterialDesignIcons
                 name="play-circle"
                 size={36}
-                color={colors.onPrimary} // Usually white in dark theme or dark in light theme
+                color={colors.onPrimary}
                 style={styles.playIcon}
               />
             </View>
@@ -61,7 +80,7 @@ const CustomHorizontalFlatlist = () => {
             <Text style={[styles.duration, { color: colors.onSurfaceVariant }]}>
               {item.duration}
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </View>

@@ -23,6 +23,10 @@ export const useAzureBlobImages = (
 
         const encodedUrl = encodeURIComponent(blobUrl);
         const azureApiUrl = `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodedUrl}`;
+        
+        console.log('useAzureBlobImages - Original blob URL:', blobUrl);
+        console.log('useAzureBlobImages - Encoded URL:', encodedUrl);
+        console.log('useAzureBlobImages - Azure API URL:', azureApiUrl);
 
         // Update initial data with the image URL and loading state
         if (!imageData[key]) {

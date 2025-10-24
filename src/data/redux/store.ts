@@ -6,6 +6,8 @@ import { dummyApi } from './services/dummyApi';
 import { authApi } from './services/authApi';
 import { sectionsApi } from './services/sectionsApi';
 import { dashboardApi } from './services/dashboardApi';
+import { mediaApi } from './services/mediaApi';
+import { categoriesApi } from './services/categoriesApi';
 
 export const store = configureStore({
   reducer: {
@@ -14,14 +16,18 @@ export const store = configureStore({
     [dummyApi.reducerPath]: dummyApi.reducer,
     [authApi.reducerPath]: authApi.reducer,
     [sectionsApi.reducerPath]: sectionsApi.reducer,
-    [dashboardApi.reducerPath]: dashboardApi.reducer
+    [dashboardApi.reducerPath]: dashboardApi.reducer,
+    [mediaApi.reducerPath]: mediaApi.reducer,
+    [categoriesApi.reducerPath]: categoriesApi.reducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       dummyApi.middleware,
       authApi.middleware,
       sectionsApi.middleware,
-      dashboardApi.middleware
+      dashboardApi.middleware,
+      mediaApi.middleware,
+      categoriesApi.middleware
     ),
 });
 

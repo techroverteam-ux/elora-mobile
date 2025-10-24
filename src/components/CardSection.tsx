@@ -8,6 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import { useTheme } from 'react-native-paper';
 import { MD3Colors } from 'react-native-paper/lib/typescript/types';
@@ -88,10 +89,15 @@ function CardSection<T>({
         contentContainerStyle={styles.flatListContent}
         keyExtractor={(_, index) => index.toString()}
         renderItem={({ item }) => {
-          const imageUri = String(item[imageKey]);
-          const cardTitle = String(item[titleKey]);
-          const cardSubtitle = subtitleKey ? String(item[subtitleKey]) : '';
-          const contentTag = contentTagName ? String(item[contentTagName]) : '';
+          const imageUri = String(item[imageKey] || '');
+          const cardTitle = String(item[titleKey] || 'Untitled');
+          const cardSubtitle = subtitleKey ? String(item[subtitleKey] || '') : '';
+          const contentTag = contentTagName ? String(item[contentTagName] || '') : '';
+          
+          // Generate placeholder colors based on title
+          const colors_list = ['#FADBD8', '#FDEBD0', '#D6EAF8', '#D5F5E3', '#FCF3CF', '#E8DAEF'];
+          const colorIndex = cardTitle.length % colors_list.length;
+          const placeholderColor = colors_list[colorIndex];
 
           return (
             <TouchableOpacity
@@ -107,7 +113,20 @@ function CardSection<T>({
             >
               {/* Image + Badge */}
               <View style={styles.imageContainer}>
-                <CustomFastImage style={styles.image} imageUrl={imageUri} />
+                {imageUri && imageUri !== 'undefined' && imageUri !== 'null' ? (
+                  <CustomFastImage style={styles.image} imageUrl={imageUri} />
+                ) : (
+                  <View style={[styles.image, { backgroundColor: placeholderColor, justifyContent: 'center', alignItems: 'center' }]}>
+                    <MaterialDesignIcons 
+                      name={title?.toLowerCase().includes('video') ? 'video' : 'music-note'} 
+                      size={40} 
+                      color="#666" 
+                    />
+                    <Text style={{ color: '#666', fontSize: 12, marginTop: 4 }}>
+                      {title?.toLowerCase().includes('video') ? 'Video' : 'Audio'}
+                    </Text>
+                  </View>
+                )}
                 {contentTag ? (
                   <View style={[styles.trendingBadge, getTagStyle(contentTag, colors)]}>
                     <Text

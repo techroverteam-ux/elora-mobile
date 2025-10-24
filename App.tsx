@@ -14,8 +14,11 @@ import {
   CombinedLightPaperTheme,
 } from './src/theme';
 import { AudioPlayerProvider } from './src/context/AudioPlayerContext';
+import { CurrentPlayerProvider } from './src/context/CurrentPlayerContext';
+import { PlaylistProvider } from './src/context/PlaylistContext';
 import { ThemeProvider, useThemeContext } from './src/context/ThemeContext';
 import { RedirectProvider } from './src/context/RedirectContext';
+import { MediaPlayerManagerProvider } from './src/context/MediaPlayerManager';
 
 const ThemedApp = () => {
   const { theme, isThemeLoaded } = useThemeContext();
@@ -39,9 +42,15 @@ const ThemedApp = () => {
           <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
           <AuthProvider>
             <RedirectProvider>
-              <AudioPlayerProvider>
-                <RootNavigation theme={navigationTheme} />
-              </AudioPlayerProvider>
+              <MediaPlayerManagerProvider>
+                <AudioPlayerProvider>
+                  <CurrentPlayerProvider>
+                    <PlaylistProvider>
+                      <RootNavigation theme={navigationTheme} />
+                    </PlaylistProvider>
+                  </CurrentPlayerProvider>
+                </AudioPlayerProvider>
+              </MediaPlayerManagerProvider>
             </RedirectProvider>
           </AuthProvider>
         </SafeAreaView>

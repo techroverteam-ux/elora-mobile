@@ -1,15 +1,14 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, ActivityIndicator } from 'react-native'
+import React, { useState } from 'react'
 import AppBarHeader from '../../components/AppBarHeader'
-import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
-import { categoryListData } from '../../data/categoryData';
-import { HEIGHT } from '../../utils/HelperFunctions';
-import CustomHorizontalFlatlist from '../../components/CustomHorizontalFlatlist';
-import CustomTodaysPick from '../../components/CustomTodaysPick';
+import UnifiedMediaCard from '../../components/UnifiedMediaCard';
+import MediaListItem from '../../components/MediaListItem';
+import ViewToggle from '../../components/ViewToggle';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
+import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi';
 
 const buttons = [
   { label: 'Bhajans', color: '#f97316' },    // Orange
@@ -22,6 +21,22 @@ const AllAudios = () => {
   type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
   const { navigate } = useNavigation<HomeNavigationProp>();
   const { colors } = useTheme();
+  const [isGridView, setIsGridView] = useState(true);
+
+  const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'audio' });
+  const audioData = featuredData?.data?.audios || [];
+
+  const handleAudioPress = (item: any) => {
+    navigate('EnhancedAudioPlayer', {
+      item: {
+        _id: item._id,
+        title: item.title,
+        artist: item.artist || item.description,
+        imageUrl: item.thumbnailUrl || item.imageUrl,
+        audioUrl: item.streamingUrl || item.audioUrl,
+      }
+    });
+  };
 
   // Split buttons into rows of 2
   const rows = [];
@@ -35,7 +50,7 @@ const AllAudios = () => {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
+          <View key={rowIndex} style={styles.buttonRow}>
             {row.map((btn, index) => (
               <TouchableOpacity
                 key={index}
@@ -52,26 +67,44 @@ const AllAudios = () => {
           </View>
         ))}
 
-        <CustomVerticalFlatlist
-          title='Weekly Picks'
-          scrollEnabled={false}
-          data={categoryListData}
-          onItemPress={(item) => console.log('Pressed:', item)}
-        />
-
-        {/* Have to modify CustomHorizontalFlatlist for further use */}
-        <CustomHorizontalFlatlist />
-
-        <CustomTodaysPick
-          imageSource={require('../../assets/images/shreeKrishna.png')} // Replace with your actual image path
-          title="Shree Krishna Govind"
-          subtitle="Lata Mangeshkar, Ravindra Jain"
-          description="A devotional song praising Lord Krishna, composed beautifully with divine vocals."
-          onPress={() => {
-            console.log('Play button pressed');
-            // you could also navigate or trigger a modal here
-          }}
-        />
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading audios...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.header}>
+              <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Featured Audios</Text>
+              <ViewToggle isGridView={isGridView} onToggle={setIsGridView} />
+            </View>
+            
+            <FlatList
+              data={audioData}
+              numColumns={isGridView ? 2 : 1}
+              key={isGridView ? 'grid' : 'list'}
+              keyExtractor={(item, index) => item._id || index.toString()}
+              renderItem={({ item }) => 
+                isGridView ? (
+                  <UnifiedMediaCard
+                    item={item}
+                    type="audio"
+                    onPress={handleAudioPress}
+                  />
+                ) : (
+                  <MediaListItem
+                    item={item}
+                    type="audio"
+                    onPress={handleAudioPress}
+                  />
+                )
+              }
+              contentContainerStyle={isGridView ? styles.gridContent : styles.listContent}
+              columnWrapperStyle={isGridView ? styles.row : undefined}
+              showsVerticalScrollIndicator={false}
+            />
+          </>
+        )}
       </ScrollView>
     </View>
   )
@@ -83,7 +116,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
   },
-  row: {
+  buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
@@ -108,5 +141,35 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginVertical: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  listContent: {
+    paddingVertical: 8,
+  },
+  gridContent: {
+    paddingHorizontal: 10,
+  },
+  row: {
+    justifyContent: 'space-around',
   },
 })

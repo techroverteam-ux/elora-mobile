@@ -27,6 +27,19 @@ type CategoryItem = {
   icon?: string;
 };
 
+// Random icons and colors for categories
+const getRandomIcon = (id: string) => {
+  const icons = ['📚', '🎧', '🧘', '📜', '👨🏫', '🎤', '🌱', '👧', '📖', '🎯', '💡', '🔥', '⭐', '🎨', '🏆', '💎'];
+  const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % icons.length;
+  return icons[index];
+};
+
+const getRandomColor = (id: string) => {
+  const colors = ['#FADBD8', '#FDEBD0', '#D6EAF8', '#D5F5E3', '#FCF3CF', '#E8DAEF', '#D1F2EB', '#FEF9E7', '#EBDEF0', '#D0ECE7'];
+  const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+  return colors[index];
+};
+
 const Categories = () => {
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
 
@@ -103,12 +116,12 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
       accessible
       accessibilityLabel={`Category: ${item.title}`}
       accessibilityRole="button"
-      style={[styles.card, { backgroundColor: item.color || '#f2f2f2' }]}
+      style={[styles.card, { backgroundColor: item.color || getRandomColor(item._id) }]}
       onPress={handlePress}
       activeOpacity={0.8}
     >
       <View style={styles.iconWrapper}>
-        <Text style={styles.icon}>{item.icon || '📁'}</Text>
+        <Text style={styles.icon}>{item.icon || getRandomIcon(item._id)}</Text>
       </View>
       <Text style={styles.title}>
         {item.title}

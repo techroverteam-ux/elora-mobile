@@ -17,6 +17,9 @@ const CategorieDataList = () => {
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
   const { title, id } = route.params;
 
+  console.log('CategorieDataList - Route params:', route.params);
+  console.log('CategorieDataList - Title:', title, 'ID:', id);
+
   type CategorieDataListNavigationProp = NativeStackNavigationProp<
     CategoriesStackParamList,
     'CategorieDataList'
@@ -26,8 +29,13 @@ const CategorieDataList = () => {
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
 
   useEffect(() => {
+    console.log('CategorieDataList - Making API call with ID:', id);
     getCategoriesRequest(id);
   }, [getCategoriesRequest, id]);
+
+  useEffect(() => {
+    console.log('CategorieDataList - API Response:', { data, error, isLoading });
+  }, [data, error, isLoading]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -38,9 +46,14 @@ const CategorieDataList = () => {
           <ActivityIndicator size="large" color="#000" />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.loaderContainer}>
+          <Text style={styles.errorText}>Error loading data</Text>
+          <Text style={styles.errorDetails}>{JSON.stringify(error)}</Text>
+        </View>
       ) : (
         <View style={{ flex: 1 }}>
-
+          <Text style={styles.debugText}>Data count: {data?.data?.length || 0}</Text>
           <CustomVerticalFlatlist
             data={data?.data}
             onItemPress={(item) => navigate('BlogPage', { categoryData: item })}
@@ -66,6 +79,23 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#555',
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+  },
+  errorDetails: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  debugText: {
+    fontSize: 14,
+    color: '#333',
+    padding: 10,
+    textAlign: 'center',
   },
   noImageContainer: {
     width: '100%',

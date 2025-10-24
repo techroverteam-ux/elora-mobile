@@ -7,15 +7,28 @@ export type RootStackParamList = {
     redirectTo?: string;
     redirectParams?: Record<string, any>;
   };
+  Settings: undefined;
+  About: undefined;
+  HelpSupport: undefined;
+  SearchScreen: undefined;
+  ReportIssue: undefined;
+  FeatureRequest: undefined;
 };
 
 export type HomeStackParamList = {
   HomeMain: undefined;
   AllAudios: undefined;
+  AllPDFs: undefined;
   AudioCategoryScreen: { title: any };
   AllVideos: { item: any };
   AudioPlayer: { item: any };
   VideoPlayer: { item: any };
+  EnhancedAudioPlayer: { item: any; playlist?: any[] };
+  EnhancedVideoPlayer: { item: any; playlist?: any[] };
+  EnhancedAllAudios: undefined;
+  EnhancedAllVideos: { item?: any };
+  SearchScreen: undefined;
+  GalleryList: { initialIndex?: number };
 };
 
 export type CategoriesStackParamList = {
@@ -23,6 +36,10 @@ export type CategoriesStackParamList = {
   CategorieDataList: { title: string, id: string };
   BlogPage: { categoryData: any };
   SubCategorie: { categoryId: any };
+  EnhancedAudioPlayer: { item: any; playlist?: any[] };
+  EnhancedVideoPlayer: { item: any; playlist?: any[] };
+  GalleryList: { initialIndex?: number };
+  ImageViewer: { images: string[]; initialIndex: number; title?: string };
 };
 
 export type AccountStackParamList = {
@@ -38,7 +55,15 @@ export type AccountStackParamList = {
     };
   };
   VideoPlayer: { item: any };
-  PdfViewer: undefined;
+  EnhancedAudioPlayer: { item: any; playlist?: any[] };
+  EnhancedVideoPlayer: { item: any; playlist?: any[] };
+  PdfViewer: { item?: any };
+  Settings: undefined;
+  About: undefined;
+  HelpSupport: undefined;
+  ReportIssue: undefined;
+  FeatureRequest: undefined;
+  GalleryList: { initialIndex?: number };
 };
 
 export type AuthStackParamList = {
