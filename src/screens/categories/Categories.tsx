@@ -45,11 +45,18 @@ const Categories = () => {
 
   useEffect(() => {
     try {
+      console.log('Categories - Fetching sections...');
       getSectionRequest({});
     } catch (error) {
-      console.error('Error fetching sections:', error);
+      console.error('Categories - Error fetching sections:', error);
     }
   }, [getSectionRequest]);
+
+  // Debug logging
+  console.log('Categories - Section data:', sectionData);
+  console.log('Categories - Is loading:', isLoading);
+  console.log('Categories - Is error:', isError);
+  console.log('Categories - Sections count:', sectionData?.data?.length || 0);
 
   const renderItem = useCallback(
     ({ item }: { item: CategoryItem }) => <CategoryCard item={item} />,
@@ -68,9 +75,11 @@ const Categories = () => {
   }
 
   if (isError) {
+    console.error('Categories - API Error:', isError);
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>Error loading categories</Text>
+        <Text style={styles.emptyText}>Error loading sections</Text>
+        <Text style={styles.errorDetails}>Please check your internet connection</Text>
         <TouchableOpacity onPress={() => getSectionRequest({})} style={styles.retryButton}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -79,9 +88,13 @@ const Categories = () => {
   }
 
   if (!sectionData?.data?.length) {
+    console.log('Categories - No sections data:', sectionData);
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No categories available</Text>
+        <Text style={styles.emptyText}>No sections available</Text>
+        <TouchableOpacity onPress={() => getSectionRequest({})} style={styles.retryButton}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -112,15 +125,20 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
 
   const handlePress = () => {
     try {
+      console.log('CategoryCard - Pressed category:', item.title, 'ID:', item._id);
       requireAuth(() => {
         // This callback runs only if user is authenticated
+        console.log('CategoryCard - Navigating to CategorieDataList with:', {
+          title: item.title || 'Category',
+          id: item._id,
+        });
         navigation.navigate('CategorieDataList', {
           title: item.title || 'Category',
           id: item._id,
         });
       });
     } catch (error) {
-      console.error('Navigation error:', error);
+      console.error('CategoryCard - Navigation error:', error);
     }
   };
 
@@ -214,6 +232,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999',
+  },
+  errorDetails: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 20,
   },
   retryButton: {
     marginTop: 16,

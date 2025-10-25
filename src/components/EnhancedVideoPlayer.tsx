@@ -619,9 +619,6 @@ const styles = StyleSheet.create({
   controlIcon: {
     padding: 8,
   },
-  seekButton: {
-    padding: 8,
-  },
   enhancedPlayButton: {
     width: 64,
     height: 64,

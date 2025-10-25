@@ -243,7 +243,10 @@ const BlogPage = () => {
                   <UnifiedMediaCard
                     item={item}
                     type="pdf"
-                    onPress={(subItem) => navigate('BlogPage', { categoryData: subItem })}
+                    isGridView={isGridView}
+                    onPress={(subItem) => navigate('SubCategorie', { 
+                      categoryData: subItem
+                    })}
                   />
                 )}
                 contentContainerStyle={isGridView ? styles.gridContent : styles.listContent}

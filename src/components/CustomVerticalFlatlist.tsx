@@ -10,6 +10,7 @@ import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
 import { useAzureAssets } from '../hooks/useAzureAssets';
+import { useNavigation } from '@react-navigation/native';
 
 interface CustomVerticalFlatlistProps {
   title?: string;
@@ -30,6 +31,7 @@ const VerticalListItem = ({
   imageUrl?: string | ((item: any) => string | undefined);
 }) => {
   const { colors } = useTheme();
+  const navigation = useNavigation();
 
   // get azure assets only if no custom image URL is passed
   const { resourceUrls } = useAzureAssets(item);
@@ -49,11 +51,24 @@ const VerticalListItem = ({
         activeOpacity={0.8}
       >
         {finalImageUrl ? (
-          <CustomFastImage
-            style={styles.image}
-            imageUrl={finalImageUrl}
-            resizeMode="cover"
-          />
+          <TouchableOpacity
+            onPress={() => {
+              if (item.type === 'image') {
+                (navigation as any).navigate('ImageViewer', {
+                  images: [finalImageUrl],
+                  initialIndex: 0,
+                  title: item.title || 'Image'
+                });
+              }
+            }}
+            disabled={item.type !== 'image'}
+          >
+            <CustomFastImage
+              style={styles.image}
+              imageUrl={finalImageUrl}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
         ) : null}
 
         <View style={styles.textContainer}>

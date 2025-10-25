@@ -36,7 +36,7 @@ export type CategoriesStackParamList = {
   CategoriesMain: undefined;
   CategorieDataList: { title: string, id: string };
   BlogPage: { categoryData: any };
-  SubCategorie: { categoryId: any };
+  SubCategorie: { categoryData: any };
   EnhancedAudioPlayer: { item: any; playlist?: any[] };
   EnhancedVideoPlayer: { item: any; playlist?: any[] };
   GalleryList: { initialIndex?: number };

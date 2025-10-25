@@ -9,6 +9,7 @@ import { dashboardApi } from './services/dashboardApi';
 import { mediaApi } from './services/mediaApi';
 import { categoriesApi } from './services/categoriesApi';
 
+
 export const store = configureStore({
   reducer: {
     counter: counterReducer,
@@ -18,7 +19,8 @@ export const store = configureStore({
     [sectionsApi.reducerPath]: sectionsApi.reducer,
     [dashboardApi.reducerPath]: dashboardApi.reducer,
     [mediaApi.reducerPath]: mediaApi.reducer,
-    [categoriesApi.reducerPath]: categoriesApi.reducer
+    [categoriesApi.reducerPath]: categoriesApi.reducer,
+
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -27,7 +29,8 @@ export const store = configureStore({
       sectionsApi.middleware,
       dashboardApi.middleware,
       mediaApi.middleware,
-      categoriesApi.middleware
+      categoriesApi.middleware,
+
     ),
 });
 

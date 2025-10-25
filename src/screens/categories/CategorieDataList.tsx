@@ -26,8 +26,15 @@ const CategorieDataList = () => {
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
 
   useEffect(() => {
+    console.log('CategorieDataList - Fetching categories for section ID:', id);
     getCategoriesRequest(id);
   }, [getCategoriesRequest, id]);
+
+  // Debug logging
+  console.log('CategorieDataList - Categories data:', data);
+  console.log('CategorieDataList - Is loading:', isLoading);
+  console.log('CategorieDataList - Error:', error);
+  console.log('CategorieDataList - Categories count:', data?.data?.length || 0);
 
   return (
     <View style={{ flex: 1 }}>

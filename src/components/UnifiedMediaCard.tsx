@@ -13,9 +13,10 @@ interface UnifiedMediaCardProps {
   item: any;
   onPress: (item: any) => void;
   type?: 'audio' | 'video' | 'pdf';
+  isGridView?: boolean;
 }
 
-const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type = 'audio' }) => {
+const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type = 'audio', isGridView = true }) => {
   const { colors } = useTheme();
   const { resourceUrls } = useAzureAssets(item || {});
 
@@ -61,6 +62,66 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     return '';
   };
 
+  if (!isGridView) {
+    // List View Layout
+    return (
+      <TouchableOpacity
+        style={[styles.listCard, { backgroundColor: colors.surface }]}
+        onPress={() => onPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.listImageContainer}>
+          {getImageUrl() ? (
+            <CustomFastImage
+              style={styles.listImage}
+              imageUrl={getImageUrl()}
+            />
+          ) : (
+            <View style={[styles.listPlaceholderImage, { backgroundColor: colors.surfaceVariant }]}>
+              <MaterialDesignIcons
+                name={getIcon()}
+                size={24}
+                color={colors.primary}
+              />
+            </View>
+          )}
+          
+          {type === 'video' && (
+            <View style={styles.listPlayOverlay}>
+              <MaterialDesignIcons
+                name="play"
+                size={12}
+                color="#fff"
+              />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.listContent}>
+          <Text
+            style={[styles.listTitle, { color: colors.onSurface }]}
+            numberOfLines={1}
+          >
+            {item.title || 'Untitled'}
+          </Text>
+          <Text
+            style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]}
+            numberOfLines={1}
+          >
+            {item.artist || item.description || item.subtitle || 'Unknown'}
+          </Text>
+        </View>
+
+        <MaterialDesignIcons
+          name="chevron-right"
+          size={20}
+          color={colors.onSurfaceVariant}
+        />
+      </TouchableOpacity>
+    );
+  }
+
+  // Grid View Layout (existing)
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.surface }]}
@@ -177,6 +238,60 @@ const styles = StyleSheet.create({
   duration: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  // List View Styles
+  listCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginHorizontal: 8,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  listImageContainer: {
+    position: 'relative',
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  listImage: {
+    width: 60,
+    height: 60,
+  },
+  listPlaceholderImage: {
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listPlayOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  listTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listSubtitle: {
+    fontSize: 14,
   },
 });
 

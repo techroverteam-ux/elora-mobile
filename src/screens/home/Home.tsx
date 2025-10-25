@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
@@ -9,6 +9,7 @@ import CardCarousel from '../../components/CardCarousel';
 import MediaHorizontalList from '../../components/MediaHorizontalList';
 import DailyGyanGallery from '../../components/DailyGyanGallery';
 import DebugCategoriesApi from '../../components/DebugCategoriesApi';
+
 import { useAuth } from '../../context/AuthContext';
 import { HomeStackParamList } from '../../navigation/types';
 import { useGetDashboardQuery } from '../../data/redux/services/mediaApi';
@@ -164,11 +165,12 @@ const Home: React.FC = () => {
             type="pdf"
             onItemPress={(item) => {
               requireAuth(() => {
+                console.log('Home - PDF item pressed:', item);
                 (navigation as any).navigate('PdfViewer', {
-                  item: {
-                    ...item,
-                    pdfUrl: item.streamingUrl || item.pdfUrl,
-                  }
+                  uri: item.streamingUrl || item.pdfUrl,
+                  title: item.title,
+                  description: item.description,
+                  item: item
                 });
               });
             }}
