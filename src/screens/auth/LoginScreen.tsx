@@ -9,6 +9,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  Image,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { useAuth, UserType } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -36,17 +39,59 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [generalError, setGeneralError] = useState('');
 
   const [loginUser, { isLoading }] = useGetLoginUserMutation();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    return '';
+  };
+
+  const clearErrors = () => {
+    setEmailError('');
+    setPasswordError('');
+    setGeneralError('');
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Validation Error', 'Please enter both email and password.');
+    clearErrors();
+    
+    // Validate inputs
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validatePassword(password);
+    
+    if (emailValidation) {
+      setEmailError(emailValidation);
+    }
+    if (passwordValidation) {
+      setPasswordError(passwordValidation);
+    }
+    
+    if (emailValidation || passwordValidation) {
       return;
     }
 
     try {
-      const response = await loginUser({ email, password }).unwrap();
+      const response = await loginUser({ email: email.toLowerCase().trim(), password }).unwrap();
       console.log('Login Response:', response);
 
       const { token, user } = response.data;
@@ -66,10 +111,13 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
       }
 
     } catch (error: any) {
-      const message =
-        error?.data?.message ||
-        (error?.status === 401 ? 'Invalid credentials. Please try again.' : 'Something went wrong');
-      Alert.alert('Login Failed', message);
+      console.error('Login error:', error);
+      const message = error?.data?.message || 
+        (error?.status === 401 ? 'Invalid email or password. Please try again.' : 
+         error?.status === 429 ? 'Too many login attempts. Please try again later.' :
+         error?.status >= 500 ? 'Server error. Please try again later.' :
+         'Login failed. Please check your connection and try again.');
+      setGeneralError(message);
     }
   };
 
@@ -79,21 +127,41 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   };
 
   return (
-    <LinearGradient
-      colors={['#FF6B35', '#F8803B', '#FFB347']}
+    <KeyboardAvoidingView 
       style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
-      
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <MaterialDesignIcons name="book-open-variant" size={60} color="#fff" />
-        </View>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue to Geeta Bal Sanskar</Text>
-      </View>
+      <LinearGradient
+        colors={['#FF6B35', '#F8803B', '#FFB347']}
+        style={styles.container}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+        
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialDesignIcons name="arrow-left" size={24} color="#fff" />
+            </TouchableOpacity>
+            
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/images/logo1234.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue to Geeta Bal Sanskar</Text>
+          </View>
 
-      <View style={styles.formContainer}>
+          <View style={styles.formContainer}>
         {isAutoLoginOn && (
           <AutoLoginCredentials
             onSelectUser={handleSelectUser}
@@ -102,22 +170,38 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
           />
         )}
 
-        <View style={styles.inputContainer}>
+        {generalError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{generalError}</Text>
+          </View>
+        ) : null}
+
+        <View style={[styles.inputContainer, emailError ? styles.inputError : null]}>
           <MaterialDesignIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError('');
+              if (generalError) setGeneralError('');
+            }}
             placeholder="Email Address"
             keyboardType="email-address"
             style={styles.input}
+            autoCapitalize="none"
           />
         </View>
+        {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, passwordError ? styles.inputError : null]}>
           <MaterialDesignIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (passwordError) setPasswordError('');
+              if (generalError) setGeneralError('');
+            }}
             placeholder="Password"
             secureTextEntry={!showPassword}
             showToggle
@@ -126,6 +210,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
             style={styles.input}
           />
         </View>
+        {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
 
         <TouchableOpacity
           style={[styles.loginButton, { opacity: isLoading ? 0.7 : 1 }]}
@@ -147,8 +232,10 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
             Don't have an account? <Text style={styles.registerTextBold}>Sign Up</Text>
           </Text>
         </TouchableOpacity>
-      </View>
-    </LinearGradient>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -158,20 +245,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flexGrow: 1,
+    minHeight: height,
+  },
   header: {
-    flex: 0.4,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: hp(8),
+    paddingBottom: hp(4),
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    top: hp(8),
+    left: wp(5),
+    padding: wp(2.5),
   },
   logoContainer: {
     width: wp(25),
     height: wp(25),
     borderRadius: wp(12.5),
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: hp(2.5),
+  },
+  logoImage: {
+    width: wp(20),
+    height: wp(20),
   },
   title: {
     fontSize: normalize(32),
@@ -186,21 +288,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(10),
   },
   formContainer: {
-    flex: 0.6,
     backgroundColor: '#fff',
     borderTopLeftRadius: normalize(30),
     borderTopRightRadius: normalize(30),
     paddingHorizontal: wp(8),
     paddingTop: hp(5),
+    paddingBottom: hp(5),
+    minHeight: height * 0.6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
     borderRadius: normalize(15),
     marginBottom: hp(2.5),
     paddingHorizontal: wp(4),
     height: hp(7),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputIcon: {
     marginRight: wp(2.5),
@@ -209,6 +319,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: normalize(16),
     color: '#333',
+    paddingVertical: hp(1),
   },
   loginButton: {
     backgroundColor: '#F8803B',
@@ -245,5 +356,29 @@ const styles = StyleSheet.create({
   registerTextBold: {
     fontWeight: 'bold',
     color: '#F8803B',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    borderRadius: normalize(8),
+    padding: wp(3),
+    marginBottom: hp(2),
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: normalize(14),
+    textAlign: 'center',
+  },
+  fieldError: {
+    color: '#f44336',
+    fontSize: normalize(12),
+    marginTop: -hp(2),
+    marginBottom: hp(1),
+    marginLeft: wp(4),
+  },
+  inputError: {
+    borderColor: '#f44336',
+    borderWidth: 1.5,
   },
 });

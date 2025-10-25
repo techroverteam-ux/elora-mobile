@@ -26,10 +26,7 @@ const AppNavigator = () => {
     return <LoadingScreen />;
   }
 
-  return (
-    // isAuthenticated ? <DashboardNavigator /> : <AuthNavigator />
-    <DashboardNavigator />
-  );
+  return <DashboardNavigator />;
 };
 
 export default AppNavigator;

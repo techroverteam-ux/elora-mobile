@@ -20,7 +20,6 @@ const CustomDrawer = (props: any) => {
     { icon: 'book-open-outline', label: 'Geeta Chapters', screen: 'GeetaChapters' },
     { icon: 'headphones', label: 'Audio Library', screen: 'AudioLibrary' },
     { icon: 'video-outline', label: 'Video Library', screen: 'VideoLibrary' },
-    { icon: 'download-outline', label: 'Downloads', screen: 'Downloads' },
     { icon: 'bookmark-outline', label: 'Bookmarks', screen: 'Bookmarks' },
     { icon: 'history', label: 'Recently Played', screen: 'RecentlyPlayed' },
     { icon: 'account-group-outline', label: 'Satsang', screen: 'Satsang' },
@@ -47,7 +46,6 @@ const CustomDrawer = (props: any) => {
       'Categories': 'MainTabs',
       'AudioLibrary': 'MainTabs',
       'VideoLibrary': 'MainTabs',
-      'Downloads': 'Downloads',
       'Account': 'MainTabs',
       'Settings': 'Settings',
       'About': 'About',
@@ -119,7 +117,11 @@ const CustomDrawer = (props: any) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <MaterialDesignIcons name="book-open-variant" size={50} color="#fff" />
+            <Image
+              source={require('../assets/images/logo1234.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.appName}>Geeta Bal Sanskaar</Text>
           <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
@@ -132,7 +134,7 @@ const CustomDrawer = (props: any) => {
         </View>
 
         {/* Main Menu */}
-        <View style={styles.section}>
+        <View style={[styles.section, styles.firstSection]}>
           <Text style={styles.sectionTitle}>Main Menu</Text>
           {menuItems.map((item, index) => (
             <TouchableOpacity
@@ -175,7 +177,7 @@ const CustomDrawer = (props: any) => {
         ) : (
           <TouchableOpacity
             style={styles.loginButton}
-            onPress={() => handleNavigation('Login')}
+            onPress={() => props.navigation.navigate('AuthModal')}
           >
             <MaterialDesignIcons name="login" size={24} color="#4CAF50" />
             <Text style={styles.loginText}>Login</Text>
@@ -194,65 +196,94 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flexGrow: 1,
+    paddingTop: 0,
   },
   header: {
     backgroundColor: '#F8803B',
-    padding: 20,
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 0,
     alignItems: 'center',
+    marginTop: -20,
+    marginHorizontal: -20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  logoImage: {
+    width: 50,
+    height: 50,
   },
   appName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 4,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
-    marginBottom: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
   },
   userInfo: {
     alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
   },
   userName: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#fff',
     fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 2,
   },
   userEmail: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
   },
   section: {
-    paddingVertical: 10,
+    paddingVertical: 5,
+    marginTop: 10,
+  },
+  firstSection: {
+    marginTop: 0,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: '#f5f5f5',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: '#eee',
   },
@@ -264,7 +295,7 @@ const styles = StyleSheet.create({
   footer: {
     borderTopWidth: 1,
     borderTopColor: '#eee',
-    padding: 20,
+    padding: 16,
   },
   logoutButton: {
     flexDirection: 'row',

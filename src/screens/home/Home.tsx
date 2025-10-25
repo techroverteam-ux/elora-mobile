@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { HomeStackParamList } from '../../navigation/types';
 import { useGetDashboardQuery } from '../../data/redux/services/mediaApi';
 import { testAudioData, testVideoData, testPDFData } from '../../data/testMediaData';
+import { useRequireAuth } from '../../hooks/useRequireAuth';
 
 type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
 
@@ -20,6 +21,7 @@ const Home: React.FC = () => {
   const { colors } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const navigation = useNavigation<HomeNavigationProp>();
+  const { requireAuth } = useRequireAuth();
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
 
@@ -54,60 +56,64 @@ const Home: React.FC = () => {
   // }
 
   const handleVideoPress = (item: any, playlist?: any[]) => {
-    if (!item) {
-      console.error('Home - Video item is null/undefined');
-      return;
-    }
+    requireAuth(() => {
+      if (!item) {
+        console.error('Home - Video item is null/undefined');
+        return;
+      }
 
-    try {
-      navigation.navigate('EnhancedVideoPlayer', {
-        item: {
-          ...item,
-          _id: item._id || 'video-' + Date.now(),
-          videoUri: item.videoUrl || item.videoUri || item.streamingUrl || '',
-          videoUrl: item.videoUrl || item.streamingUrl || '',
-          streamingUrl: item.streamingUrl || '',
-          title: item.title || 'Video',
-          thumbnailUrl: item.thumbnailUrl || item.imageUrl || '',
-        },
-        playlist: playlist || [],
-      });
-    } catch (error) {
-      console.error('Home - Error navigating to video player:', error);
-    }
+      try {
+        navigation.navigate('EnhancedVideoPlayer', {
+          item: {
+            ...item,
+            _id: item._id || 'video-' + Date.now(),
+            videoUri: item.videoUrl || item.videoUri || item.streamingUrl || '',
+            videoUrl: item.videoUrl || item.streamingUrl || '',
+            streamingUrl: item.streamingUrl || '',
+            title: item.title || 'Video',
+            thumbnailUrl: item.thumbnailUrl || item.imageUrl || '',
+          },
+          playlist: playlist || [],
+        });
+      } catch (error) {
+        console.error('Home - Error navigating to video player:', error);
+      }
+    });
   };
 
   const handleAudioPress = (item: any, playlist?: any[]) => {
-    if (!item) {
-      console.error('Home - Audio item is null/undefined');
-      return;
-    }
+    requireAuth(() => {
+      if (!item) {
+        console.error('Home - Audio item is null/undefined');
+        return;
+      }
 
-    console.log('Home - Audio item pressed:', item);
-    console.log('Home - Audio URLs being passed:', {
-      streamingUrl: item.streamingUrl,
-      audioUrl: item.audioUrl,
-      thumbnailUrl: item.thumbnailUrl,
-      imageUrl: item.imageUrl
-    });
-
-    try {
-      navigation.navigate('EnhancedAudioPlayer', {
-        item: {
-          _id: item._id || 'audio-' + Date.now(),
-          title: item.title || 'Audio',
-          artist: item.artist || item.description || 'Unknown Artist',
-          imageUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage || '',
-          thumbnailUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || '',
-          audioUrl: item.streamingUrl || item.audioUrl || '',
-          streamingUrl: item.streamingUrl || item.audioUrl || '',
-          ...item
-        },
-        playlist: playlist || [],
+      console.log('Home - Audio item pressed:', item);
+      console.log('Home - Audio URLs being passed:', {
+        streamingUrl: item.streamingUrl,
+        audioUrl: item.audioUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        imageUrl: item.imageUrl
       });
-    } catch (error) {
-      console.error('Home - Error navigating to audio player:', error);
-    }
+
+      try {
+        navigation.navigate('EnhancedAudioPlayer', {
+          item: {
+            _id: item._id || 'audio-' + Date.now(),
+            title: item.title || 'Audio',
+            artist: item.artist || item.description || 'Unknown Artist',
+            imageUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage || '',
+            thumbnailUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || '',
+            audioUrl: item.streamingUrl || item.audioUrl || '',
+            streamingUrl: item.streamingUrl || item.audioUrl || '',
+            ...item
+          },
+          playlist: playlist || [],
+        });
+      } catch (error) {
+        console.error('Home - Error navigating to audio player:', error);
+      }
+    });
   };
 
   return (
@@ -157,11 +163,13 @@ const Home: React.FC = () => {
             data={displayTopBooks}
             type="pdf"
             onItemPress={(item) => {
-              (navigation as any).navigate('PdfViewer', {
-                item: {
-                  ...item,
-                  pdfUrl: item.streamingUrl || item.pdfUrl,
-                }
+              requireAuth(() => {
+                (navigation as any).navigate('PdfViewer', {
+                  item: {
+                    ...item,
+                    pdfUrl: item.streamingUrl || item.pdfUrl,
+                  }
+                });
               });
             }}
             onSeeAll={() => navigation.navigate('AllPDFs')}
@@ -177,11 +185,13 @@ const Home: React.FC = () => {
               if (item.type === 'video') {
                 handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
               } else if (item.type === 'pdf') {
-                (navigation as any).navigate('PdfViewer', {
-                  item: {
-                    ...item,
-                    pdfUrl: item.streamingUrl || item.pdfUrl,
-                  }
+                requireAuth(() => {
+                  (navigation as any).navigate('PdfViewer', {
+                    item: {
+                      ...item,
+                      pdfUrl: item.streamingUrl || item.pdfUrl,
+                    }
+                  });
                 });
               } else {
                 handleAudioPress(item, displayRecentUploads.filter(i => i.type !== 'video' && i.type !== 'pdf'));

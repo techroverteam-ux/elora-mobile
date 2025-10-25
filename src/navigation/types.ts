@@ -29,6 +29,7 @@ export type HomeStackParamList = {
   EnhancedAllVideos: { item?: any };
   SearchScreen: undefined;
   GalleryList: { initialIndex?: number };
+  PdfViewer: { item?: any };
 };
 
 export type CategoriesStackParamList = {

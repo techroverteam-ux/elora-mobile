@@ -12,11 +12,20 @@ const PdfViewer = () => {
   const route = useRoute();
   const item = (route.params as any)?.item;
 
-  const source = item?.pdfUrl 
-    ? { uri: item.pdfUrl, cache: true }
-    : Platform.OS === "android"
-    ? { uri: "bundle-assets://thereactnativebook-sample.pdf" }
-    : { uri: "bundle-assets://thereactnativebook-sample.pdf" }
+  // Use same proxy approach as working carousel
+  const getPdfUrl = () => {
+    if (!item?.pdfUrl) return null;
+    
+    // Use proxy URL for Azure blob access
+    const proxyUrl = `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodeURIComponent(item.pdfUrl)}`;
+    console.log('PDF Viewer - Using proxy URL:', proxyUrl);
+    return proxyUrl;
+  };
+  
+  const pdfUrl = getPdfUrl();
+  const source = pdfUrl 
+    ? { uri: pdfUrl, cache: false, headers: {} }
+    : null
 
   // const source = { uri: 'http://samples.leanpub.com/thereactnativebook-sample.pdf', cache: true };
   //const source = require('./test.pdf');  // ios only
@@ -35,26 +44,34 @@ const PdfViewer = () => {
       </Text> */}
 
       <View style={styles.container}>
-        <Pdf
-          ref={pdfRef}
-          horizontal
-          enablePaging
-          page={1}
-          source={source}
-          onLoadComplete={(numberOfPages, filePath) => {
-            console.log(`Number of pages: ${numberOfPages}`);
-          }}
-          onPageChanged={(page, numberOfPages) => {
-            console.log(`Current page: ${page}`);
-          }}
-          onError={(error) => {
-            console.log(error);
-          }}
-          onPressLink={(uri) => {
-            console.log(`Link pressed: ${uri}`);
-          }}
-          style={styles.pdf}
-        />
+        {source ? (
+          <Pdf
+            ref={pdfRef}
+            horizontal
+            enablePaging
+            page={1}
+            source={source}
+            onLoadComplete={(numberOfPages, filePath) => {
+              console.log(`PDF Viewer - Number of pages: ${numberOfPages}`);
+            }}
+            onPageChanged={(page, numberOfPages) => {
+              console.log(`PDF Viewer - Current page: ${page}`);
+            }}
+            onError={(error) => {
+              console.error('PDF Viewer - Error loading PDF:', error);
+            }}
+            onPressLink={(uri) => {
+              console.log(`PDF Viewer - Link pressed: ${uri}`);
+            }}
+            style={styles.pdf}
+          />
+        ) : (
+          <View style={styles.errorContainer}>
+            <Text style={[styles.errorText, { color: colors.error }]}>
+              No PDF available to display
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -100,6 +117,15 @@ const styles = StyleSheet.create({
   },
   pdf: {
     flex: 1,
-
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

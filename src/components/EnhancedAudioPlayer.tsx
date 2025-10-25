@@ -91,6 +91,7 @@ const EnhancedAudioPlayer = () => {
     });
   }
 
+  // Separate effect for initial setup
   useEffect(() => {
     StatusBar.setBarStyle(dark ? 'light-content' : 'dark-content');
     StatusBar.setBackgroundColor(dark ? '#1a1a1a' : '#ffffff');
@@ -104,7 +105,7 @@ const EnhancedAudioPlayer = () => {
     // Set current audio item for mini player and hide it since we're in full screen
     if (item) {
       switchToAudio(item);
-      setAudioPlayerVisible(false); // Hide mini player when in full screen
+      setAudioPlayerVisible(false);
     }
     
     // Set playlist if provided
@@ -112,8 +113,19 @@ const EnhancedAudioPlayer = () => {
       const startIndex = playlist.findIndex((track: any) => track._id === item._id);
       setPlaylist(playlist, startIndex >= 0 ? startIndex : 0);
     }
-    
-    if (audioUrl) {
+
+    setOnPositionChanged(() => {});
+
+    return () => {
+      StatusBar.setBarStyle('dark-content');
+      StatusBar.setBackgroundColor('#ffffff');
+      reset();
+    };
+  }, [item?._id]); // Only depend on item ID to prevent re-runs
+  
+  // Separate effect for audio loading
+  useEffect(() => {
+    if (audioUrl && currentTrack?._id) {
       setIsLoading(true);
       console.log('Enhanced Audio Player - Loading audio:', audioUrl);
       try {
@@ -126,20 +138,14 @@ const EnhancedAudioPlayer = () => {
       console.error('Enhanced Audio Player - No audio URL available');
       setIsLoading(false);
     }
-
-    setOnPositionChanged(() => {});
-
-    if (duration) {
+  }, [audioUrl, currentTrack?._id]); // Only reload when URL or track changes
+  
+  // Separate effect for duration changes
+  useEffect(() => {
+    if (duration > 0) {
       setIsLoading(false);
     }
-
-    return () => {
-      StatusBar.setBarStyle('dark-content');
-      StatusBar.setBackgroundColor('#ffffff');
-      // Reset audio player to prevent conflicts
-      reset();
-    };
-  }, [audioUrl, duration, loadBuffer, setOnPositionChanged, playlist, item, setPlaylist, reset]);
+  }, [duration]);
   
   const handleNext = () => {
     const next = nextTrack();

@@ -27,7 +27,6 @@ const Drawer = createDrawerNavigator();
 const ICONS_MAP: Record<string, string> = {
   Home: 'home-outline',
   Categories: 'view-dashboard-outline',
-  Downloads: 'download-outline',
   Account: 'account-outline',
 };
 

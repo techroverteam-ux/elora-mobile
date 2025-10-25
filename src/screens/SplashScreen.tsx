@@ -83,7 +83,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         >
           <View style={styles.iconContainer}>
             <Image
-              source={require('../assets/images/AppIcon.png')}
+              source={require('../assets/images/logo1234.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -144,11 +144,11 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(255,255,255,0.3)',
   },
   logoImage: {
     width: 100,

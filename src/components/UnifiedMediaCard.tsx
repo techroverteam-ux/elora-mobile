@@ -22,7 +22,7 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   const getIcon = () => {
     switch (type) {
       case 'video': return 'play-circle';
-      case 'pdf': return 'file-pdf-box';
+      case 'pdf': return 'book-open-variant';
       default: return 'music-circle';
     }
   };
@@ -82,7 +82,16 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
             />
           </View>
         )}
-
+        
+        {type === 'video' && (
+          <View style={styles.playOverlay}>
+            <MaterialDesignIcons
+              name="play"
+              size={16}
+              color="#fff"
+            />
+          </View>
+        )}
       </View>
 
       <View style={styles.content}>

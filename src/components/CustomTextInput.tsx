@@ -42,8 +42,6 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
   return (
     <View
       style={[
-        styles.container,
-        { borderColor: colors.outline },
         showToggle && styles.passwordContainer,
         containerStyle,
       ]}
@@ -52,8 +50,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
         style={[
           styles.input,
           {
-            color: colors.onSurface,
-            borderColor: colors.outline,
+            color: '#333',
           },
           showToggle && { borderWidth: 0, flex: 1, marginBottom: 0 },
           style,
@@ -75,7 +72,7 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
           <MaterialDesignIcons
             name={showPassword ? 'eye-off' : 'eye'}
             size={24}
-            color={colors.onSurface}
+            color="#666"
           />
         </TouchableOpacity>
       )}
@@ -84,21 +81,20 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    borderWidth: 1,
-    borderRadius: 4,
-    marginBottom: 12,
-  },
   input: {
-    padding: 12,
     fontSize: 16,
+    padding: 0,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   eyeButton: {
     paddingHorizontal: 12,
+    paddingVertical: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

@@ -9,6 +9,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  Image,
+  KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,80 +36,182 @@ const RegisterScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [generalError, setGeneralError] = useState('');
 
   const [registerUser, { isLoading }] = useGetRegisterUserMutation();
 
+  const validateName = (name: string) => {
+    if (!name.trim()) {
+      return 'Full name is required';
+    }
+    if (name.trim().length < 2) {
+      return 'Name must be at least 2 characters long';
+    }
+    return '';
+  };
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+    }
+    return '';
+  };
+
+  const clearErrors = () => {
+    setNameError('');
+    setEmailError('');
+    setPasswordError('');
+    setGeneralError('');
+  };
+
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      Alert.alert('Validation Error', 'All fields are required.');
+    clearErrors();
+    
+    // Validate inputs
+    const nameValidation = validateName(name);
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validatePassword(password);
+    
+    if (nameValidation) {
+      setNameError(nameValidation);
+    }
+    if (emailValidation) {
+      setEmailError(emailValidation);
+    }
+    if (passwordValidation) {
+      setPasswordError(passwordValidation);
+    }
+    
+    if (nameValidation || emailValidation || passwordValidation) {
       return;
     }
 
     try {
-      const result = await registerUser({ name, email, password }).unwrap();
+      const result = await registerUser({ 
+        name: name.trim(), 
+        email: email.toLowerCase().trim(), 
+        password 
+      }).unwrap();
       console.log('Registered:', result);
 
-      Alert.alert('Success', 'Registration successful!', [
+      Alert.alert('Success', 'Registration successful! You can now login with your credentials.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
       console.error('Register failed:', err);
-      const message = getErrorMessage(err) || 'Something went wrong. Please try again.';
-      Alert.alert('Registration Failed', message);
+      const message = err?.data?.message ||
+        (err?.status === 409 ? 'An account with this email already exists.' :
+         err?.status === 429 ? 'Too many registration attempts. Please try again later.' :
+         err?.status >= 500 ? 'Server error. Please try again later.' :
+         'Registration failed. Please check your connection and try again.');
+      setGeneralError(message);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#FF6B35', '#F8803B', '#FFB347']}
+    <KeyboardAvoidingView 
       style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
-      
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialDesignIcons name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
+      <LinearGradient
+        colors={['#FF6B35', '#F8803B', '#FFB347']}
+        style={styles.container}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
         
-        <View style={styles.logoContainer}>
-          <MaterialDesignIcons name="account-plus" size={60} color="#fff" />
-        </View>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join Geeta Bal Sanskar community today</Text>
-      </View>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialDesignIcons name="arrow-left" size={24} color="#fff" />
+            </TouchableOpacity>
+            
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../assets/images/logo1234.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join Geeta Bal Sanskar community today</Text>
+          </View>
 
-      <View style={styles.formContainer}>
-        <View style={styles.inputContainer}>
+          <View style={styles.formContainer}>
+        {generalError ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{generalError}</Text>
+          </View>
+        ) : null}
+
+        <View style={[styles.inputContainer, nameError ? styles.inputError : null]}>
           <MaterialDesignIcons name="account-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
             placeholder="Full Name"
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text);
+              if (nameError) setNameError('');
+              if (generalError) setGeneralError('');
+            }}
             style={styles.input}
           />
         </View>
+        {nameError ? <Text style={styles.fieldError}>{nameError}</Text> : null}
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, emailError ? styles.inputError : null]}>
           <MaterialDesignIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
             placeholder="Email Address"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (emailError) setEmailError('');
+              if (generalError) setGeneralError('');
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             style={styles.input}
           />
         </View>
+        {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, passwordError ? styles.inputError : null]}>
           <MaterialDesignIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
             placeholder="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (passwordError) setPasswordError('');
+              if (generalError) setGeneralError('');
+            }}
             secureTextEntry={!showPassword}
             showToggle
             showPassword={showPassword}
@@ -114,6 +219,7 @@ const RegisterScreen = () => {
             style={styles.input}
           />
         </View>
+        {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
 
         <TouchableOpacity
           style={[styles.registerButton, { opacity: isLoading ? 0.7 : 1 }]}
@@ -135,8 +241,10 @@ const RegisterScreen = () => {
             Already have an account? <Text style={styles.loginTextBold}>Sign In</Text>
           </Text>
         </TouchableOpacity>
-      </View>
-    </LinearGradient>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -146,11 +254,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flexGrow: 1,
+    minHeight: height,
+  },
   header: {
-    flex: 0.4,
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: hp(8),
+    paddingBottom: hp(4),
     position: 'relative',
   },
   backButton: {
@@ -163,10 +275,14 @@ const styles = StyleSheet.create({
     width: wp(25),
     height: wp(25),
     borderRadius: wp(12.5),
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: hp(2.5),
+  },
+  logoImage: {
+    width: wp(20),
+    height: wp(20),
   },
   title: {
     fontSize: normalize(32),
@@ -181,21 +297,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(10),
   },
   formContainer: {
-    flex: 0.6,
     backgroundColor: '#fff',
     borderTopLeftRadius: normalize(30),
     borderTopRightRadius: normalize(30),
     paddingHorizontal: wp(8),
     paddingTop: hp(5),
+    paddingBottom: hp(5),
+    minHeight: height * 0.6,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
     borderRadius: normalize(15),
     marginBottom: hp(2.5),
     paddingHorizontal: wp(4),
     height: hp(7),
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   inputIcon: {
     marginRight: wp(2.5),
@@ -204,6 +328,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: normalize(16),
     color: '#333',
+    paddingVertical: hp(1),
   },
   registerButton: {
     backgroundColor: '#F8803B',
@@ -240,5 +365,29 @@ const styles = StyleSheet.create({
   loginTextBold: {
     fontWeight: 'bold',
     color: '#F8803B',
+  },
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    borderRadius: normalize(8),
+    padding: wp(3),
+    marginBottom: hp(2),
+    borderLeftWidth: 4,
+    borderLeftColor: '#f44336',
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: normalize(14),
+    textAlign: 'center',
+  },
+  fieldError: {
+    color: '#f44336',
+    fontSize: normalize(12),
+    marginTop: -hp(2),
+    marginBottom: hp(1),
+    marginLeft: wp(4),
+  },
+  inputError: {
+    borderColor: '#f44336',
+    borderWidth: 1.5,
   },
 });
