@@ -267,7 +267,7 @@ const PdfViewer = () => {
               backgroundColor: colors.surface,
               borderColor: colors.outline 
             }]}>
-              <Text style={[styles.pageCounterText, { color: colors.onSurface }]}>
+              <Text style={[styles.pageCounterText, { color: colors.primary }]}>
                 {currentPage} / {totalPages > 0 ? totalPages : '...'}
               </Text>
             </View>
