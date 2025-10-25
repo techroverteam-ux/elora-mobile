@@ -8,6 +8,7 @@ import { useTheme } from 'react-native-paper'
 import { useNavigation } from '@react-navigation/native'
 import { getImageUrl, processAzureUrl } from '../utils/azureUrlHelper'
 import { useAzureAssets } from '../hooks/useAzureAssets'
+import { useRequireAuth } from '../hooks/useRequireAuth'
 
 type Category = {
   _id: string
@@ -77,37 +78,42 @@ const CardCarousel: React.FC = () => {
   const { colors } = useTheme()
   const navigation = useNavigation()
   const [currentPage, setCurrentPage] = useState(0)
+  const { requireAuth } = useRequireAuth()
 
   // Fetch top 6 recently added categories
   const { data: categories = [], isLoading, error } = useGetRecentCategoriesQuery({ limit: 6 })
 
   const handleItemPress = (item: Category) => {
-    ; (navigation as any).navigate('Categories', {
-      screen: 'BlogPage',
-      params: {
-        categoryData: {
-          ...item,
-          _id: item._id,
-          categoryId: item._id,
-          sectionId: item._id,
-          name: item.title,
-          title: item.title,
-          description: item.description1 || item.subtitle,
-          type: 'blog',
+    requireAuth(() => {
+      (navigation as any).navigate('Categories', {
+        screen: 'BlogPage',
+        params: {
+          categoryData: {
+            ...item,
+            _id: item._id,
+            categoryId: item._id,
+            sectionId: item._id,
+            name: item.title,
+            title: item.title,
+            description: item.description1 || item.subtitle,
+            type: 'blog',
+          },
         },
-      },
+      })
     })
   }
 
   const handleReadMorePress = (item: Category) => {
-    ; (navigation as any).navigate('Categories', {
-      screen: 'CategorieDataList',
-      params: {
-        title: item.title,
-        id: item.sectionId?._id || item._id,
-        categoryId: item._id,
-        sectionId: item.sectionId?._id,
-      },
+    requireAuth(() => {
+      (navigation as any).navigate('Categories', {
+        screen: 'CategorieDataList',
+        params: {
+          title: item.title,
+          id: item.sectionId?._id || item._id,
+          categoryId: item._id,
+          sectionId: item.sectionId?._id,
+        },
+      })
     })
   }
 

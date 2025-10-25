@@ -4,13 +4,19 @@ import AuthNavigator from './AuthNavigator';
 import { useRedirect } from '../context/RedirectContext';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
-const AuthModalWrapper = ({ navigation }: any) => {
+const AuthModalWrapper = ({ navigation, route }: any) => {
   const { redirectTo, redirectParams, clearRedirect } = useRedirect();
+  const onAuthSuccess = route?.params?.onAuthSuccess;
 
   const handleLoginSuccess = () => {
     navigation.goBack();
 
-    if (redirectTo) {
+    // Execute pending action if provided
+    if (onAuthSuccess) {
+      setTimeout(() => {
+        onAuthSuccess();
+      }, 250);
+    } else if (redirectTo) {
       setTimeout(() => {
         navigation.navigate(redirectTo as never, redirectParams as never);
         clearRedirect();

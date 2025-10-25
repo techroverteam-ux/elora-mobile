@@ -44,7 +44,11 @@ const Categories = () => {
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
 
   useEffect(() => {
-    getSectionRequest({});
+    try {
+      getSectionRequest({});
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
   }, [getSectionRequest]);
 
   const renderItem = useCallback(
@@ -52,7 +56,7 @@ const Categories = () => {
     []
   );
 
-  const keyExtractor = useCallback((item: CategoryItem) => item._id, []);
+  const keyExtractor = useCallback((item: CategoryItem, index: number) => item?._id || index.toString(), []);
 
   if (isLoading) {
     return (
@@ -63,7 +67,18 @@ const Categories = () => {
     );
   }
 
-  if (isError || !sectionData?.data?.length) {
+  if (isError) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Error loading categories</Text>
+        <TouchableOpacity onPress={() => getSectionRequest({})} style={styles.retryButton}>
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!sectionData?.data?.length) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No categories available</Text>
@@ -74,7 +89,7 @@ const Categories = () => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={sectionData.data}
+        data={sectionData?.data || []}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         numColumns={2}
@@ -92,23 +107,21 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
     CategoriesStackParamList,
     'CategoriesMain'
   >;
-  const { navigate } = useNavigation<CategoriesNavigationProp>();
+  const navigation = useNavigation<CategoriesNavigationProp>();
   const { requireAuth } = useRequireAuth();
 
   const handlePress = () => {
-    if (!requireAuth('App', {
-      screen: 'Categories',   // tab navigator screen
-      params: {
-        screen: 'CategorieDataList', // stack screen inside the tab
-        params: { title: item.title, id: item._id },
-      },
-    })) return;
-
-    // If already logged in, navigate directly
-    navigate('CategorieDataList', {
-      title: item.title,
-      id: item._id,
-    });
+    try {
+      requireAuth(() => {
+        // This callback runs only if user is authenticated
+        navigation.navigate('CategorieDataList', {
+          title: item.title || 'Category',
+          id: item._id,
+        });
+      });
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   return (
@@ -201,5 +214,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#999',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
