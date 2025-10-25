@@ -1,74 +1,60 @@
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import React, { useRef } from 'react';
-import Pdf from 'react-native-pdf';
+import { StyleSheet, Text, View, TouchableOpacity, Linking, Alert } from 'react-native';
+import React from 'react';
 import AppBarHeader from './AppBarHeader';
-import { HEIGHT, WIDTH } from '../utils/HelperFunctions';
 import { useTheme } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 const PdfViewer = () => {
-  const pdfRef = useRef(null);
   const { colors } = useTheme();
   const route = useRoute();
   const item = (route.params as any)?.item;
 
-  // Use same proxy approach as working carousel
-  const getPdfUrl = () => {
-    if (!item?.pdfUrl) return null;
-    
-    // Use proxy URL for Azure blob access
-    const proxyUrl = `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodeURIComponent(item.pdfUrl)}`;
-    console.log('PDF Viewer - Using proxy URL:', proxyUrl);
-    return proxyUrl;
-  };
+  const pdfUrl = item?.streamingUrl || item?.pdfUrl;
+  const proxyUrl = pdfUrl ? `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodeURIComponent(pdfUrl)}` : null;
   
-  const pdfUrl = getPdfUrl();
-  const source = pdfUrl 
-    ? { uri: pdfUrl, cache: false, headers: {} }
-    : null
+  // Use Google Docs viewer for better PDF compatibility
+  const googleDocsUrl = proxyUrl ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(proxyUrl)}` : null;
+  
+  console.log('PDF Viewer - Proxy URL:', proxyUrl);
+  console.log('PDF Viewer - Google Docs URL:', googleDocsUrl);
 
-  // const source = { uri: 'http://samples.leanpub.com/thereactnativebook-sample.pdf', cache: true };
-  //const source = require('./test.pdf');  // ios only
-  //const source = {uri:'bundle-assets://test.pdf' };
-  //const source = {uri:'file:///sdcard/test.pdf'};
-  //const source = {uri:"data:application/pdf;base64,JVBERi0xLjcKJc..."};
-  //const source = {uri:"content://com.example.blobs/xxxxxxxx-...?offset=0&size=xxx"};
-  //const source = {uri:"blob:xxxxxxxx-...?offset=0&size=xxx"};
+  const openPDF = async () => {
+    if (proxyUrl) {
+      try {
+        const supported = await Linking.canOpenURL(proxyUrl);
+        if (supported) {
+          await Linking.openURL(proxyUrl);
+        } else {
+          Alert.alert('Error', 'Cannot open PDF. Please install a PDF viewer app.');
+        }
+      } catch (error) {
+        console.error('Error opening PDF:', error);
+        Alert.alert('Error', 'Failed to open PDF');
+      }
+    }
+  };
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <AppBarHeader title={item?.title || "PDF Viewer"} />
 
-      {/* <Text style={{ color: colors.onBackground }}>
-        Source: {JSON.stringify(source)}
-      </Text> */}
-
       <View style={styles.container}>
-        {source ? (
-          <Pdf
-            ref={pdfRef}
-            horizontal
-            enablePaging
-            page={1}
-            source={source}
-            onLoadComplete={(numberOfPages, filePath) => {
-              console.log(`PDF Viewer - Number of pages: ${numberOfPages}`);
-            }}
-            onPageChanged={(page, numberOfPages) => {
-              console.log(`PDF Viewer - Current page: ${page}`);
-            }}
-            onError={(error) => {
-              console.error('PDF Viewer - Error loading PDF:', error);
-            }}
-            onPressLink={(uri) => {
-              console.log(`PDF Viewer - Link pressed: ${uri}`);
-            }}
-            style={styles.pdf}
-          />
+        {proxyUrl ? (
+          <View style={styles.pdfContainer}>
+            <MaterialDesignIcons name="file-pdf-box" size={80} color={colors.primary} />
+            <Text style={[styles.pdfTitle, { color: colors.onBackground }]}>
+              {item?.title || 'PDF Document'}
+            </Text>
+            <TouchableOpacity style={[styles.openButton, { backgroundColor: colors.primary }]} onPress={openPDF}>
+              <MaterialDesignIcons name="open-in-new" size={20} color="white" />
+              <Text style={styles.openButtonText}>Open PDF</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: colors.error }]}>
-              No PDF available to display
+              No PDF available
             </Text>
           </View>
         )}
@@ -82,26 +68,6 @@ export default PdfViewer;
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F4F4F4',
-  },
-  chapterBar: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  chapterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  chapterText: {
-    fontSize: 14,
-    color: '#333',
   },
   container: {
     flex: 1,
@@ -109,14 +75,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#fff',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
   },
-  pdf: {
+  pdfContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  pdfTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  openButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  openButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   errorContainer: {
     flex: 1,

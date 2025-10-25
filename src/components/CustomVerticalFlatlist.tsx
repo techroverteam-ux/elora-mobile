@@ -104,7 +104,7 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
           <VerticalListItem item={item} onItemPress={onItemPress} imageUrl={imageUrl} />
         )}
         keyExtractor={(item, index) =>
-          item?.id?.toString?.() || index.toString()
+          item?._id?.toString() || item?.id?.toString() || index.toString()
         }
         contentContainerStyle={styles.listContent}
         scrollEnabled={scrollEnabled}

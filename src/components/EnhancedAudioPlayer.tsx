@@ -34,7 +34,7 @@ const EnhancedAudioPlayer = () => {
   const { switchToAudio, setAudioPlayerVisible } = useCurrentPlayer();
   const { setPlaylist, nextTrack, previousTrack, hasNext, hasPrevious } = usePlaylist();
   const { goBackWithMiniPlayer } = usePlayerNavigation('audio', item);
-  const { stopAllVideo, registerAudioPlayer } = useMediaPlayerManager();
+  const { stopAllVideo, registerAudioPlayer, restoreAudioState, hasAudioState } = useMediaPlayerManager();
   
   const { resourceUrls } = useAzureAssets(item || {});
   const { streamingUrl } = resourceUrls || {};
@@ -56,6 +56,7 @@ const EnhancedAudioPlayer = () => {
   
   const play = () => {
     stopAllVideo();
+    setHasUserStartedPlayback(true);
     originalPlay();
   };
 
@@ -63,6 +64,7 @@ const EnhancedAudioPlayer = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(item);
+  const [hasUserStartedPlayback, setHasUserStartedPlayback] = useState(false);
 
   const progress = duration ? currentTime / duration : 0;
   
@@ -106,6 +108,11 @@ const EnhancedAudioPlayer = () => {
     if (item) {
       switchToAudio(item);
       setAudioPlayerVisible(false);
+    } else if (hasAudioState()) {
+      // Restore previous audio state if no new item provided
+      setTimeout(() => {
+        restoreAudioState();
+      }, 1000);
     }
     
     // Set playlist if provided
@@ -119,49 +126,82 @@ const EnhancedAudioPlayer = () => {
     return () => {
       StatusBar.setBarStyle('dark-content');
       StatusBar.setBackgroundColor('#ffffff');
-      reset();
+      // Don't reset audio when minimizing - let it continue playing
     };
-  }, [item?._id]); // Only depend on item ID to prevent re-runs
+  }, [item?._id, hasAudioState, restoreAudioState]); // Only depend on item ID to prevent re-runs
   
   // Separate effect for audio loading
   useEffect(() => {
     if (audioUrl && currentTrack?._id) {
       setIsLoading(true);
-      console.log('Enhanced Audio Player - Loading audio:', audioUrl);
-      try {
-        loadBuffer(audioUrl);
-      } catch (error) {
-        console.error('Enhanced Audio Player - Error loading audio:', error);
-        setIsLoading(false);
-      }
+      console.log('Enhanced Audio Player - Loading new track:', currentTrack.title);
+      console.log('Enhanced Audio Player - Audio URL:', audioUrl);
+      
+      // Small delay to ensure previous audio is cleared
+      const loadTimer = setTimeout(() => {
+        try {
+          loadBuffer(audioUrl);
+        } catch (error) {
+          console.error('Enhanced Audio Player - Error loading audio:', error);
+          setIsLoading(false);
+        }
+      }, 100);
+      
+      return () => clearTimeout(loadTimer);
     } else {
-      console.error('Enhanced Audio Player - No audio URL available');
+      console.error('Enhanced Audio Player - No audio URL available for:', currentTrack?.title);
       setIsLoading(false);
     }
-  }, [audioUrl, currentTrack?._id]); // Only reload when URL or track changes
+  }, [audioUrl, currentTrack?._id]); // Reload when URL or track ID changes
   
   // Separate effect for duration changes
   useEffect(() => {
     if (duration > 0) {
       setIsLoading(false);
+      // Auto-play if user has started playback (including track switching)
+      if (hasUserStartedPlayback && !isPlaying) {
+        console.log('Auto-playing new track');
+        setTimeout(() => {
+          play();
+        }, 100);
+      } else if (isPlaying && !hasUserStartedPlayback) {
+        console.log('Pausing auto-started audio - user must click play');
+        pause();
+      }
     }
-  }, [duration]);
+  }, [duration, isPlaying, hasUserStartedPlayback, play, pause]);
+  
+  const switchTrack = (newTrack: any) => {
+    if (newTrack && newTrack._id !== currentTrack?._id) {
+      console.log('Switching to track:', newTrack.title);
+      
+      // Stop current audio and clear buffer
+      pause();
+      reset();
+      
+      // Set user interaction flag to allow auto-play for track switching
+      setHasUserStartedPlayback(true);
+      
+      // Update track and context
+      setCurrentTrack(newTrack);
+      switchToAudio(newTrack);
+      setAudioPlayerVisible(false);
+      
+      // Auto-play will happen when duration is set
+    }
+  };
   
   const handleNext = () => {
     const next = nextTrack();
     if (next) {
-      setCurrentTrack(next);
-      switchToAudio(next);
-      setAudioPlayerVisible(false); // Keep mini player hidden in full screen
+      switchTrack(next);
     }
   };
   
   const handlePrevious = () => {
     const previous = previousTrack();
     if (previous) {
-      setCurrentTrack(previous);
-      switchToAudio(previous);
-      setAudioPlayerVisible(false); // Keep mini player hidden in full screen
+      switchTrack(previous);
     }
   };
 

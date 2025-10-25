@@ -48,7 +48,10 @@ const CategorieDataList = () => {
           <Text style={styles.debugText}>Data count: {data?.data?.length || 0}</Text>
           <CustomVerticalFlatlist
             data={data?.data}
-            onItemPress={(item) => navigate('BlogPage', { categoryData: item })}
+            onItemPress={(item) => {
+              console.log('Item pressed:', item);
+              navigate('BlogPage', { categoryData: item });
+            }}
           />
         </View>
       )}

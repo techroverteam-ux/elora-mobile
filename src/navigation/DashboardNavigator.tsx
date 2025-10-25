@@ -1,10 +1,11 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Platform, Dimensions } from 'react-native';
 import { useTheme, useLinkBuilder } from '@react-navigation/native';
 import { PlatformPressable } from '@react-navigation/elements';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import stack navigators
 import HomeStack from './stack/HomeStack';
@@ -33,6 +34,18 @@ const ICONS_MAP: Record<string, string> = {
 function MyTabBar({ state, descriptors, navigation }: any) {
   const { colors } = useTheme();
   const { buildHref } = useLinkBuilder();
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = Dimensions.get('window');
+  
+  // Calculate dynamic bottom padding based on device
+  const getBottomPadding = () => {
+    if (Platform.OS === 'ios') {
+      return Math.max(insets.bottom, 10);
+    }
+    // For Android, check if device has gesture navigation
+    const hasGestureNav = screenHeight > 800 && insets.bottom > 0;
+    return hasGestureNav ? Math.max(insets.bottom + 5, 15) : 10;
+  };
 
   // Hide tab bar only on specific screens like audio/video players
   const currentRoute = state.routes[state.index]?.state?.routes?.[state.routes[state.index]?.state?.index];
@@ -40,7 +53,13 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   if (currentRoute && hideTabBarScreens.includes(currentRoute.name)) return null;
 
   return (
-    <View style={[styles.tabBarContainer, { backgroundColor: colors.card }]}>
+    <View style={[
+      styles.tabBarContainer, 
+      { 
+        backgroundColor: colors.card,
+        paddingBottom: getBottomPadding(),
+      }
+    ]}>
       {state.routes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
         const label = options.tabBarLabel ?? options.title ?? route.name;
@@ -99,16 +118,19 @@ const TabNavigator = () => {
     currentVideoItem,
     isAudioPlayerVisible,
     isVideoPlayerVisible,
+    setAudioPlayerVisible,
+    setVideoPlayerVisible,
     clearAudioPlayer,
     clearVideoPlayer
   } = useCurrentPlayer();
   
   const handleCloseMiniPlayer = () => {
+    // Only hide the mini player, don't clear the audio/video
     if (currentAudioItem) {
-      clearAudioPlayer();
+      setAudioPlayerVisible(false);
     }
     if (currentVideoItem) {
-      clearVideoPlayer();
+      setVideoPlayerVisible(false);
     }
   };
   
@@ -176,8 +198,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#ccc',
-    paddingBottom: 10,
-    paddingTop: 6,
     elevation: 8,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -188,6 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 8,
   },
   tabLabel: {
     fontSize: 12,

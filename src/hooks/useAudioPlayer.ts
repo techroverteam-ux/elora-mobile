@@ -16,17 +16,23 @@ export default function useAudioPlayer() {
   const onPositionChanged = useRef<((offset: number) => void) | null>(null);
 
   const play = useCallback(async () => {
-    if (isPlaying || !audioBuffer.current) return;
+    if (isPlaying || !audioBuffer.current) {
+      console.log('Play blocked - isPlaying:', isPlaying, 'hasBuffer:', !!audioBuffer.current);
+      return;
+    }
 
     try {
+      console.log('Starting audio playback...');
       // Stop any existing source node first
       if (sourceNode.current) {
         sourceNode.current.stop(audioContext.current.currentTime);
         sourceNode.current = null;
       }
 
-      setIsPlaying(true);
-      if (audioContext.current.state === 'suspended') await audioContext.current.resume();
+      if (audioContext.current.state === 'suspended') {
+        console.log('Resuming audio context...');
+        await audioContext.current.resume();
+      }
 
       sourceNode.current = audioContext.current.createBufferSource({ pitchCorrection: true });
       sourceNode.current.buffer = audioBuffer.current;
@@ -47,6 +53,7 @@ export default function useAudioPlayer() {
       };
 
       sourceNode.current.onEnded = () => {
+        console.log('Audio ended');
         setIsPlaying(false);
         offset.current = 0;
         setCurrentTime(0);
@@ -54,7 +61,9 @@ export default function useAudioPlayer() {
       };
 
       sourceNode.current.start(audioContext.current.currentTime, offset.current);
+      setIsPlaying(true);
       AudioManager.setLockScreenInfo({ state: 'state_playing' });
+      console.log('Audio started successfully');
     } catch (error) {
       console.error('Error playing audio:', error);
       setIsPlaying(false);
@@ -62,16 +71,23 @@ export default function useAudioPlayer() {
   }, [isPlaying]);
 
   const pause = useCallback(async () => {
-    if (!isPlaying) return;
+    if (!isPlaying) {
+      console.log('Pause blocked - not playing');
+      return;
+    }
 
     try {
+      console.log('Pausing audio...');
       if (sourceNode.current) {
+        sourceNode.current.onPositionChanged = null;
+        sourceNode.current.onEnded = null;
         sourceNode.current.stop(audioContext.current.currentTime);
         sourceNode.current = null;
       }
       await audioContext.current.suspend();
-      AudioManager.setLockScreenInfo({ state: 'state_paused' });
       setIsPlaying(false);
+      AudioManager.setLockScreenInfo({ state: 'state_paused' });
+      console.log('Audio paused successfully');
     } catch (error) {
       console.error('Error pausing audio:', error);
       setIsPlaying(false);
@@ -155,6 +171,8 @@ export default function useAudioPlayer() {
     setIsPlaying(false);
     setDuration(null);
     setCurrentTime(0);
+    offset.current = 0;
+    seekOffset.current = 0;
     
     try {
       // Add headers to handle CORS and authentication if needed
@@ -167,7 +185,6 @@ export default function useAudioPlayer() {
       });
       
       console.log('Fetch response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -183,15 +200,13 @@ export default function useAudioPlayer() {
       const buffer = await audioContext.current.decodeAudioData(arrayBuffer);
       console.log('Audio decoded successfully, duration:', buffer.duration);
       
-      // Only set if we don't have a buffer already (prevent conflicts)
-      if (!audioBuffer.current) {
-        audioBuffer.current = buffer;
-        offset.current = 0;
-        seekOffset.current = 0;
-        playbackRate.current = 1;
-        setDuration(buffer.duration);
-        setCurrentTime(0);
-      }
+      audioBuffer.current = buffer;
+      offset.current = 0;
+      seekOffset.current = 0;
+      playbackRate.current = 1;
+      setDuration(buffer.duration);
+      setCurrentTime(0);
+      console.log('Audio buffer loaded and ready');
     } catch (err) {
       console.error('Error loading audio buffer:', err);
       console.error('Failed URL:', url);
@@ -209,6 +224,7 @@ export default function useAudioPlayer() {
   }, []);
 
   const reset = useCallback(() => {
+    console.log('Resetting audio player...');
     try {
       if (sourceNode.current) {
         sourceNode.current.onEnded = null;
@@ -226,7 +242,7 @@ export default function useAudioPlayer() {
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(null);
-    // AudioManager reset - getInstance method not available
+    console.log('Audio player reset complete');
   }, []);
 
   const setOnPositionChanged = useCallback((cb: ((offset: number) => void) | null) => {

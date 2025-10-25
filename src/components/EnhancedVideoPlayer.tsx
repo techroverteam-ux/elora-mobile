@@ -30,9 +30,9 @@ const EnhancedVideoPlayer = () => {
   const playlist = (route.params as any)?.playlist;
   const videoRef = useRef<React.ComponentRef<typeof Video>>(null);
   const { colors, dark } = useTheme();
-  const { setCurrentVideoItem } = useCurrentPlayer();
+  const { setCurrentVideoItem, clearAudioPlayer } = useCurrentPlayer();
   const { setPlaylist, nextTrack, previousTrack, hasNext, hasPrevious } = usePlaylist();
-  const { stopAllAudio, registerVideoPlayer } = useMediaPlayerManager();
+  const { stopAllAudio, registerVideoPlayer, saveAudioState } = useMediaPlayerManager();
 
   const [paused, setPaused] = useState(true);
   const [duration, setDuration] = useState(0);
@@ -83,6 +83,15 @@ const EnhancedVideoPlayer = () => {
   console.log('EnhancedVideoPlayer - Title:', videoTitle);
 
   useEffect(() => {
+    // Save audio state and stop all audio when video player mounts
+    saveAudioState();
+    stopAllAudio();
+    // Clear audio player and hide mini player
+    clearAudioPlayer();
+    
+    // Register this video player
+    registerVideoPlayer({ setPaused });
+    
     // Set current video item
     if (currentVideo) {
       setCurrentVideoItem(currentVideo);
@@ -106,7 +115,7 @@ const EnhancedVideoPlayer = () => {
       backHandler.remove();
       Orientation.lockToPortrait();
     };
-  }, [fullScreen, currentVideo, setCurrentVideoItem, playlist, item, setPlaylist]);
+  }, [fullScreen, currentVideo, setCurrentVideoItem, playlist, item, setPlaylist, saveAudioState, stopAllAudio, registerVideoPlayer]);
   
   const handleNext = () => {
     const next = nextTrack();
@@ -177,7 +186,11 @@ const EnhancedVideoPlayer = () => {
     if (!paused) {
       setPaused(true);
     } else {
+      // Save audio state and stop all audio before playing video
+      saveAudioState();
       stopAllAudio();
+      // Clear audio player and hide mini player when video starts
+      clearAudioPlayer();
       if (!hasUserPlayed) {
         setHasUserPlayed(true);
         setMuted(false);

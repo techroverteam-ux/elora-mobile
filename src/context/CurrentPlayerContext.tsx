@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { useMediaPlayerManager } from './MediaPlayerManager';
 
 interface CurrentPlayerContextType {
   currentAudioItem: any | null;
@@ -27,6 +28,7 @@ export const CurrentPlayerProvider: React.FC<CurrentPlayerProviderProps> = ({ ch
   const [currentVideoItem, setCurrentVideoItem] = useState<any | null>(null);
   const [isAudioPlayerVisible, setAudioPlayerVisible] = useState(false);
   const [isVideoPlayerVisible, setVideoPlayerVisible] = useState(false);
+  const { stopAllAudio, saveAudioState, restoreAudioState, hasAudioState } = useMediaPlayerManager();
 
   const clearCurrentPlayer = useCallback(() => {
     setCurrentAudioItem(null);
@@ -50,20 +52,32 @@ export const CurrentPlayerProvider: React.FC<CurrentPlayerProviderProps> = ({ ch
     // Clear video player first
     setCurrentVideoItem(null);
     setVideoPlayerVisible(false);
-    // Set audio player
+    // Set audio player - always update the item even if same ID (for track switching)
     setCurrentAudioItem(item);
     setAudioPlayerVisible(true);
-  }, []);
+    
+    // Restore audio state if returning to same audio without new item
+    if (!item && hasAudioState()) {
+      setTimeout(() => {
+        restoreAudioState();
+      }, 1000);
+    }
+  }, [hasAudioState, restoreAudioState]);
 
   const switchToVideo = useCallback((item: any) => {
     console.log('Switching to video player:', item?.title);
-    // Clear audio player first
+    // Save current audio state before switching
+    if (currentAudioItem) {
+      saveAudioState();
+    }
+    // Stop and clear audio player completely
+    stopAllAudio();
     setCurrentAudioItem(null);
     setAudioPlayerVisible(false);
     // Set video player
     setCurrentVideoItem(item);
     setVideoPlayerVisible(true);
-  }, []);
+  }, [currentAudioItem, saveAudioState, stopAllAudio]);
 
   return (
     <CurrentPlayerContext.Provider
