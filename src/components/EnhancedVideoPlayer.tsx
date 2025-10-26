@@ -8,6 +8,7 @@ import {
   StatusBar,
   BackHandler,
   Alert,
+  Share,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Video from 'react-native-video';
@@ -20,6 +21,9 @@ import { usePlaylist } from '../context/PlaylistContext';
 import { getStreamingUrl, getImageUrl, processAzureUrl } from '../utils/azureUrlHelper';
 import { wp, hp, normalize } from '../utils/responsive';
 import { useMediaPlayerManager } from '../context/MediaPlayerManager';
+import { useBookmarks } from '../context/BookmarkContext';
+import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
+import SafeBottomArea from './SafeBottomArea';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,7 +43,9 @@ const EnhancedVideoPlayer = () => {
   const [currentTime, setCurrentTime] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [isLiked, setIsLiked] = useState(false);
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
+  const isLiked = isBookmarked(currentVideo?._id || '');
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [currentVideo, setCurrentVideo] = useState(item);
   const [muted, setMuted] = useState(true);
@@ -191,6 +197,10 @@ const EnhancedVideoPlayer = () => {
       stopAllAudio();
       // Clear audio player and hide mini player when video starts
       clearAudioPlayer();
+      // Add to recently played when user starts playing
+      if (currentVideo) {
+        addRecentItem(currentVideo);
+      }
       if (!hasUserPlayed) {
         setHasUserPlayed(true);
         setMuted(false);
@@ -207,6 +217,21 @@ const EnhancedVideoPlayer = () => {
     setShowControls(true);
   };
 
+  const toggleMute = () => {
+    setMuted(!muted);
+    setShowControls(true);
+  };
+
+  const toggleRepeat = () => {
+    // Add repeat functionality here if needed
+    setShowControls(true);
+  };
+
+  const toggleShuffle = () => {
+    // Add shuffle functionality here if needed
+    setShowControls(true);
+  };
+
   const changePlaybackRate = () => {
     const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     const currentIndex = rates.indexOf(playbackRate);
@@ -214,6 +239,21 @@ const EnhancedVideoPlayer = () => {
     setPlaybackRate(nextRate);
     setShowControls(true);
   };
+
+  // Handle share functionality
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out this video: ${videoTitle}`,
+        url: videoUrl,
+        title: videoTitle,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Unable to share this video');
+    }
+  };
+
+
 
   if (!videoUrl) {
     return (
@@ -232,9 +272,26 @@ const EnhancedVideoPlayer = () => {
             <MaterialDesignIcons name="arrow-left" size={24} color={colors.onSurface} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.onSurface }]} numberOfLines={1}>{videoTitle}</Text>
-          <TouchableOpacity onPress={() => setIsLiked(!isLiked)} style={styles.headerButton}>
+          <TouchableOpacity onPress={() => {
+            if (currentVideo) {
+              const videoItem = {
+                ...currentVideo,
+                type: 'video',
+                videoUrl: currentVideo.videoUrl || currentVideo.streamingUrl || currentVideo.videoUri,
+                thumbnailUrl: currentVideo.thumbnailUrl || currentVideo.imageUrl || currentVideo.coverImage,
+                imageUrl: currentVideo.imageUrl || currentVideo.thumbnailUrl || currentVideo.coverImage
+              };
+              if (isLiked) {
+                removeBookmark(currentVideo._id);
+                Alert.alert('Bookmark', 'Removed from bookmarks');
+              } else {
+                addBookmark(videoItem);
+                Alert.alert('Bookmark', 'Added to bookmarks!');
+              }
+            }
+          }} style={styles.headerButton}>
             <MaterialDesignIcons 
-              name={isLiked ? "heart" : "heart-outline"} 
+              name={isLiked ? "bookmark" : "bookmark-outline"} 
               size={24} 
               color={isLiked ? "#F8803B" : colors.onSurface} 
             />
@@ -324,10 +381,10 @@ const EnhancedVideoPlayer = () => {
             {/* Center Controls */}
             <View style={styles.centerControls}>
               <TouchableOpacity 
-                onPress={handlePrevious} 
-                style={[styles.seekButton, { opacity: playlist && playlist.length > 1 ? 1 : 0.3 }]}
+                onPress={() => seekBy(-10)} 
+                style={styles.seekButton}
               >
-                <MaterialDesignIcons name="skip-previous" size={36} color="#fff" />
+                <MaterialDesignIcons name="rewind-10" size={32} color="#fff" />
               </TouchableOpacity>
 
               <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
@@ -339,10 +396,10 @@ const EnhancedVideoPlayer = () => {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                onPress={handleNext} 
-                style={[styles.seekButton, { opacity: playlist && playlist.length > 1 ? 1 : 0.3 }]}
+                onPress={() => seekBy(10)} 
+                style={styles.seekButton}
               >
-                <MaterialDesignIcons name="skip-next" size={36} color="#fff" />
+                <MaterialDesignIcons name="fast-forward-10" size={32} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -361,6 +418,13 @@ const EnhancedVideoPlayer = () => {
                   thumbTintColor="#F8803B"
                 />
                 <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
+                  <MaterialDesignIcons
+                    name={muted ? 'volume-off' : 'volume-high'}
+                    size={20}
+                    color="#fff"
+                  />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={toggleFullScreen} style={styles.fullscreenButton}>
                   <MaterialDesignIcons
                     name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
@@ -400,18 +464,14 @@ const EnhancedVideoPlayer = () => {
           
           {/* Enhanced Control Buttons */}
           <View style={styles.enhancedControls}>
-            <TouchableOpacity style={styles.controlIcon}>
-              <MaterialDesignIcons name="shuffle" size={24} color={colors.onSurfaceVariant} />
-            </TouchableOpacity>
-            
             <TouchableOpacity 
-              style={styles.seekButton}
+              style={styles.controlIcon}
               onPress={() => seekBy(-10)}
             >
-              <MaterialDesignIcons name="rewind-10" size={32} color={colors.onSurface} />
+              <MaterialDesignIcons name="rewind-10" size={28} color={"#F8803B"} />
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={togglePlayPause} style={[styles.enhancedPlayButton, { backgroundColor: colors.primary }]}>
+            <TouchableOpacity onPress={togglePlayPause} style={[styles.enhancedPlayButton, { backgroundColor: "#F8803B" }]}>
               <MaterialDesignIcons
                 name={paused ? 'play' : 'pause'}
                 size={40}
@@ -420,34 +480,36 @@ const EnhancedVideoPlayer = () => {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.seekButton}
+              style={styles.controlIcon}
               onPress={() => seekBy(10)}
             >
-              <MaterialDesignIcons name="fast-forward-10" size={32} color={colors.onSurface} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.controlIcon}>
-              <MaterialDesignIcons name="repeat" size={24} color={colors.onSurfaceVariant} />
+              <MaterialDesignIcons name="fast-forward-10" size={28} color={"#F8803B"} />
             </TouchableOpacity>
           </View>
           
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialDesignIcons name="thumb-up-outline" size={24} color={colors.onSurfaceVariant} />
-              <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>Like</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialDesignIcons name="share-variant" size={24} color={colors.onSurfaceVariant} />
-              <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>Share</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton}>
-              <MaterialDesignIcons name="playlist-plus" size={24} color={colors.onSurfaceVariant} />
-              <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>Save</Text>
-            </TouchableOpacity>
-          </View>
+          <SafeBottomArea backgroundColor={colors.surface}>
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={toggleMute}
+              >
+                <MaterialDesignIcons 
+                  name={muted ? "volume-off" : "volume-high"} 
+                  size={24} 
+                  color={"#F8803B"} 
+                />
+                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>
+                  {muted ? 'Unmute' : 'Mute'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
+                <MaterialDesignIcons name="share-variant" size={24} color={"#F8803B"} />
+                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>Share</Text>
+              </TouchableOpacity>
+            </View>
+          </SafeBottomArea>
         </View>
       )}
     </View>
@@ -565,11 +627,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
   },
+  muteButton: {
+    padding: 8,
+    marginRight: 8,
+  },
   fullscreenButton: {
     padding: 8,
   },
   videoInfo: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   videoTitle: {
     fontSize: normalize(18),
@@ -583,6 +650,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingTop: 10,
   },
   actionButton: {
     alignItems: 'center',

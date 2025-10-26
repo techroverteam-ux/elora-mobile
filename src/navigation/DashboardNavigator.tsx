@@ -19,6 +19,9 @@ import HelpSupportScreen from '../screens/HelpSupportScreen';
 import SearchScreen from '../screens/SearchScreen';
 import ReportIssueScreen from '../screens/ReportIssueScreen';
 import FeatureRequestScreen from '../screens/FeatureRequestScreen';
+import GalleryListScreen from '../screens/GalleryListScreen';
+import BookmarksScreen from '../screens/BookmarksScreen';
+import RecentlyPlayedScreen from '../screens/RecentlyPlayedScreen';
 import MiniPlayer from '../components/MiniPlayer';
 import { useCurrentPlayer } from '../context/CurrentPlayerContext';
 
@@ -181,12 +184,15 @@ const DashboardNavigator = () => {
     >
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
       <Drawer.Screen name="Downloads" component={DownloadsStack} />
+      <Drawer.Screen name="BookmarksScreen" component={BookmarksScreen} />
+      <Drawer.Screen name="RecentlyPlayedScreen" component={RecentlyPlayedScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="About" component={AboutScreen} />
       <Drawer.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Drawer.Screen name="SearchScreen" component={SearchScreen} />
       <Drawer.Screen name="ReportIssue" component={ReportIssueScreen} />
       <Drawer.Screen name="FeatureRequest" component={FeatureRequestScreen} />
+      <Drawer.Screen name="GalleryList" component={GalleryListScreen} />
     </Drawer.Navigator>
   );
 };

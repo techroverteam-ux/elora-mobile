@@ -147,10 +147,7 @@ const CardCarousel: React.FC = () => {
 
   return (
     <View>
-      <View style={styles.headerContainer}>
-        <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Featured Categories</Text>
-        <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>Recently Added</Text>
-      </View>
+
 
       <PagerView
         style={styles.pagerView}
@@ -201,7 +198,7 @@ const styles = StyleSheet.create({
   },
   pagerView: {
     height: 240,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   cardContainer: {
     marginHorizontal: 10,
@@ -292,7 +289,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   dot: {
     width: 8,

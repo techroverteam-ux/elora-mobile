@@ -11,12 +11,17 @@ const AboutScreen = () => {
       <AppBarHeader title="About" />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.logoContainer}>
-          <View style={[styles.logoCircle, { backgroundColor: colors.primary }]}>
-            <Text style={styles.logoText}>GBS</Text>
+        <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
+          <View style={styles.logoWrapper}>
+            <Image
+              source={require('../assets/images/logo1234.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={[styles.appName, { color: colors.onBackground }]}>Geeta Bal Sanskar</Text>
-          <Text style={[styles.version, { color: colors.onSurfaceVariant }]}>Version 1.0.0</Text>
+          <Text style={styles.appName}>Geeta Bal Sanskar</Text>
+          <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
+          <Text style={styles.version}>Version 1.0.0</Text>
         </View>
 
         <View style={styles.section}>
@@ -58,6 +63,15 @@ const AboutScreen = () => {
         </View>
 
         <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Developer Information</Text>
+          <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.infoTitle, { color: colors.primary }]}>Login Credentials (Demo)</Text>
+            <Text style={[styles.infoText, { color: colors.onSurface }]}>Email: demo@gbs.org.in</Text>
+            <Text style={[styles.infoText, { color: colors.onSurface }]}>Password: demo123</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Contact</Text>
           <Text style={[styles.contactInfo, { color: colors.onSurfaceVariant }]}>
             Email: support@gbs.org.in
@@ -87,28 +101,63 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
+    marginHorizontal: -20,
+    marginTop: -20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 30,
   },
-  logoCircle: {
+  logoWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  logoText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  logoImage: {
+    width: 60,
+    height: 60,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '500',
     marginBottom: 8,
   },
   version: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  infoCard: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F8803B',
+  },
+  infoTitle: {
     fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    marginBottom: 4,
+    fontFamily: 'monospace',
   },
   section: {
     marginBottom: 24,

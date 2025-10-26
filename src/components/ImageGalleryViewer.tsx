@@ -15,16 +15,20 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { wp, hp, normalize } from '../utils/responsive';
+import { useBookmarks } from '../context/BookmarkContext';
 
 const { width, height } = Dimensions.get('window');
 
 interface GalleryItem {
   _id: string;
   title: string;
+  type?: string;
   imageUrl?: string;
   thumbnailUrl?: string;
   mainImage?: string;
   headerImage?: string;
+  streamingUrl?: string;
+  downloadUrl?: string;
 }
 
 interface ImageGalleryViewerProps {
@@ -41,13 +45,16 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showControls, setShowControls] = useState(true);
+  const [rotation, setRotation] = useState(0);
   
   const scrollViewRef = useRef<ScrollView>(null);
 
   const currentImage = images[currentIndex];
   const imageUrl = currentImage ? (
+    processAzureUrl(currentImage.streamingUrl) ||
     processAzureUrl(currentImage.imageUrl) ||
     processAzureUrl(currentImage.thumbnailUrl) ||
     processAzureUrl(currentImage.mainImage) ||
@@ -65,20 +72,45 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
   const goToNext = () => {
     if (currentIndex < images.length - 1) {
       setCurrentIndex(currentIndex + 1);
+      setRotation(0);
+      resetZoom();
     }
   };
 
   const goToPrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+      setRotation(0);
+      resetZoom();
+    }
+  };
+
+  const rotateImage = () => {
+    setRotation((prev) => (prev + 90) % 360);
+  };
+
+  const handleBookmarkToggle = () => {
+    if (!currentImage) return;
+    
+    if (isBookmarked(currentImage._id)) {
+      removeBookmark(currentImage._id);
+    } else {
+      // Ensure the image has the correct type when bookmarking
+      const bookmarkItem = {
+        ...currentImage,
+        type: 'image'
+      };
+      addBookmark(bookmarkItem);
     }
   };
 
 
 
-  if (!visible || !currentImage) {
+  if (!visible || !currentImage || !images || images.length === 0) {
     return null;
   }
+
+  console.log('ImageGalleryViewer - currentIndex:', currentIndex, 'currentImage:', currentImage?.title, 'imageUrl:', imageUrl);
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -110,14 +142,18 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
             ref={scrollViewRef}
             style={styles.imageWrapper}
             contentContainerStyle={styles.imageContent}
-            maximumZoomScale={3}
-            minimumZoomScale={1}
+            maximumZoomScale={5}
+            minimumZoomScale={0.5}
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
+            pinchGestureEnabled={true}
+            scrollEnabled={true}
+            bounces={true}
+            bouncesZoom={true}
           >
             <CustomFastImage
               imageUrl={imageUrl}
-              style={styles.image}
+              style={[styles.image, { transform: [{ rotate: `${rotation}deg` }] }]}
               resizeMode="contain"
             />
           </ScrollView>
@@ -156,14 +192,23 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
               <Text style={styles.controlText}>Fit</Text>
             </TouchableOpacity>
             
+            <TouchableOpacity onPress={rotateImage} style={styles.controlButton}>
+              <MaterialDesignIcons name="rotate-right" size={24} color="#fff" />
+              <Text style={styles.controlText}>Rotate</Text>
+            </TouchableOpacity>
+            
             <TouchableOpacity style={styles.controlButton}>
               <MaterialDesignIcons name="share-variant" size={24} color="#fff" />
               <Text style={styles.controlText}>Share</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.controlButton}>
-              <MaterialDesignIcons name="heart-outline" size={24} color="#fff" />
-              <Text style={styles.controlText}>Like</Text>
+            <TouchableOpacity onPress={handleBookmarkToggle} style={styles.controlButton}>
+              <MaterialDesignIcons 
+                name={isBookmarked(currentImage._id) ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isBookmarked(currentImage._id) ? "#F8803B" : "#fff"} 
+              />
+              <Text style={styles.controlText}>Bookmark</Text>
             </TouchableOpacity>
           </View>
         )}

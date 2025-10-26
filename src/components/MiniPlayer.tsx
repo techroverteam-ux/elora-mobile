@@ -140,8 +140,14 @@ const MiniPlayer: React.FC<MiniPlayerProps> = ({ currentItem, onClose, type = 'a
     }
   };
 
-  const handleClose = () => {
-    // Don't stop audio, just hide the mini player
+  const handleClose = async () => {
+    // Stop audio and reset player when closing mini player
+    try {
+      await pause();
+      reset();
+    } catch (error) {
+      console.error('Error stopping audio:', error);
+    }
     onClose?.();
   };
 

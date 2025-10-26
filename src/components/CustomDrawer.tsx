@@ -8,35 +8,33 @@ import {
   Image,
 } from 'react-native';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
+import { useTheme } from 'react-native-paper';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useAuth } from '../context/AuthContext';
 
 const CustomDrawer = (props: any) => {
   const { user, logout } = useAuth();
+  const { colors } = useTheme();
 
   const menuItems = [
-    { icon: 'home-outline', label: 'Home', screen: 'Home' },
-    { icon: 'view-dashboard-outline', label: 'Categories', screen: 'Categories' },
-    { icon: 'book-open-outline', label: 'Geeta Chapters', screen: 'GeetaChapters' },
+    { icon: 'home', label: 'Home', screen: 'Home' },
+    { icon: 'view-dashboard', label: 'Categories', screen: 'Categories' },
     { icon: 'headphones', label: 'Audio Library', screen: 'AudioLibrary' },
-    { icon: 'video-outline', label: 'Video Library', screen: 'VideoLibrary' },
-    { icon: 'bookmark-outline', label: 'Bookmarks', screen: 'Bookmarks' },
+    { icon: 'play-circle', label: 'Video Library', screen: 'VideoLibrary' },
+    { icon: 'book-open-variant', label: 'Books', screen: 'Books' },
+    { icon: 'image-multiple', label: 'Image Library', screen: 'ImageLibrary' },
+    { icon: 'bookmark', label: 'Bookmarks', screen: 'Bookmarks' },
     { icon: 'history', label: 'Recently Played', screen: 'RecentlyPlayed' },
-    { icon: 'account-group-outline', label: 'Satsang', screen: 'Satsang' },
-    { icon: 'school-outline', label: 'Teacher Training', screen: 'TeacherTraining' },
-    { icon: 'presentation', label: 'Presentations', screen: 'Presentations' },
-    { icon: 'heart', label: 'Activities & Trust', screen: 'Activities' },
-    { icon: 'baby-face-outline', label: 'Geeta Bal Sanskar', screen: 'BalSanskar' },
   ];
 
   const settingsItems = [
-    { icon: 'cog-outline', label: 'Settings', screen: 'Settings' },
+    { icon: 'cog', label: 'Settings', screen: 'Settings' },
     { icon: 'translate', label: 'Language', screen: 'Language' },
     { icon: 'theme-light-dark', label: 'Theme', screen: 'Theme' },
-    { icon: 'information-outline', label: 'About', screen: 'About' },
-    { icon: 'help-circle-outline', label: 'Help & Support', screen: 'Help' },
-    { icon: 'star-outline', label: 'Rate App', action: 'rate' },
-    { icon: 'share-variant-outline', label: 'Share App', action: 'share' },
+    { icon: 'information', label: 'About', screen: 'About' },
+    { icon: 'help-circle', label: 'Help & Support', screen: 'Help' },
+    { icon: 'star', label: 'Rate App', action: 'rate' },
+    { icon: 'share-variant', label: 'Share App', action: 'share' },
   ];
 
   const handleNavigation = (screen: string) => {
@@ -46,6 +44,10 @@ const CustomDrawer = (props: any) => {
       'Categories': 'MainTabs',
       'AudioLibrary': 'MainTabs',
       'VideoLibrary': 'MainTabs',
+      'ImageLibrary': 'GalleryList',
+      'Books': 'MainTabs',
+      'Bookmarks': 'BookmarksScreen',
+      'RecentlyPlayed': 'RecentlyPlayedScreen',
       'Account': 'MainTabs',
       'Settings': 'Settings',
       'About': 'About',
@@ -57,7 +59,7 @@ const CustomDrawer = (props: any) => {
     const targetScreen = screenMapping[screen] || screen;
     
     if (screen === 'Categories') {
-      props.navigation.navigate('MainTabs', { screen: 'Categories' });
+      props.navigation.navigate('MainTabs', { screen: 'Categories', params: { screen: 'CategoriesMain' } });
     } else if (screen === 'AudioLibrary') {
       props.navigation.navigate('MainTabs', { 
         screen: 'Home',
@@ -67,6 +69,13 @@ const CustomDrawer = (props: any) => {
       props.navigation.navigate('MainTabs', { 
         screen: 'Home',
         params: { screen: 'AllVideos' }
+      });
+    } else if (screen === 'ImageLibrary') {
+      props.navigation.navigate('GalleryList');
+    } else if (screen === 'Books') {
+      props.navigation.navigate('MainTabs', { 
+        screen: 'Home',
+        params: { screen: 'AllPDFs' }
       });
     } else if (screen === 'Language') {
       props.navigation.navigate('MainTabs', {
@@ -113,37 +122,38 @@ const CustomDrawer = (props: any) => {
 
   return (
     <View style={styles.container}>
-      <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollView}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/images/logo1234.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={styles.appName}>Geeta Bal Sanskaar</Text>
-          <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
-          {user && (
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>Welcome, {user.name || 'User'}</Text>
-              <Text style={styles.userEmail}>{user.email}</Text>
-            </View>
-          )}
+      {/* Sticky Header */}
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/images/logo1234.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
+        <Text style={styles.appName}>Geeta Bal Sanskaar</Text>
+        <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
+        {user && (
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>Welcome, {user.name || 'User'}</Text>
+            <Text style={styles.userEmail}>{user.email}</Text>
+          </View>
+        )}
+      </View>
 
+      {/* Scrollable Menu */}
+      <ScrollView style={styles.menuScrollView} showsVerticalScrollIndicator={false}>
         {/* Main Menu */}
         <View style={[styles.section, styles.firstSection]}>
           <Text style={styles.sectionTitle}>Main Menu</Text>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[styles.menuItem, { borderBottomColor: colors.outline + '30' }]}
               onPress={() => handleNavigation(item.screen)}
             >
-              <MaterialDesignIcons name={item.icon} size={24} color="#666" />
-              <Text style={styles.menuText}>{item.label}</Text>
+              <MaterialDesignIcons name={item.icon} size={20} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.onBackground }]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -154,17 +164,17 @@ const CustomDrawer = (props: any) => {
           {settingsItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
+              style={[styles.menuItem, { borderBottomColor: colors.outline + '30' }]}
               onPress={() => item.action ? handleAction(item.action) : handleNavigation(item.screen)}
             >
-              <MaterialDesignIcons name={item.icon} size={24} color="#666" />
-              <Text style={styles.menuText}>{item.label}</Text>
+              <MaterialDesignIcons name={item.icon} size={20} color={colors.primary} />
+              <Text style={[styles.menuText, { color: colors.onBackground }]}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
-      </DrawerContentScrollView>
+      </ScrollView>
 
-      {/* Footer */}
+      {/* Sticky Footer */}
       <View style={styles.footer}>
         {user ? (
           <TouchableOpacity
@@ -194,20 +204,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  scrollView: {
-    flexGrow: 1,
-    paddingTop: 0,
-  },
   header: {
     backgroundColor: '#F8803B',
     paddingTop: 50,
     paddingBottom: 25,
     paddingHorizontal: 0,
     alignItems: 'center',
-    marginTop: -20,
-    marginHorizontal: -20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+  },
+  menuScrollView: {
+    flex: 1,
+    paddingHorizontal: 0,
   },
   logoContainer: {
     width: 70,
@@ -283,14 +291,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#eee',
   },
   menuText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 15,
+    fontSize: 15,
+    marginLeft: 12,
+    fontWeight: '500',
   },
   footer: {
     borderTopWidth: 1,

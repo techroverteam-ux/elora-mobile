@@ -17,6 +17,7 @@ import CustomFastImage from '../components/CustomFastImage';
 import ImageGalleryViewer from '../components/ImageGalleryViewer';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
+import { useBookmarks } from '../context/BookmarkContext';
 
 const { width } = Dimensions.get('window');
 const itemSize = isTablet() ? (width - wp(12)) / 3 : (width - wp(12)) / 2;
@@ -24,38 +25,62 @@ const itemSize = isTablet() ? (width - wp(12)) / 3 : (width - wp(12)) / 2;
 interface GalleryItem {
   _id: string;
   title: string;
+  type: string;
   imageUrl?: string;
   thumbnailUrl?: string;
   mainImage?: string;
   headerImage?: string;
+  streamingUrl?: string;
+  downloadUrl?: string;
 }
 
 const GalleryListScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
   const { initialIndex: routeInitialIndex = 0 } = (route.params as any) || {};
   
-  // Fetch trending images from API
+  // Fetch trending images from API - same as DailyGyanGallery
   const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
     type: 'image',
-    days: 7,
-    limit: 50
+    days: 18,
+    limit: 100
   });
   
-  const images = Array.isArray(apiResponse?.data) ? apiResponse.data : [];
+  // Extract image items from the response
+  const images = Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image') : [];
 
   const [viewerVisible, setViewerVisible] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(routeInitialIndex);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const handleImagePress = (index: number) => {
-    setSelectedIndex(index);
-    setViewerVisible(true);
+    console.log('Image pressed, index:', index, 'total images:', images.length);
+    if (images && images.length > 0 && index >= 0 && index < images.length) {
+      setSelectedIndex(index);
+      setViewerVisible(true);
+    } else {
+      console.error('Invalid image index or empty images array');
+    }
+  };
+
+  const handleBookmarkToggle = (item: GalleryItem, event: any) => {
+    event.stopPropagation();
+    
+    if (isBookmarked(item._id)) {
+      removeBookmark(item._id);
+    } else {
+      const bookmarkItem = {
+        ...item,
+        type: 'image'
+      };
+      addBookmark(bookmarkItem);
+    }
   };
 
   const renderGridItem = ({ item, index }: { item: GalleryItem; index: number }) => {
-    const imageUrl = processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
+    const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
     
     return (
       <TouchableOpacity
@@ -68,6 +93,16 @@ const GalleryListScreen: React.FC = () => {
           style={styles.gridImage}
           resizeMode="cover"
         />
+        <TouchableOpacity
+          style={styles.gridBookmarkButton}
+          onPress={(event) => handleBookmarkToggle(item, event)}
+        >
+          <MaterialDesignIcons 
+            name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
+            size={16} 
+            color={isBookmarked(item._id) ? "#F8803B" : "#fff"} 
+          />
+        </TouchableOpacity>
         <View style={styles.gridOverlay}>
           <Text style={styles.gridTitle} numberOfLines={2}>
             {item.title}
@@ -78,7 +113,7 @@ const GalleryListScreen: React.FC = () => {
   };
 
   const renderListItem = ({ item, index }: { item: GalleryItem; index: number }) => {
-    const imageUrl = processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
+    const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
     
     return (
       <TouchableOpacity
@@ -102,7 +137,16 @@ const GalleryListScreen: React.FC = () => {
             </Text>
           </View>
         </View>
-        <MaterialDesignIcons name="chevron-right" size={24} color={colors.onSurfaceVariant} />
+        <TouchableOpacity
+          style={styles.listBookmarkButton}
+          onPress={(event) => handleBookmarkToggle(item, event)}
+        >
+          <MaterialDesignIcons 
+            name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
+            size={20} 
+            color={isBookmarked(item._id) ? "#F8803B" : colors.onSurfaceVariant} 
+          />
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
@@ -134,6 +178,10 @@ const GalleryListScreen: React.FC = () => {
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Loading images...</Text>
         </View>
+      ) : images.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>No images found</Text>
+        </View>
       ) : (
         <FlatList
           data={images}
@@ -147,12 +195,14 @@ const GalleryListScreen: React.FC = () => {
       )}
 
       {/* Image Viewer */}
-      <ImageGalleryViewer
-        visible={viewerVisible}
-        images={images}
-        initialIndex={selectedIndex}
-        onClose={() => setViewerVisible(false)}
-      />
+      {images.length > 0 && (
+        <ImageGalleryViewer
+          visible={viewerVisible}
+          images={images}
+          initialIndex={selectedIndex}
+          onClose={() => setViewerVisible(false)}
+        />
+      )}
     </View>
   );
 };
@@ -216,6 +266,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: normalize(12),
     fontWeight: '600',
+  },
+  gridBookmarkButton: {
+    position: 'absolute',
+    top: wp(2),
+    right: wp(2),
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: normalize(12),
+    width: wp(7),
+    height: wp(7),
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  listBookmarkButton: {
+    padding: wp(2),
   },
   // List styles
   listItem: {

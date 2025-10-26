@@ -4,8 +4,9 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
+  Alert,
 } from 'react-native';
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Video from 'react-native-video';
 import { useRoute } from '@react-navigation/native';
 import AppBarHeader from './AppBarHeader';
@@ -15,6 +16,8 @@ import Slider from '@react-native-community/slider';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Orientation from 'react-native-orientation-locker';
 import { useTheme } from 'react-native-paper';
+import { useBookmarks } from '../context/BookmarkContext';
+import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
 interface VideoPlayerProps {
   videoUri?: string;
@@ -37,6 +40,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const { colors } = useTheme();
   const routeParams = route?.params?.item;
   const data = params ?? routeParams ?? {};
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
+  const isLiked = isBookmarked(data?._id || '');
 
   const resolvedVideoUri = videoUri ?? data.videoUri ?? '';
   const resolvedTitle = title ?? data.title ?? 'Video Player';
@@ -54,6 +60,31 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [fullScreen, setFullScreen] = useState(false);
+
+  useEffect(() => {
+    // Add to recently played when video player opens
+    if (data && data._id) {
+      addRecentItem(data);
+    }
+  }, [data, addRecentItem]);
+
+  const handleBookmarkToggle = () => {
+    if (data && data._id) {
+      if (isLiked) {
+        removeBookmark(data._id);
+        Alert.alert('Bookmark', 'Removed from bookmarks');
+      } else {
+        const videoItem = {
+          ...data,
+          type: 'video',
+          videoUrl: data.videoUri || data.videoUrl,
+          videoUri: data.videoUri || data.videoUrl
+        };
+        addBookmark(videoItem);
+        Alert.alert('Bookmark', 'Added to bookmarks!');
+      }
+    }
+  };
 
   const videoRef = useRef<React.ComponentRef<typeof Video>>(null);
 
@@ -100,7 +131,22 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <View style={[styles.container, containerStyle, { backgroundColor: colors.background }]}>
-      {shouldShowHeader && <AppBarHeader title={resolvedTitle} />}
+      {shouldShowHeader && (
+        <AppBarHeader 
+          title={resolvedTitle} 
+          rightComponent={
+            data && data._id ? (
+              <TouchableOpacity onPress={handleBookmarkToggle} style={{ padding: 8 }}>
+                <MaterialDesignIcons 
+                  name={isLiked ? "bookmark" : "bookmark-outline"} 
+                  size={24} 
+                  color={isLiked ? "#F8803B" : colors.onSurface} 
+                />
+              </TouchableOpacity>
+            ) : null
+          }
+        />
+      )}
       {resolvedShowDebug && (
         <Text style={[styles.debugText, { color: colors.onSurfaceVariant }]}>
           {JSON.stringify(data, null, 2)}

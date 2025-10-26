@@ -68,7 +68,11 @@ const MediaListItem: React.FC<MediaListItemProps> = ({ item, onPress, type = 'au
         )}
       </View>
 
-      <TouchableOpacity style={styles.playButton}>
+      <TouchableOpacity 
+        style={styles.playButton}
+        onPress={() => onPress(item)}
+        activeOpacity={0.7}
+      >
         <MaterialDesignIcons 
           name="play" 
           size={20} 

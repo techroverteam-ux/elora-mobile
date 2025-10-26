@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator, // Add ActivityIndicator
+  Alert,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useAudioPlayerContext } from '../context/AudioPlayerContext';
@@ -18,6 +19,8 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { AccountStackParamList } from '../navigation/types';
 import CustomFastImage from './CustomFastImage';
 import { useAzureAssets } from '../hooks/useAzureAssets';
+import { useBookmarks } from '../context/BookmarkContext';
+import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
 type AudioPlayerRouteProp = RouteProp<AccountStackParamList, 'AudioPlayer'>;
 
@@ -25,6 +28,9 @@ const AudioPlayer: React.FC = () => {
   const { colors } = useTheme();
   const route = useRoute<AudioPlayerRouteProp>();
   const item = route.params?.item;
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
+  const isLiked = isBookmarked(item?._id || '');
 
   const { resourceUrls } = useAzureAssets(item);
   const { downloadUrl, streamingUrl } = resourceUrls;
@@ -75,11 +81,45 @@ const AudioPlayer: React.FC = () => {
     if (duration) {
       setIsLoading(false);
     }
-  }, [audioUrl, duration, loadBuffer, setOnPositionChanged]);
+    
+    // Add to recently played when audio player opens
+    if (item) {
+      addRecentItem(item);
+    }
+  }, [audioUrl, duration, loadBuffer, setOnPositionChanged, item, addRecentItem]);
+
+  const handleBookmarkToggle = () => {
+    if (item) {
+      if (isLiked) {
+        removeBookmark(item._id);
+        Alert.alert('Bookmark', 'Removed from bookmarks');
+      } else {
+        const audioItem = {
+          ...item,
+          type: 'audio',
+          audioUrl: item.audioUrl || streamingUrl,
+          streamingUrl: streamingUrl || item.audioUrl
+        };
+        addBookmark(audioItem);
+        Alert.alert('Bookmark', 'Added to bookmarks!');
+      }
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <AppBarHeader title="Audio Player" />
+      <AppBarHeader 
+        title="Audio Player" 
+        rightComponent={
+          <TouchableOpacity onPress={handleBookmarkToggle} style={{ padding: 8 }}>
+            <MaterialDesignIcons 
+              name={isLiked ? "bookmark" : "bookmark-outline"} 
+              size={24} 
+              color={isLiked ? "#F8803B" : colors.onSurface} 
+            />
+          </TouchableOpacity>
+        }
+      />
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.innerContainer}>
           {/* Album Art */}

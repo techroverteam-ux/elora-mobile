@@ -19,6 +19,8 @@ import { PlaylistProvider } from './src/context/PlaylistContext';
 import { ThemeProvider, useThemeContext } from './src/context/ThemeContext';
 import { RedirectProvider } from './src/context/RedirectContext';
 import { MediaPlayerManagerProvider } from './src/context/MediaPlayerManager';
+import { BookmarkProvider } from './src/context/BookmarkContext';
+import { RecentlyPlayedProvider } from './src/context/RecentlyPlayedContext';
 
 const ThemedApp = () => {
   const { theme, isThemeLoaded } = useThemeContext();
@@ -42,15 +44,19 @@ const ThemedApp = () => {
           <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
           <AuthProvider>
             <RedirectProvider>
-              <MediaPlayerManagerProvider>
-                <AudioPlayerProvider>
-                  <CurrentPlayerProvider>
-                    <PlaylistProvider>
-                      <RootNavigation theme={navigationTheme} />
-                    </PlaylistProvider>
-                  </CurrentPlayerProvider>
-                </AudioPlayerProvider>
-              </MediaPlayerManagerProvider>
+              <BookmarkProvider>
+                <RecentlyPlayedProvider>
+                  <MediaPlayerManagerProvider>
+                    <AudioPlayerProvider>
+                      <CurrentPlayerProvider>
+                        <PlaylistProvider>
+                          <RootNavigation theme={navigationTheme} />
+                        </PlaylistProvider>
+                      </CurrentPlayerProvider>
+                    </AudioPlayerProvider>
+                  </MediaPlayerManagerProvider>
+                </RecentlyPlayedProvider>
+              </BookmarkProvider>
             </RedirectProvider>
           </AuthProvider>
         </SafeAreaView>

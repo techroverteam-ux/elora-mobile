@@ -12,34 +12,27 @@ export const needsAzureProxy = (url: string): boolean => {
 };
 
 export const processAzureUrl = (url: string): string => {
-  if (!url) {
-    // console.log('processAzureUrl: Empty URL provided');
+  if (!url || typeof url !== 'string') {
     return '';
   }
 
-  // console.log('processAzureUrl: Processing URL:', url);
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) {
+    return '';
+  }
 
   // If it's already a direct blob URL, convert to API proxy URL
-  if (url.includes('blob.core.windows.net')) {
-    // console.log('processAzureUrl: Direct blob URL detected, converting to proxy');
-    // Always use the API proxy for Azure blob URLs to ensure proper access
-    return createAzureProxyUrl(url);
+  if (trimmedUrl.includes('blob.core.windows.net')) {
+    return createAzureProxyUrl(trimmedUrl);
   }
 
   // If it's already an API proxy URL, return as is
-  if (url.includes('/azure-blob/file?blobUrl=')) {
-    // console.log('processAzureUrl: API proxy URL detected, returning as-is');
-    return url;
+  if (trimmedUrl.includes('/azure-blob/file?blobUrl=')) {
+    return trimmedUrl;
   }
 
-  // Handle other Azure patterns
-  if (url.includes('azure') || url.includes('blob')) {
-    // console.log('processAzureUrl: Azure-related URL detected:', url);
-  } else {
-    // console.log('processAzureUrl: Non-Azure URL, returning as-is:', url);
-  }
-
-  return url;
+  // For all other URLs (including regular HTTP URLs), return as-is
+  return trimmedUrl;
 };
 
 // Get streaming URL with fallbacks

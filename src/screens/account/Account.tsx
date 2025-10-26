@@ -102,11 +102,7 @@ const Account = () => {
         {/* Bottom Action Buttons */}
         <View style={styles.bottomActions}>
           <View style={styles.actionRow}>
-            <AccountActionButton
-              label="Downloads"
-              icon="download"
-              onPress={() => Alert.alert('Downloads', 'View your downloaded content')}
-            />
+
             <AccountActionButton
               label="Favorites"
               icon="heart"

@@ -14,6 +14,7 @@ import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetSectionsMutation } from '../../data/redux/services/sectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -27,11 +28,32 @@ type CategoryItem = {
   icon?: string;
 };
 
-// Random icons and colors for categories
-const getRandomIcon = (id: string) => {
-  const icons = ['📚', '🎧', '🧘', '📜', '👨🏫', '🎤', '🌱', '👧', '📖', '🎯', '💡', '🔥', '⭐', '🎨', '🏆', '💎'];
-  const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % icons.length;
-  return icons[index];
+// Spiritual icons for categories
+const getSpiritualIcon = (title: string, id: string) => {
+  const titleLower = title.toLowerCase();
+  
+  // Match by title keywords
+  if (titleLower.includes('gita') || titleLower.includes('geeta')) return 'book-open-variant';
+  if (titleLower.includes('bhajan') || titleLower.includes('song')) return 'music-note';
+  if (titleLower.includes('story') || titleLower.includes('katha')) return 'book-account';
+  if (titleLower.includes('mantra') || titleLower.includes('chant')) return 'meditation';
+  if (titleLower.includes('yoga') || titleLower.includes('meditation')) return 'meditation';
+  if (titleLower.includes('prayer') || titleLower.includes('aarti')) return 'hands-pray';
+  if (titleLower.includes('festival') || titleLower.includes('celebration')) return 'star-circle';
+  if (titleLower.includes('temple') || titleLower.includes('mandir')) return 'home-variant';
+  if (titleLower.includes('guru') || titleLower.includes('teacher')) return 'account-star';
+  if (titleLower.includes('wisdom') || titleLower.includes('knowledge')) return 'lightbulb-on';
+  if (titleLower.includes('peace') || titleLower.includes('shanti')) return 'peace';
+  if (titleLower.includes('devotion') || titleLower.includes('bhakti')) return 'heart';
+  
+  // Fallback spiritual icons based on ID
+  const spiritualIcons = [
+    'om', 'meditation', 'book-open-variant', 'music-note', 'hands-pray', 
+    'star-circle', 'lightbulb-on', 'heart', 'peace', 'account-star',
+    'flower', 'candle', 'home-variant', 'book-account', 'star-four-points'
+  ];
+  const index = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % spiritualIcons.length;
+  return spiritualIcons[index];
 };
 
 const getRandomColor = (id: string) => {
@@ -68,7 +90,7 @@ const Categories = () => {
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#F8803B" />
         <Text style={styles.loaderText}>Loading categories...</Text>
       </View>
     );
@@ -152,7 +174,11 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
       activeOpacity={0.8}
     >
       <View style={styles.iconWrapper}>
-        <Text style={styles.icon}>{item.icon || getRandomIcon(item._id)}</Text>
+        <MaterialDesignIcons 
+          name={item.icon || getSpiritualIcon(item.title, item._id)} 
+          size={28} 
+          color="#F8803B" 
+        />
       </View>
       <Text style={styles.title}>
         {item.title}
@@ -206,9 +232,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     marginBottom: 10,
   },
-  icon: {
-    fontSize: 26,
-  },
+
   title: {
     fontSize: 15,
     fontWeight: '600',

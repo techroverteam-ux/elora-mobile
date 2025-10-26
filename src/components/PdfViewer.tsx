@@ -5,6 +5,8 @@ import { useTheme } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useGetSectionsMutation } from '../data/redux/services/sectionsApi';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { useBookmarks } from '../context/BookmarkContext';
+import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,14 +27,22 @@ const PdfViewer = () => {
   const [pdfSections, setPdfSections] = useState<any[]>([]);
   
   const [getSectionsRequest, { data: sectionsData, isLoading: sectionsLoading }] = useGetSectionsMutation();
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
   const pdfRef = React.useRef<any>(null);
+  
+  const isBookmarkedItem = item ? isBookmarked(item._id) : false;
 
   const pdfUrl = uri || item?.streamingUrl || item?.pdfUrl;
   const proxyUrl = pdfUrl ? `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodeURIComponent(pdfUrl)}` : null;
   
   useEffect(() => {
     getSectionsRequest({});
-  }, [getSectionsRequest]);
+    // Add to recently played when PDF is opened
+    if (item) {
+      addRecentItem(item);
+    }
+  }, [getSectionsRequest, item, addRecentItem]);
   
   // Generate dynamic sections based on total pages
   useEffect(() => {
@@ -129,6 +139,26 @@ const PdfViewer = () => {
           {title || "PDF Viewer"}
         </Text>
         <View style={styles.headerActions}>
+          {item && (
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => {
+                if (isBookmarkedItem) {
+                  removeBookmark(item._id);
+                  Alert.alert('Bookmark', 'Removed from bookmarks');
+                } else {
+                  addBookmark(item);
+                  Alert.alert('Bookmark', 'Added to bookmarks!');
+                }
+              }}
+            >
+              <MaterialDesignIcons 
+                name={isBookmarkedItem ? "bookmark" : "bookmark-outline"} 
+                size={20} 
+                color={isBookmarkedItem ? "#F8803B" : colors.primary} 
+              />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.actionButton} onPress={zoomOut}>
             <MaterialDesignIcons name="magnify-minus" size={20} color={colors.primary} />
           </TouchableOpacity>
@@ -258,7 +288,7 @@ const PdfViewer = () => {
               renderActivityIndicator={() => (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading PDF...</Text>
+                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading Books...</Text>
                 </View>
               )}
             />
@@ -427,6 +457,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,

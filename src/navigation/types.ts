@@ -13,6 +13,7 @@ export type RootStackParamList = {
   SearchScreen: undefined;
   ReportIssue: undefined;
   FeatureRequest: undefined;
+  GalleryList: { initialIndex?: number };
 };
 
 export type HomeStackParamList = {

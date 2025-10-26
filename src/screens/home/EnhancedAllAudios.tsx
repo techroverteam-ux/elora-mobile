@@ -91,7 +91,9 @@ const EnhancedAllAudios = () => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.artist?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    // Only show audio type content
+    const isAudioType = !item.hasOwnProperty('type') || (item as any).type === 'audio';
+    return matchesSearch && matchesCategory && isAudioType;
   });
 
   const handleAudioPress = (item: AudioItem) => {

@@ -15,6 +15,7 @@ import { HomeStackParamList } from '../../navigation/types';
 import { useGetDashboardQuery } from '../../data/redux/services/mediaApi';
 import { testAudioData, testVideoData, testPDFData } from '../../data/testMediaData';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { processAzureUrl } from '../../utils/azureUrlHelper';
 
 type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
 
@@ -123,24 +124,42 @@ const Home: React.FC = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
       >
         <CardCarousel />
 
         {/* Daily Gyan Gallery */}
         <DailyGyanGallery
-          onItemPress={(item, index) => {
-            (navigation as any).navigate('GalleryList', {
-              initialIndex: index
+          onItemPress={(item, index, allImages) => {
+            requireAuth(() => {
+              const imageItems = allImages.filter(img => img.type === 'image');
+              const imageUrls = imageItems.map(img => 
+                processAzureUrl(img.streamingUrl) || 
+                processAzureUrl(img.imageUrl) || 
+                processAzureUrl(img.thumbnailUrl) || 
+                processAzureUrl(img.mainImage) || 
+                processAzureUrl(img.headerImage) || ''
+              ).filter(url => url);
+              
+              // Find the correct index in the filtered image array
+              const correctIndex = imageItems.findIndex(img => img._id === item._id);
+              
+              (navigation as any).navigate('ImageViewer', {
+                images: imageUrls,
+                initialIndex: correctIndex >= 0 ? correctIndex : 0,
+                title: 'Daily Gyan Gallery'
+              });
             });
           }}
           onSeeAll={() => {
-            (navigation as any).navigate('GalleryList', {});
+            navigation.navigate('GalleryList', {});
           }}
         />
 
         {displayTopAudios && Array.isArray(displayTopAudios) && displayTopAudios.length > 0 && (
           <MediaHorizontalList
-            title="Top Audios"
+            title="Audios"
             data={displayTopAudios.filter(item => item && item._id)}
             type="audio"
             onItemPress={(item) => handleAudioPress(item, displayTopAudios)}
@@ -150,7 +169,7 @@ const Home: React.FC = () => {
 
         {displayTopVideos && Array.isArray(displayTopVideos) && displayTopVideos.length > 0 && (
           <MediaHorizontalList
-            title="Top Videos"
+            title="Videos"
             data={displayTopVideos.filter(item => item && item._id)}
             type="video"
             onItemPress={(item) => handleVideoPress(item, displayTopVideos)}
@@ -180,7 +199,7 @@ const Home: React.FC = () => {
 
         {displayRecentUploads && displayRecentUploads.length > 0 && (
           <MediaHorizontalList
-            title="Recently Uploaded"
+            title="Recent Uploads"
             data={displayRecentUploads}
             type="audio"
             onItemPress={(item) => {
@@ -244,7 +263,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   centered: {
     flex: 1,

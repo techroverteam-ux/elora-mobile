@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions, StatusBar, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Dimensions, StatusBar, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import CustomFastImage from '../../components/CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { useBookmarks } from '../../context/BookmarkContext';
+import { useRecentlyPlayed } from '../../context/RecentlyPlayedContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -10,6 +12,8 @@ const ImageViewer = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as any;
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
   
   // Handle both old format (uri) and new format (images array)
   const images = params?.images || (params?.uri ? [params.uri] : []);
@@ -17,10 +21,28 @@ const ImageViewer = () => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showControls, setShowControls] = useState(true);
   
-  // Auto-hide controls
+  // Create image item for bookmarking
+  const currentImageItem = {
+    _id: `image-${currentIndex}-${Date.now()}`,
+    title: params?.title || `Image ${currentIndex + 1}`,
+    type: 'image',
+    imageUrl: images[currentIndex],
+    thumbnailUrl: images[currentIndex],
+    streamingUrl: images[currentIndex]
+  };
+  
+  const isCurrentImageBookmarked = isBookmarked(currentImageItem._id);
+  
+  // Auto-hide controls and add to recently played
   useEffect(() => {
     StatusBar.setHidden(true);
     const timer = setTimeout(() => setShowControls(false), 3000);
+    
+    // Add current image to recently played
+    if (currentImageItem) {
+      addRecentItem(currentImageItem);
+    }
+    
     return () => {
       clearTimeout(timer);
       StatusBar.setHidden(false);
@@ -66,9 +88,30 @@ const ImageViewer = () => {
       
       {showControls && (
         <>
-          <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-            <MaterialDesignIcons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.topControls}>
+            <TouchableOpacity 
+              style={styles.bookmarkButton} 
+              onPress={() => {
+                if (isCurrentImageBookmarked) {
+                  removeBookmark(currentImageItem._id);
+                  Alert.alert('Bookmark', 'Removed from bookmarks');
+                } else {
+                  addBookmark(currentImageItem);
+                  Alert.alert('Bookmark', 'Added to bookmarks!');
+                }
+              }}
+            >
+              <MaterialDesignIcons 
+                name={isCurrentImageBookmarked ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isCurrentImageBookmarked ? "#F8803B" : "#fff"} 
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+              <MaterialDesignIcons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
           
           {images.length > 1 && (
             <>
@@ -132,11 +175,21 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  closeButton: {
+  topControls: {
     position: 'absolute',
     top: 50,
+    left: 20,
     right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     zIndex: 10,
+  },
+  bookmarkButton: {
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    borderRadius: 20,
+    padding: 8,
+  },
+  closeButton: {
     backgroundColor: 'rgba(0,0,0,0.7)',
     borderRadius: 20,
     padding: 8,

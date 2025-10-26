@@ -86,15 +86,7 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
             </View>
           )}
           
-          {type === 'video' && (
-            <View style={styles.listPlayOverlay}>
-              <MaterialDesignIcons
-                name="play"
-                size={12}
-                color="#fff"
-              />
-            </View>
-          )}
+
         </View>
 
         <View style={styles.listContent}>
@@ -144,15 +136,7 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
           </View>
         )}
         
-        {type === 'video' && (
-          <View style={styles.playOverlay}>
-            <MaterialDesignIcons
-              name="play"
-              size={16}
-              color="#fff"
-            />
-          </View>
-        )}
+
       </View>
 
       <View style={styles.content}>

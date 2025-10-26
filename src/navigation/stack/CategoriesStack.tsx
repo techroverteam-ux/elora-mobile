@@ -11,7 +11,10 @@ import GalleryListScreen from '../../screens/GalleryListScreen';
 const Stack = createNativeStackNavigator<CategoriesStackParamList>();
 
 const CategoriesStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
+  <Stack.Navigator 
+    screenOptions={{ headerShown: false }}
+    initialRouteName="CategoriesMain"
+  >
     <Stack.Screen name="CategoriesMain" component={Categories} />
     <Stack.Screen name="CategorieDataList" component={CategorieDataList} />
     <Stack.Screen name="BlogPage" component={BlogPage} />
