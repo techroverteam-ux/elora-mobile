@@ -1,5 +1,32 @@
 {
   "language": "English",
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "ok": "OK",
+    "share": "Share",
+    "search": "Search",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "play": "Play",
+    "pause": "Pause",
+    "bookmark": "Bookmark",
+    "unknown": "Unknown",
+    "category": "Category",
+    "continue": "Continue",
+    "cancel": "Cancel"
+  },
+  "navigation": {
+    "home": "Home",
+    "categories": "Categories",
+    "bookmarks": "Bookmarks",
+    "recentlyPlayed": "Recently Played",
+    "settings": "Settings",
+    "language": "Language"
+  },
   "screens": {
     "intro": {
       "title": "Intro Screen",
@@ -19,6 +46,134 @@
         "createAccount": "Create an Account",
         "forgotPassword": "Forgotten password?"
       }
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "underDevelopment": "Under Development",
+      "noBookmarks": "No bookmarks yet",
+      "noBookmarksDesc": "Start bookmarking your favorite spiritual content",
+      "exploreContent": "Explore Content",
+      "addedToBookmarks": "Added to bookmarks!",
+      "removedFromBookmarks": "Removed from bookmarks"
+    },
+    "recentlyPlayed": {
+      "title": "Recently Played",
+      "underDevelopment": "Under Development",
+      "noRecentActivity": "No recent activity",
+      "noRecentDesc": "Start listening to audios or reading books",
+      "startExploring": "Start Exploring"
+    },
+    "audioPlayer": {
+      "nowPlaying": "Now Playing",
+      "unknownArtist": "Unknown Artist",
+      "upNext": "Up Next",
+      "noAudios": "No audios available",
+      "shareError": "Unable to share this audio",
+      "noAudioData": "No audio data provided"
+    },
+    "videoPlayer": {
+      "subtitle": "Subtitle",
+      "speed": "Speed",
+      "nextUp": "Next Up",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "shareError": "Unable to share this video",
+      "noVideoUrl": "No video URL provided"
+    },
+    "pdfViewer": {
+      "title": "Book Viewer",
+      "loadingBooks": "Loading books...",
+      "noPdfAvailable": "No books available",
+      "pdfSections": "Book Sections",
+      "firstPage": "First Page",
+      "middle": "Middle",
+      "lastPage": "Last Page",
+      "noPdfApp": "No PDF viewer app found. Please install a PDF reader app.",
+      "failedToOpen": "Failed to open PDF in external app"
+    },
+    "categories": {
+      "loadingCategories": "Loading categories...",
+      "noCategories": "No categories available",
+      "errorLoading": "Error loading categories",
+      "checkConnection": "Please check your internet connection"
+    },
+    "home": {
+      "dailyGyan": "Daily Gyan",
+      "seeAll": "See All",
+      "featuredContent": "Featured Content",
+      "trending": "Trending",
+      "recentUploads": "Recent Uploads",
+      "loadingDashboard": "Loading dashboard...",
+      "failedToLoad": "Failed to load dashboard.",
+      "tapToRetry": "Tap to retry"
+    },
+    "gallery": {
+      "title": "Gallery",
+      "loadingImages": "Loading images...",
+      "noImages": "No images found",
+      "tapToView": "Tap to view"
+    },
+    "search": {
+      "placeholder": "Search audios, videos, PDFs...",
+      "noResults": "No results found",
+      "searchPrompt": "Search for audios, videos and PDFs"
     }
+  },
+  "mediaTypes": {
+    "audio": "Audio",
+    "video": "Video",
+    "image": "Image",
+    "pdf": "Book",
+    "book": "Book"
+  },
+  "drawer": {
+    "appName": "Geeta Bal Sanskaar",
+    "tagline": "Spiritual Wisdom & Guidance",
+    "welcome": "Welcome",
+    "mainMenu": "Main Menu",
+    "settingsSupport": "Settings & Support",
+    "home": "Home",
+    "categories": "Categories",
+    "audioLibrary": "Audio Library",
+    "videoLibrary": "Video Library",
+    "books": "Books",
+    "imageLibrary": "Image Library",
+    "bookmarks": "Bookmarks",
+    "recentlyPlayed": "Recently Played",
+    "settings": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "about": "About",
+    "helpSupport": "Help & Support",
+    "rateApp": "Rate App",
+    "shareApp": "Share App",
+    "logout": "Logout",
+    "login": "Login",
+    "version": "Version"
+  },
+  "account": {
+    "title": "Account Settings",
+    "settings": "Settings",
+    "appearance": "Appearance",
+    "selectLanguage": "Select Language",
+    "about": "About",
+    "helpSupport": "Help & Support",
+    "pdfViewer": "PDF Viewer",
+    "audioPlayer": "Audio Player",
+    "videoPlayer": "Video Player",
+    "favorites": "Favorites",
+    "history": "History",
+    "playlists": "Playlists",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "feedback": "Feedback",
+    "shareApp": "Share App",
+    "logout": "Logout",
+    "logoutConfirm": "Are you sure you want to log out?",
+    "cancel": "Cancel"
+  },
+  "header": {
+    "namaste": "Namaste",
+    "welcomeTagline": "Welcome to Spiritual Wisdom"
   }
 }

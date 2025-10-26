@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-nati
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useAzureAssets } from '../hooks/useAzureAssets';
 
@@ -18,6 +19,7 @@ interface UnifiedMediaCardProps {
 
 const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type = 'audio', isGridView = true }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { resourceUrls } = useAzureAssets(item || {});
 
   const getIcon = () => {
@@ -94,13 +96,13 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
             style={[styles.listTitle, { color: colors.onSurface }]}
             numberOfLines={1}
           >
-            {item.title || 'Untitled'}
+            {item.title || t('common.untitled')}
           </Text>
           <Text
             style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]}
             numberOfLines={1}
           >
-            {item.artist || item.description || item.subtitle || 'Unknown'}
+            {item.artist || item.description || item.subtitle || t('common.unknown')}
           </Text>
         </View>
 
@@ -144,13 +146,13 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
           style={[styles.title, { color: colors.onSurface }]}
           numberOfLines={2}
         >
-          {item.title || 'Untitled'}
+          {item.title || t('common.untitled')}
         </Text>
         <Text
           style={[styles.subtitle, { color: colors.onSurfaceVariant }]}
           numberOfLines={1}
         >
-          {item.artist || item.description || item.subtitle || 'Unknown'}
+          {item.artist || item.description || item.subtitle || t('common.unknown')}
         </Text>
         {item.duration && (
           <Text style={[styles.duration, { color: colors.onSurfaceVariant }]}>

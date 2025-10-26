@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetSectionsMutation } from '../../data/redux/services/sectionsApi';
 import { useAuth } from '../../context/AuthContext';
@@ -63,6 +64,7 @@ const getRandomColor = (id: string) => {
 };
 
 const Categories = () => {
+  const { t } = useTranslation();
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
 
   useEffect(() => {
@@ -91,7 +93,7 @@ const Categories = () => {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color="#F8803B" />
-        <Text style={styles.loaderText}>Loading categories...</Text>
+        <Text style={styles.loaderText}>{t('screens.categories.loadingCategories')}</Text>
       </View>
     );
   }
@@ -113,7 +115,7 @@ const Categories = () => {
     console.log('Categories - No sections data:', sectionData);
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No sections available</Text>
+        <Text style={styles.emptyText}>{t('screens.categories.noCategories')}</Text>
         <TouchableOpacity onPress={() => getSectionRequest({})} style={styles.retryButton}>
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>

@@ -31,7 +31,7 @@ const SelectLanguage = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Select Language" />
+      <AppBarHeader title={t('account.selectLanguage')} />
 
       <View style={styles.content}>
         <LanguageSwitcher onLanguageChange={changeLanguage} />

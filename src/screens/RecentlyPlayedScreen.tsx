@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from '../components/CustomFastImage';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 const RecentlyPlayedScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { recentItems } = useRecentlyPlayed();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
@@ -105,7 +107,7 @@ const RecentlyPlayedScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.itemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || 'Unknown'}
+          {item.artist || item.author || t('common.unknown')}
         </Text>
         <Text style={[styles.playedTime, { color: colors.primary }]}>
           {formatPlayedTime(item.playedAt)}
@@ -152,7 +154,7 @@ const RecentlyPlayedScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || 'Unknown'}
+          {item.artist || item.author || t('common.unknown')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -166,8 +168,8 @@ const RecentlyPlayedScreen = () => {
             <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Recently Played</Text>
-            <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>Under Development</Text>
+            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.title')}</Text>
+            <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.recentlyPlayed.underDevelopment')}</Text>
           </View>
           <TouchableOpacity 
             style={styles.viewToggle}
@@ -185,9 +187,9 @@ const RecentlyPlayedScreen = () => {
           <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
             <MaterialDesignIcons name="history" size={64} color="#F8803B" />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>No Recent Activity</Text>
+          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.noRecentActivity')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.onSurfaceVariant }]}>
-            Start listening to audios or reading books to see your recent activity here
+            {t('screens.recentlyPlayed.noRecentDesc')}
           </Text>
           <View style={styles.emptyActions}>
             <TouchableOpacity 
@@ -195,7 +197,7 @@ const RecentlyPlayedScreen = () => {
               onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
             >
               <MaterialDesignIcons name="play-circle-outline" size={20} color="#fff" />
-              <Text style={styles.exploreButtonText}>Start Exploring</Text>
+              <Text style={styles.exploreButtonText}>{t('screens.recentlyPlayed.startExploring')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -210,8 +212,8 @@ const RecentlyPlayedScreen = () => {
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Recently Played</Text>
-          <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>Under Development</Text>
+          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.title')}</Text>
+          <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.recentlyPlayed.underDevelopment')}</Text>
         </View>
         <TouchableOpacity 
           style={styles.viewToggle}

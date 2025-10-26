@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Slider from '@react-native-community/slider';
 import { useTheme } from 'react-native-paper';
@@ -32,6 +33,7 @@ import { useBookmarks } from '../context/BookmarkContext';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
 const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onTrackSelect }: any) => {
+  const { t } = useTranslation();
   const { data: apiResponse, isLoading } = useGetFeaturedQuery({ type: 'audio', limit: 50 });
   const apiAudios = Array.isArray(apiResponse?.data?.audios) ? apiResponse.data.audios.filter((item: any) => item.type === 'audio') : [];
   const displayData = currentPlaylist && currentPlaylist.length > 0 ? currentPlaylist.filter((item: any) => item.type === 'audio') : apiAudios;
@@ -40,7 +42,7 @@ const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onT
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.onBackground, marginTop: 10 }}>Loading playlist...</Text>
+        <Text style={{ color: colors.onBackground, marginTop: 10 }}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -49,7 +51,7 @@ const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onT
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <MaterialDesignIcons name="playlist-music-outline" size={48} color={colors.onSurfaceVariant} />
-        <Text style={{ color: colors.onSurfaceVariant, fontSize: 16, marginTop: 10 }}>No audios available</Text>
+        <Text style={{ color: colors.onSurfaceVariant, fontSize: 16, marginTop: 10 }}>{t('screens.audioPlayer.noAudios')}</Text>
       </View>
     );
   }
@@ -92,7 +94,7 @@ const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onT
                 style={[{ fontSize: 14, fontWeight: '400' }, { color: colors.onSurfaceVariant }]} 
                 numberOfLines={1}
               >
-                {item.artist || 'Unknown Artist'}
+                {item.artist || t('screens.audioPlayer.unknownArtist')}
               </Text>
             </View>
             
@@ -116,6 +118,7 @@ const { width, height } = Dimensions.get('window');
 const EnhancedAudioPlayer = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
   const item = (route.params as any)?.item;
   const playlist = (route.params as any)?.playlist;
   const { colors, dark } = useTheme();
@@ -133,7 +136,7 @@ const EnhancedAudioPlayer = () => {
         title: currentTrack?.title || 'Audio',
       });
     } catch (error) {
-      Alert.alert('Error', 'Unable to share this audio');
+      Alert.alert(t('common.error'), t('screens.audioPlayer.shareError'));
     }
   };
 
@@ -144,7 +147,7 @@ const EnhancedAudioPlayer = () => {
     if (currentTrack) {
       if (isLiked) {
         removeBookmark(currentTrack._id);
-        Alert.alert('Bookmark', 'Removed from bookmarks');
+        Alert.alert(t('common.bookmark'), t('screens.bookmarks.removedFromBookmarks'));
       } else {
         const audioItem = {
           ...currentTrack,
@@ -156,13 +159,20 @@ const EnhancedAudioPlayer = () => {
         };
         console.log('EnhancedAudioPlayer - Bookmarking audio item:', audioItem);
         addBookmark(audioItem);
-        Alert.alert('Bookmark', 'Added to bookmarks!');
+        Alert.alert(t('common.bookmark'), t('screens.bookmarks.addedToBookmarks'));
       }
     }
   };
   
-  const { resourceUrls } = useAzureAssets(item || {});
-  const { streamingUrl } = resourceUrls || {};
+  const [isLoading, setIsLoading] = useState(true);
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+  const { addRecentItem } = useRecentlyPlayed();
+  const [showPlaylist, setShowPlaylist] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(item);
+  const [hasUserStartedPlayback, setHasUserStartedPlayback] = useState(false);
+
+  const { resourceUrls } = useAzureAssets(currentTrack || {});
+  const isLiked = isBookmarked(currentTrack?._id || '');
   
   const audioPlayerContext = useAudioPlayerContext();
   const {
@@ -182,24 +192,14 @@ const EnhancedAudioPlayer = () => {
   const play = () => {
     stopAllVideo();
     setHasUserStartedPlayback(true);
-    // Add to recently played when user starts playing
     if (currentTrack) {
       addRecentItem(currentTrack);
     }
     originalPlay();
   };
 
-  const [isLoading, setIsLoading] = useState(true);
-  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
-  const { addRecentItem } = useRecentlyPlayed();
-  const isLiked = isBookmarked(currentTrack?._id || '');
-  const [showPlaylist, setShowPlaylist] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState(item);
-  const [hasUserStartedPlayback, setHasUserStartedPlayback] = useState(false);
-
   const progress = duration ? currentTime / duration : 0;
   
-  // Use the same URL processing pattern as the working carousel
   const audioUrl = resourceUrls?.streamingUrl || processAzureUrl(currentTrack?.streamingUrl) || processAzureUrl(currentTrack?.audioUrl) || getStreamingUrl(currentTrack || {}, 'audio');
   
   const displayImageUrl = resourceUrls?.thumbnailImage || resourceUrls?.mainImage || processAzureUrl(currentTrack?.thumbnailUrl) || processAzureUrl(currentTrack?.imageUrl) || getImageUrl(currentTrack || {});
@@ -262,12 +262,15 @@ const EnhancedAudioPlayer = () => {
       console.log('Enhanced Audio Player - Loading new track:', currentTrack.title);
       console.log('Enhanced Audio Player - Audio URL:', audioUrl);
       
+      // Reset audio state before loading new track
+      reset();
+      
       loadBuffer(audioUrl).catch(error => {
         console.error('Enhanced Audio Player - Error loading audio:', error);
         setIsLoading(false);
       });
     }
-  }, [currentTrack?._id]); // Only depend on track ID
+  }, [currentTrack?._id, audioUrl]); // Depend on both track ID and audio URL
   
   // Separate effect for duration changes
   useEffect(() => {
@@ -281,16 +284,15 @@ const EnhancedAudioPlayer = () => {
     if (newTrack && newTrack._id !== currentTrack?._id) {
       console.log('Switching to track:', newTrack.title);
       
-      // Stop current audio and clear buffer
+      // Stop current audio
       pause();
-      reset();
       
-      // Update track and context
+      // Update track first - this will trigger useEffect to load new audio
       setCurrentTrack(newTrack);
       switchToAudio(newTrack);
       setAudioPlayerVisible(false);
       
-      // User must manually play the new track
+      console.log('Track switched to:', newTrack.title, 'ID:', newTrack._id);
     }
   };
   
@@ -311,7 +313,7 @@ const EnhancedAudioPlayer = () => {
   if (!item) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No audio data provided</Text>
+        <Text style={styles.errorText}>{t('screens.audioPlayer.noAudioData')}</Text>
       </View>
     );
   }
@@ -323,7 +325,7 @@ const EnhancedAudioPlayer = () => {
         <TouchableOpacity onPress={goBackWithMiniPlayer} style={styles.headerButton}>
           <MaterialDesignIcons name="chevron-down" size={28} color={colors.onBackground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Now Playing</Text>
+        <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.audioPlayer.nowPlaying')}</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleLike} style={styles.headerButton}>
             <MaterialDesignIcons 
@@ -357,7 +359,7 @@ const EnhancedAudioPlayer = () => {
       {/* Song Info */}
       <View style={styles.songInfo}>
         <Text style={[styles.songTitle, { color: colors.onBackground }]} numberOfLines={2}>{currentTrack.title}</Text>
-        <Text style={[styles.artistName, { color: colors.onSurfaceVariant }]} numberOfLines={1}>{currentTrack.artist || 'Unknown Artist'}</Text>
+        <Text style={[styles.artistName, { color: colors.onSurfaceVariant }]} numberOfLines={1}>{currentTrack.artist || t('screens.audioPlayer.unknownArtist')}</Text>
       </View>
 
       {/* Progress Bar */}
@@ -447,7 +449,7 @@ const EnhancedAudioPlayer = () => {
           <View style={[styles.playlistDrawer, { backgroundColor: colors.surface }]}>
             <View style={styles.playlistHandle} />
             <View style={styles.playlistHeader}>
-              <Text style={[styles.playlistTitle, { color: colors.onBackground }]}>Up Next</Text>
+              <Text style={[styles.playlistTitle, { color: colors.onBackground }]}>{t('screens.audioPlayer.upNext')}</Text>
               <TouchableOpacity onPress={() => setShowPlaylist(false)}>
                 <MaterialDesignIcons name="close" size={20} color={colors.onBackground} />
               </TouchableOpacity>

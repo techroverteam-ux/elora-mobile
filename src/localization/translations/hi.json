@@ -1,0 +1,160 @@
+{
+  "language": "हिन्दी",
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "retry": "पुनः प्रयास करें",
+    "ok": "ठीक है",
+    "share": "साझा करें",
+    "search": "खोजें",
+    "close": "बंद करें",
+    "back": "वापस",
+    "next": "अगला",
+    "previous": "पिछला",
+    "play": "चलाएं",
+    "pause": "रोकें",
+    "bookmark": "पुस्तक चिह्न",
+    "unknown": "अज्ञात",
+    "category": "श्रेणी",
+    "continue": "जारी रखें",
+    "cancel": "रद्द करें"
+  },
+  "navigation": {
+    "home": "मुख्य",
+    "categories": "श्रेणियां",
+    "bookmarks": "पुस्तक चिह्न",
+    "recentlyPlayed": "हाल ही में चलाया गया",
+    "settings": "सेटिंग्स",
+    "language": "भाषा"
+  },
+  "screens": {
+    "bookmarks": {
+      "title": "पुस्तक चिह्न",
+      "underDevelopment": "विकास के अधीन",
+      "noBookmarks": "अभी तक कोई पुस्तक चिह्न नहीं",
+      "noBookmarksDesc": "अपनी पसंदीदा आध्यात्मिक सामग्री को बुकमार्क करना शुरू करें",
+      "exploreContent": "सामग्री देखें",
+      "addedToBookmarks": "पुस्तक चिह्न में जोड़ा गया!",
+      "removedFromBookmarks": "पुस्तक चिह्न से हटाया गया"
+    },
+    "recentlyPlayed": {
+      "title": "हाल ही में चलाया गया",
+      "underDevelopment": "विकास के अधीन",
+      "noRecentActivity": "कोई हालिया गतिविधि नहीं",
+      "noRecentDesc": "ऑडियो सुनना या पुस्तकें पढ़ना शुरू करें",
+      "startExploring": "खोजना शुरू करें"
+    },
+    "audioPlayer": {
+      "nowPlaying": "अब चल रहा है",
+      "unknownArtist": "अज्ञात कलाकार",
+      "upNext": "आगे क्या है",
+      "noAudios": "कोई ऑडियो उपलब्ध नहीं",
+      "shareError": "इस ऑडियो को साझा करने में असमर्थ",
+      "noAudioData": "कोई ऑडियो डेटा प्रदान नहीं किया गया"
+    },
+    "videoPlayer": {
+      "subtitle": "उपशीर्षक",
+      "speed": "गति",
+      "nextUp": "आगे क्या है",
+      "mute": "मूक",
+      "unmute": "आवाज़ चालू करें",
+      "shareError": "इस वीडियो को साझा करने में असमर्थ",
+      "noVideoUrl": "कोई वीडियो URL प्रदान नहीं किया गया"
+    },
+    "pdfViewer": {
+      "title": "पुस्तक दर्शक",
+      "loadingBooks": "पुस्तकें लोड हो रही हैं...",
+      "noPdfAvailable": "कोई पुस्तक उपलब्ध नहीं",
+      "pdfSections": "पुस्तक अनुभाग",
+      "firstPage": "पहला पृष्ठ",
+      "middle": "मध्य",
+      "lastPage": "अंतिम पृष्ठ",
+      "noPdfApp": "कोई PDF दर्शक ऐप नहीं मिला। कृपया PDF रीडर ऐप इंस्टॉल करें।",
+      "failedToOpen": "बाहरी ऐप में PDF खोलने में विफल"
+    },
+    "categories": {
+      "loadingCategories": "श्रेणियां लोड हो रही हैं...",
+      "noCategories": "कोई श्रेणी उपलब्ध नहीं",
+      "errorLoading": "श्रेणियां लोड करने में त्रुटि",
+      "checkConnection": "कृपया अपना इंटरनेट कनेक्शन जांचें"
+    },
+    "home": {
+      "dailyGyan": "दैनिक ज्ञान",
+      "seeAll": "सभी देखें",
+      "featuredContent": "विशेष सामग्री",
+      "trending": "लोकप्रिय",
+      "recentUploads": "हाल की अपलोड",
+      "loadingDashboard": "डैशबोर्ड लोड हो रहा है...",
+      "failedToLoad": "डैशबोर्ड लोड करने में विफल।",
+      "tapToRetry": "पुनः प्रयास के लिए टैप करें"
+    },
+    "gallery": {
+      "title": "गैलरी",
+      "loadingImages": "चित्र लोड हो रहे हैं...",
+      "noImages": "कोई चित्र नहीं मिला",
+      "tapToView": "देखने के लिए टैप करें"
+    },
+    "search": {
+      "placeholder": "ऑडियो, वीडियो, PDF खोजें...",
+      "noResults": "कोई परिणाम नहीं मिला",
+      "searchPrompt": "ऑडियो, वीडियो और PDF खोजें"
+    }
+  },
+  "mediaTypes": {
+    "audio": "ऑडियो",
+    "video": "वीडियो",
+    "image": "चित्र",
+    "pdf": "पुस्तक",
+    "book": "पुस्तक"
+  },
+  "drawer": {
+    "appName": "गीता बाल संस्कार",
+    "tagline": "आध्यात्मिक ज्ञान और मार्गदर्शन",
+    "welcome": "स्वागत है",
+    "mainMenu": "मुख्य मेनू",
+    "settingsSupport": "सेटिंग्स और सहायता",
+    "home": "मुख्य",
+    "categories": "श्रेणियां",
+    "audioLibrary": "ऑडियो लाइब्रेरी",
+    "videoLibrary": "वीडियो लाइब्रेरी",
+    "books": "पुस्तकें",
+    "imageLibrary": "चित्र लाइब्रेरी",
+    "bookmarks": "पुस्तक चिह्न",
+    "recentlyPlayed": "हाल ही में चलाया गया",
+    "settings": "सेटिंग्स",
+    "language": "भाषा",
+    "theme": "थीम",
+    "about": "के बारे में",
+    "helpSupport": "सहायता और समर्थन",
+    "rateApp": "ऐप को रेट करें",
+    "shareApp": "ऐप साझा करें",
+    "logout": "लॉगआउट",
+    "login": "लॉगिन",
+    "version": "संस्करण"
+  },
+  "account": {
+    "title": "खाता सेटिंग्स",
+    "settings": "सेटिंग्स",
+    "appearance": "दिखावट",
+    "selectLanguage": "भाषा चुनें",
+    "about": "के बारे में",
+    "helpSupport": "सहायता और समर्थन",
+    "pdfViewer": "पीडीएफ दर्शक",
+    "audioPlayer": "ऑडियो प्लेयर",
+    "videoPlayer": "वीडियो प्लेयर",
+    "favorites": "पसंदीदा",
+    "history": "इतिहास",
+    "playlists": "प्लेलिस्ट",
+    "notifications": "सूचनाएं",
+    "privacy": "गोपनीयता",
+    "feedback": "प्रतिक्रिया",
+    "shareApp": "ऐप साझा करें",
+    "logout": "लॉगआउट",
+    "logoutConfirm": "क्या आप वाकई लॉगआउट करना चाहते हैं?",
+    "cancel": "रद्द करें"
+  },
+  "header": {
+    "namaste": "नमस्ते",
+    "welcomeTagline": "आध्यात्मिक ज्ञान में आपका स्वागत है"
+  }
+}

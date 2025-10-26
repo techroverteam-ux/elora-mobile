@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from '../components/CustomFastImage';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 const BookmarksScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { bookmarks, removeBookmark } = useBookmarks();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
@@ -125,7 +127,7 @@ const BookmarksScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.itemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || 'Unknown'}
+          {item.artist || item.author || t('common.unknown')}
         </Text>
         <Text style={[styles.itemType, { color: colors.primary }]}>
           {getItemTypeLabel(item)}
@@ -186,7 +188,7 @@ const BookmarksScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || 'Unknown'}
+          {item.artist || item.author || t('common.unknown')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -200,8 +202,8 @@ const BookmarksScreen = () => {
             <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Bookmarks</Text>
-            <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>Under Development</Text>
+            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.bookmarks.title')}</Text>
+            <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.bookmarks.underDevelopment')}</Text>
           </View>
           <TouchableOpacity 
             style={styles.viewToggle}
@@ -219,9 +221,9 @@ const BookmarksScreen = () => {
           <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
             <MaterialDesignIcons name="bookmark-outline" size={64} color="#F8803B" />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>No Bookmarks Yet</Text>
+          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>{t('screens.bookmarks.noBookmarks')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.onSurfaceVariant }]}>
-            Start exploring and bookmark your favorite spiritual content to access them quickly here
+            {t('screens.bookmarks.noBookmarksDesc')}
           </Text>
           <View style={styles.emptyActions}>
             <TouchableOpacity 
@@ -229,7 +231,7 @@ const BookmarksScreen = () => {
               onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
             >
               <MaterialDesignIcons name="compass-outline" size={20} color="#fff" />
-              <Text style={styles.exploreButtonText}>Explore Content</Text>
+              <Text style={styles.exploreButtonText}>{t('screens.bookmarks.exploreContent')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -244,8 +246,8 @@ const BookmarksScreen = () => {
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>Bookmarks</Text>
-          <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>Under Development</Text>
+          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.bookmarks.title')}</Text>
+          <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.bookmarks.underDevelopment')}</Text>
         </View>
         <TouchableOpacity 
           style={styles.viewToggle}

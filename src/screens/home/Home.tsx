@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking } from '
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 
 import MainAppHeader from '../../components/MainAppHeader';
 import CardCarousel from '../../components/CardCarousel';
@@ -21,14 +22,15 @@ type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMai
 
 const Home: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuth();
   const navigation = useNavigation<HomeNavigationProp>();
   const { requireAuth } = useRequireAuth();
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
 
-  if (isLoading) return <LoadingState colors={colors} />;
-  if (isError) return <ErrorState colors={colors} onRetry={refetch} />;
+  if (isLoading) return <LoadingState colors={colors} t={t} />;
+  if (isError) return <ErrorState colors={colors} onRetry={refetch} t={t} />;
 
   const dashboardData = data?.data || {};
   const { recentUploads = [], topVideos = [], topAudios = [], topBooks = [] } = dashboardData;
@@ -159,7 +161,7 @@ const Home: React.FC = () => {
 
         {displayTopAudios && Array.isArray(displayTopAudios) && displayTopAudios.length > 0 && (
           <MediaHorizontalList
-            title="Audios"
+            title={t('mediaTypes.audio')}
             data={displayTopAudios.filter(item => item && item._id)}
             type="audio"
             onItemPress={(item) => handleAudioPress(item, displayTopAudios)}
@@ -169,7 +171,7 @@ const Home: React.FC = () => {
 
         {displayTopVideos && Array.isArray(displayTopVideos) && displayTopVideos.length > 0 && (
           <MediaHorizontalList
-            title="Videos"
+            title={t('mediaTypes.video')}
             data={displayTopVideos.filter(item => item && item._id)}
             type="video"
             onItemPress={(item) => handleVideoPress(item, displayTopVideos)}
@@ -179,7 +181,7 @@ const Home: React.FC = () => {
 
         {displayTopBooks && displayTopBooks.length > 0 && (
           <MediaHorizontalList
-            title="Books"
+            title={t('mediaTypes.book')}
             data={displayTopBooks}
             type="pdf"
             onItemPress={(item) => {
@@ -199,7 +201,7 @@ const Home: React.FC = () => {
 
         {displayRecentUploads && displayRecentUploads.length > 0 && (
           <MediaHorizontalList
-            title="Recent Uploads"
+            title={t('screens.home.recentUploads')}
             data={displayRecentUploads}
             type="audio"
             onItemPress={(item) => {
@@ -230,27 +232,29 @@ export default Home;
 //
 // 🔹 Themed UI Helpers
 //
-const LoadingState = ({ colors }: { colors: any }) => (
+const LoadingState = ({ colors, t }: { colors: any; t: any }) => (
   <View style={styles.centered}>
     <ActivityIndicator size="large" color={colors.primary} />
-    <Text style={[styles.statusText, { color: colors.text }]}>Loading Dashboard...</Text>
+    <Text style={[styles.statusText, { color: colors.text }]}>{t('screens.home.loadingDashboard')}</Text>
   </View>
 );
 
 const ErrorState = ({
   colors,
   onRetry,
+  t,
 }: {
   colors: any;
   onRetry: () => void;
+  t: any;
 }) => (
   <View style={styles.centered}>
-    <Text style={[styles.statusText, { color: colors.error }]}>Failed to load dashboard.</Text>
+    <Text style={[styles.statusText, { color: colors.error }]}>{t('screens.home.failedToLoad')}</Text>
     <Text
       style={[styles.retryText, { color: colors.primary }]}
       onPress={onRetry}
     >
-      Tap to retry
+      {t('screens.home.tapToRetry')}
     </Text>
   </View>
 );

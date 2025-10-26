@@ -11,6 +11,7 @@ import {
   Share,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import Video from 'react-native-video';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import Slider from '@react-native-community/slider';
@@ -30,6 +31,7 @@ const { width, height } = Dimensions.get('window');
 const EnhancedVideoPlayer = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
   const item = (route.params as any)?.item;
   const playlist = (route.params as any)?.playlist;
   const videoRef = useRef<React.ComponentRef<typeof Video>>(null);
@@ -249,7 +251,7 @@ const EnhancedVideoPlayer = () => {
         title: videoTitle,
       });
     } catch (error) {
-      Alert.alert('Error', 'Unable to share this video');
+      Alert.alert(t('common.error'), t('screens.videoPlayer.shareError'));
     }
   };
 
@@ -258,7 +260,7 @@ const EnhancedVideoPlayer = () => {
   if (!videoUrl) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No video URL provided</Text>
+        <Text style={styles.errorText}>{t('screens.videoPlayer.noVideoUrl')}</Text>
       </View>
     );
   }
@@ -283,10 +285,10 @@ const EnhancedVideoPlayer = () => {
               };
               if (isLiked) {
                 removeBookmark(currentVideo._id);
-                Alert.alert('Bookmark', 'Removed from bookmarks');
+                Alert.alert(t('common.bookmark'), t('screens.bookmarks.removedFromBookmarks'));
               } else {
                 addBookmark(videoItem);
-                Alert.alert('Bookmark', 'Added to bookmarks!');
+                Alert.alert(t('common.bookmark'), t('screens.bookmarks.addedToBookmarks'));
               }
             }
           }} style={styles.headerButton}>
@@ -445,17 +447,17 @@ const EnhancedVideoPlayer = () => {
           <View style={styles.enhancedActionRow}>
             <TouchableOpacity style={styles.enhancedActionButton}>
               <MaterialDesignIcons name="subtitles" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Subtitle</Text>
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.subtitle')}</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.enhancedActionButton} onPress={changePlaybackRate}>
               <MaterialDesignIcons name="speedometer" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Speed ({playbackRate}x)</Text>
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.speed')} ({playbackRate}x)</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.enhancedActionButton}>
               <MaterialDesignIcons name="skip-next" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Next Up</Text>
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.nextUp')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -500,13 +502,13 @@ const EnhancedVideoPlayer = () => {
                   color={"#F8803B"} 
                 />
                 <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>
-                  {muted ? 'Unmute' : 'Mute'}
+                  {muted ? t('screens.videoPlayer.unmute') : t('screens.videoPlayer.mute')}
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
                 <MaterialDesignIcons name="share-variant" size={24} color={"#F8803B"} />
-                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>Share</Text>
+                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>{t('common.share')}</Text>
               </TouchableOpacity>
             </View>
           </SafeBottomArea>

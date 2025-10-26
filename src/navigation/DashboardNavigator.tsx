@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View, Platform, Dimensions } from 'react-native';
 import { useTheme, useLinkBuilder } from '@react-navigation/native';
 import { PlatformPressable } from '@react-navigation/elements';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,6 +38,7 @@ const ICONS_MAP: Record<string, string> = {
 function MyTabBar({ state, descriptors, navigation }: any) {
   const { colors } = useTheme();
   const { buildHref } = useLinkBuilder();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = Dimensions.get('window');
   
@@ -65,7 +67,15 @@ function MyTabBar({ state, descriptors, navigation }: any) {
     ]}>
       {state.routes.map((route: any, index: number) => {
         const { options } = descriptors[route.key];
-        const label = options.tabBarLabel ?? options.title ?? route.name;
+        const getLabel = () => {
+          switch (route.name) {
+            case 'Home': return t('navigation.home');
+            case 'Categories': return t('navigation.categories');
+            case 'Account': return t('account.title');
+            default: return options.tabBarLabel ?? options.title ?? route.name;
+          }
+        };
+        const label = getLabel();
         const isFocused = state.index === index;
         const iconName: any = ICONS_MAP[route.name];
 

@@ -7,6 +7,7 @@ import {
 import React, { useEffect } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 
 import AppBarHeader from '../../components/AppBarHeader';
 import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
@@ -14,6 +15,7 @@ import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetCategoriesMutation } from '../../data/redux/services/sectionsApi';
 
 const CategorieDataList = () => {
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
   const { title, id } = route.params;
 
@@ -43,11 +45,11 @@ const CategorieDataList = () => {
       {isLoading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#000" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       ) : error ? (
         <View style={styles.loaderContainer}>
-          <Text style={styles.errorText}>Error loading data</Text>
+          <Text style={styles.errorText}>{t('screens.categories.errorLoading')}</Text>
           <Text style={styles.errorDetails}>{JSON.stringify(error)}</Text>
         </View>
       ) : (

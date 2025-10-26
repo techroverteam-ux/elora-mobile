@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { AccountStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
@@ -16,6 +17,7 @@ const Account = () => {
   const sheetRef = useRef<BottomSheetMethods | null>(null);
   const { navigate } = useNavigation<AccountNavigationProp>();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { logout } = useAuth();
 
   const openAudioPlayer = () => {
@@ -27,48 +29,48 @@ const Account = () => {
     <View style={{ flex: 1 }}>
 
       <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.headerText, { color: colors.onSurface }]}>Account Settings</Text>
+        <Text style={[styles.headerText, { color: colors.onSurface }]}>{t('account.title')}</Text>
       </View>
 
       <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
         <AccountOption
-          label="Settings"
+          label={t('account.settings')}
           icon="cog-outline"
           onPress={() => navigate('Settings')}
         />
 
         <AccountOption
-          label="Appearence"
+          label={t('account.appearance')}
           icon="theme-light-dark"
           onPress={() => navigate('Appearence')}
         />
 
         <AccountOption
-          label="Select Language"
+          label={t('account.selectLanguage')}
           icon="translate"
           onPress={() => navigate('SelectLanguage')}
         />
 
         <AccountOption
-          label="About"
+          label={t('account.about')}
           icon="information-outline"
           onPress={() => navigate('About')}
         />
 
         <AccountOption
-          label="Help & Support"
+          label={t('account.helpSupport')}
           icon="help-circle-outline"
           onPress={() => navigate('HelpSupport')}
         />
 
         <AccountOption
-          label="PDF Viewer"
+          label={t('account.pdfViewer')}
           icon="file-document-outline"
           onPress={() => navigate('PdfViewer')}
         />
 
         <AccountOption
-          label="Audio Player"
+          label={t('account.audioPlayer')}
           icon="home-sound-in-outline"
           onPress={() => {
             // openAudioPlayer()
@@ -86,7 +88,7 @@ const Account = () => {
         />
 
         <AccountOption
-          label="Video Player"
+          label={t('account.videoPlayer')}
           icon="video-outline"
           onPress={() => navigate('VideoPlayer', {
             item: {
@@ -104,46 +106,46 @@ const Account = () => {
           <View style={styles.actionRow}>
 
             <AccountActionButton
-              label="Favorites"
+              label={t('account.favorites')}
               icon="heart"
-              onPress={() => Alert.alert('Favorites', 'View your favorite content')}
+              onPress={() => Alert.alert(t('account.favorites'), 'View your favorite content')}
             />
           </View>
           
           <View style={styles.actionRow}>
             <AccountActionButton
-              label="History"
+              label={t('account.history')}
               icon="history"
-              onPress={() => Alert.alert('History', 'View your listening/viewing history')}
+              onPress={() => Alert.alert(t('account.history'), 'View your listening/viewing history')}
             />
             <AccountActionButton
-              label="Playlists"
+              label={t('account.playlists')}
               icon="playlist-music"
-              onPress={() => Alert.alert('Playlists', 'Manage your playlists')}
+              onPress={() => Alert.alert(t('account.playlists'), 'Manage your playlists')}
             />
           </View>
           
           <View style={styles.actionRow}>
             <AccountActionButton
-              label="Notifications"
+              label={t('account.notifications')}
               icon="bell"
-              onPress={() => Alert.alert('Notifications', 'Manage notification settings')}
+              onPress={() => Alert.alert(t('account.notifications'), 'Manage notification settings')}
             />
             <AccountActionButton
-              label="Privacy"
+              label={t('account.privacy')}
               icon="shield-account"
-              onPress={() => Alert.alert('Privacy', 'Privacy and security settings')}
+              onPress={() => Alert.alert(t('account.privacy'), 'Privacy and security settings')}
             />
           </View>
           
           <View style={styles.actionRow}>
             <AccountActionButton
-              label="Feedback"
+              label={t('account.feedback')}
               icon="message-text"
               onPress={() => navigate('ReportIssue')}
             />
             <AccountActionButton
-              label="Share App"
+              label={t('account.shareApp')}
               icon="share-variant"
               onPress={() => Alert.alert('Share', 'Share Geeta Bal Sanskar app with friends')}
             />
@@ -151,16 +153,16 @@ const Account = () => {
         </View>
 
         <AccountOption
-          label="Logout"
+          label={t('account.logout')}
           icon="logout"
           onPress={() => {
             Alert.alert(
-              'Logout',
-              'Are you sure you want to log out?',
+              t('account.logout'),
+              t('account.logoutConfirm'),
               [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('account.cancel'), style: 'cancel' },
                 {
-                  text: 'Logout',
+                  text: t('account.logout'),
                   style: 'destructive',
                   onPress: logout,
                 },

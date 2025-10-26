@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Pdf from 'react-native-pdf';
 import { useTheme } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import { useGetSectionsMutation } from '../data/redux/services/sectionsApi';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -12,6 +13,7 @@ const { width, height } = Dimensions.get('window');
 
 const PdfViewer = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
   const params = route.params as any;
@@ -120,11 +122,11 @@ const PdfViewer = () => {
         if (supported) {
           await Linking.openURL(proxyUrl);
         } else {
-          Alert.alert('Error', 'No PDF viewer app found. Please install a PDF reader app.');
+          Alert.alert(t('common.error'), t('screens.pdfViewer.noPdfApp'));
         }
       } catch (error) {
         console.error('Error opening PDF externally:', error);
-        Alert.alert('Error', 'Failed to open PDF in external app');
+        Alert.alert(t('common.error'), t('screens.pdfViewer.failedToOpen'));
       }
     }
   };
@@ -136,7 +138,7 @@ const PdfViewer = () => {
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.onSurface }]} numberOfLines={1}>
-          {title || "PDF Viewer"}
+          {title || t('screens.pdfViewer.title')}
         </Text>
         <View style={styles.headerActions}>
           {item && (
@@ -145,10 +147,10 @@ const PdfViewer = () => {
               onPress={() => {
                 if (isBookmarkedItem) {
                   removeBookmark(item._id);
-                  Alert.alert('Bookmark', 'Removed from bookmarks');
+                  Alert.alert(t('common.bookmark'), t('screens.bookmarks.removedFromBookmarks'));
                 } else {
                   addBookmark(item);
-                  Alert.alert('Bookmark', 'Added to bookmarks!');
+                  Alert.alert(t('common.bookmark'), t('screens.bookmarks.addedToBookmarks'));
                 }
               }}
             >
@@ -192,7 +194,7 @@ const PdfViewer = () => {
         {showSections && (
           <View style={[styles.sectionsPanel, { backgroundColor: colors.surface }]}>
             <View style={styles.sectionsPanelHeader}>
-              <Text style={[styles.sectionsPanelTitle, { color: colors.onSurface }]}>PDF Sections</Text>
+              <Text style={[styles.sectionsPanelTitle, { color: colors.onSurface }]}>{t('screens.pdfViewer.pdfSections')}</Text>
             </View>
             
             <ScrollView style={styles.sectionsList}>
@@ -202,19 +204,19 @@ const PdfViewer = () => {
                   style={[styles.quickNavButton, { backgroundColor: colors.primary }]} 
                   onPress={() => goToPage(1)}
                 >
-                  <Text style={styles.quickNavText}>First Page</Text>
+                  <Text style={styles.quickNavText}>{t('screens.pdfViewer.firstPage')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.quickNavButton, { backgroundColor: colors.primary }]} 
                   onPress={() => goToPage(Math.floor(totalPages / 2))}
                 >
-                  <Text style={styles.quickNavText}>Middle</Text>
+                  <Text style={styles.quickNavText}>{t('screens.pdfViewer.middle')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.quickNavButton, { backgroundColor: colors.primary }]} 
                   onPress={() => goToPage(totalPages)}
                 >
-                  <Text style={styles.quickNavText}>Last Page</Text>
+                  <Text style={styles.quickNavText}>{t('screens.pdfViewer.lastPage')}</Text>
                 </TouchableOpacity>
               </View>
               
@@ -288,7 +290,7 @@ const PdfViewer = () => {
               renderActivityIndicator={() => (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading Books...</Text>
+                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('screens.pdfViewer.loadingBooks')}</Text>
                 </View>
               )}
             />
@@ -305,7 +307,7 @@ const PdfViewer = () => {
         ) : (
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: colors.error }]}>
-              No PDF available
+              {t('screens.pdfViewer.noPdfAvailable')}
             </Text>
           </View>
         )}

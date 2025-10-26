@@ -1,33 +1,54 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import i18n from '../localization/i18n'; // Adjust the path as needed
+import { useTranslation } from 'react-i18next';
+import { useTheme } from 'react-native-paper';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 interface Props {
-  onLanguageChange: (lang: string) => void;
+  onLanguageChange?: (lang: string) => void;
 }
 
 const LanguageSwitcher: React.FC<Props> = ({ onLanguageChange }) => {
-  const currentLang = i18n.language;
+  const { i18n, t } = useTranslation();
+  const { colors } = useTheme();
 
   const languages = [
-    { code: 'en', label: 'English', emoji: '🇬🇧' },
-    { code: 'fr', label: 'Français', emoji: '🇫🇷' },
+    { code: 'en', label: 'English', nativeName: 'English', emoji: '🇺🇸' },
+    { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी', emoji: '🇮🇳' },
   ];
+
+  const handleLanguageChange = (langCode: string) => {
+    i18n.changeLanguage(langCode);
+    onLanguageChange?.(langCode);
+  };
 
   return (
     <View style={styles.container}>
+      <Text style={[styles.title, { color: colors.onBackground }]}>{t('navigation.language')}</Text>
       {languages.map((lang) => {
-        const isActive = lang.code === currentLang;
+        const isActive = lang.code === i18n.language;
 
         return (
           <TouchableOpacity
             key={lang.code}
-            onPress={() => onLanguageChange(lang.code)}
-            style={[styles.button, isActive && styles.activeButton]}
+            onPress={() => handleLanguageChange(lang.code)}
+            style={[
+              styles.languageItem,
+              {
+                backgroundColor: isActive ? colors.primary + '20' : colors.surface,
+                borderColor: colors.outline,
+              },
+            ]}
           >
-            <Text style={[styles.buttonText, isActive && styles.activeButtonText]}>
-              {lang.emoji} {lang.label}
-            </Text>
+            <View style={styles.languageInfo}>
+              <Text style={styles.emoji}>{lang.emoji}</Text>
+              <Text style={[styles.languageName, { color: colors.onBackground }]}>
+                {lang.nativeName}
+              </Text>
+            </View>
+            {isActive && (
+              <MaterialDesignIcons name="check" size={20} color={colors.primary} />
+            )}
           </TouchableOpacity>
         );
       })}
@@ -39,37 +60,32 @@ export default LanguageSwitcher;
 
 const styles = StyleSheet.create({
   container: {
-    margin: 20,
+    padding: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  languageItem: {
     flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'flex-start',
-    // paddingVertical: 15,
-    flexWrap: 'wrap',
-  },
-  button: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 1, height: 1 },
-    shadowRadius: 3,
-    elevation: 2,
   },
-  activeButton: {
-    backgroundColor: '#007bff',
-    borderColor: '#007bff',
+  languageInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  buttonText: {
+  emoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  languageName: {
     fontSize: 16,
-    color: '#333',
     fontWeight: '500',
-  },
-  activeButtonText: {
-    color: '#fff',
-    fontWeight: '700',
   },
 });

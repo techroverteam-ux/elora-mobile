@@ -12,6 +12,7 @@ import {
 import { wp, hp, normalize, getResponsiveSize, isTablet } from '../utils/responsive';
 import { useTheme } from 'react-native-paper';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from '../components/CustomFastImage';
 import ImageGalleryViewer from '../components/ImageGalleryViewer';
@@ -36,6 +37,7 @@ interface GalleryItem {
 
 const GalleryListScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute();
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
@@ -133,7 +135,7 @@ const GalleryListScreen: React.FC = () => {
           <View style={styles.listMeta}>
             <MaterialDesignIcons name="eye" size={16} color={colors.onSurfaceVariant} />
             <Text style={[styles.listMetaText, { color: colors.onSurfaceVariant }]}>
-              Tap to view
+              {t('screens.gallery.tapToView')}
             </Text>
           </View>
         </View>
@@ -159,7 +161,7 @@ const GalleryListScreen: React.FC = () => {
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.onSurface} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.onSurface }]}>
-          Daily Gyan Gallery
+          {t('screens.home.dailyGyan')} {t('screens.gallery.title')}
         </Text>
         <TouchableOpacity
           onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
@@ -176,11 +178,11 @@ const GalleryListScreen: React.FC = () => {
       {/* Gallery List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Loading images...</Text>
+          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.loadingImages')}</Text>
         </View>
       ) : images.length === 0 ? (
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>No images found</Text>
+          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.noImages')}</Text>
         </View>
       ) : (
         <FlatList

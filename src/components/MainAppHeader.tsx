@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native'
 import React from 'react'
 import { useNavigation, DrawerActions } from '@react-navigation/native'
+import { useTranslation } from 'react-i18next'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 
 interface MainAppHeaderProps {
@@ -9,6 +10,7 @@ interface MainAppHeaderProps {
 
 const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const openDrawer = () => {
     navigation.dispatch(DrawerActions.openDrawer());
@@ -42,9 +44,9 @@ const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
         </View>
         <View style={styles.welcomeTextContainer}>
           <Text style={styles.greetingText}>
-            {username ? `Namaste, ${username}!` : 'Namaste!'}
+            {username ? `${t('header.namaste')}, ${username}!` : `${t('header.namaste')}!`}
           </Text>
-          <Text style={styles.taglineText}>Welcome to Spiritual Wisdom</Text>
+          <Text style={styles.taglineText}>{t('header.welcomeTagline')}</Text>
           <View style={styles.decorativeLine} />
         </View>
       </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
@@ -27,6 +28,7 @@ interface DailyGyanGalleryProps {
 
 const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeAll }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
   
   // Fetch trending images from API
@@ -98,12 +100,12 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.onBackground }]}>Daily Gyan Gallery</Text>
+            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
           </View>
         </View>
         <View style={[styles.galleryList, { justifyContent: 'center', alignItems: 'center', height: wp(28) }]}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[{ color: colors.onBackground, fontSize: normalize(14), marginTop: 10 }]}>Loading images...</Text>
+          <Text style={[{ color: colors.onBackground, fontSize: normalize(14), marginTop: 10 }]}>{t('screens.gallery.loadingImages')}</Text>
         </View>
       </View>
     );
@@ -115,15 +117,15 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.onBackground }]}>Daily Gyan Gallery</Text>
+            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
           </View>
           <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
+            <Text style={[styles.seeAllText, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
             <MaterialDesignIcons name="chevron-right" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
         <View style={[styles.galleryList, { justifyContent: 'center', alignItems: 'center', height: wp(28) }]}>
-          <Text style={[{ color: colors.onBackground, fontSize: normalize(14) }]}>No images available</Text>
+          <Text style={[{ color: colors.onBackground, fontSize: normalize(14) }]}>{t('screens.gallery.noImages')}</Text>
         </View>
       </View>
     );
@@ -134,10 +136,10 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.onBackground }]}>Daily Gyan Gallery</Text>
+          <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
         </View>
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-          <Text style={[styles.seeAllText, { color: colors.primary }]}>See All</Text>
+          <Text style={[styles.seeAllText, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
           <MaterialDesignIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>

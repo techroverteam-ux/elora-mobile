@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import UnifiedMediaCard from './UnifiedMediaCard';
 
@@ -20,6 +21,7 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
   onSeeAll,
 }) => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const getIcon = () => {
     switch (type) {
@@ -40,7 +42,7 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
         </View>
         {onSeeAll && (
           <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
+            <Text style={[styles.seeAll, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
             <MaterialDesignIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         )}

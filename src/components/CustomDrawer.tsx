@@ -9,32 +9,34 @@ import {
 } from 'react-native';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useAuth } from '../context/AuthContext';
 
 const CustomDrawer = (props: any) => {
   const { user, logout } = useAuth();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const menuItems = [
-    { icon: 'home', label: 'Home', screen: 'Home' },
-    { icon: 'view-dashboard', label: 'Categories', screen: 'Categories' },
-    { icon: 'headphones', label: 'Audio Library', screen: 'AudioLibrary' },
-    { icon: 'play-circle', label: 'Video Library', screen: 'VideoLibrary' },
-    { icon: 'book-open-variant', label: 'Books', screen: 'Books' },
-    { icon: 'image-multiple', label: 'Image Library', screen: 'ImageLibrary' },
-    { icon: 'bookmark', label: 'Bookmarks', screen: 'Bookmarks' },
-    { icon: 'history', label: 'Recently Played', screen: 'RecentlyPlayed' },
+    { icon: 'home', label: t('drawer.home'), screen: 'Home' },
+    { icon: 'view-dashboard', label: t('drawer.categories'), screen: 'Categories' },
+    { icon: 'headphones', label: t('drawer.audioLibrary'), screen: 'AudioLibrary' },
+    { icon: 'play-circle', label: t('drawer.videoLibrary'), screen: 'VideoLibrary' },
+    { icon: 'book-open-variant', label: t('drawer.books'), screen: 'Books' },
+    { icon: 'image-multiple', label: t('drawer.imageLibrary'), screen: 'ImageLibrary' },
+    { icon: 'bookmark', label: t('drawer.bookmarks'), screen: 'Bookmarks' },
+    { icon: 'history', label: t('drawer.recentlyPlayed'), screen: 'RecentlyPlayed' },
   ];
 
   const settingsItems = [
-    { icon: 'cog', label: 'Settings', screen: 'Settings' },
-    { icon: 'translate', label: 'Language', screen: 'Language' },
-    { icon: 'theme-light-dark', label: 'Theme', screen: 'Theme' },
-    { icon: 'information', label: 'About', screen: 'About' },
-    { icon: 'help-circle', label: 'Help & Support', screen: 'Help' },
-    { icon: 'star', label: 'Rate App', action: 'rate' },
-    { icon: 'share-variant', label: 'Share App', action: 'share' },
+    { icon: 'cog', label: t('drawer.settings'), screen: 'Settings' },
+    { icon: 'translate', label: t('drawer.language'), screen: 'Language' },
+    { icon: 'theme-light-dark', label: t('drawer.theme'), screen: 'Theme' },
+    { icon: 'information', label: t('drawer.about'), screen: 'About' },
+    { icon: 'help-circle', label: t('drawer.helpSupport'), screen: 'Help' },
+    { icon: 'star', label: t('drawer.rateApp'), action: 'rate' },
+    { icon: 'share-variant', label: t('drawer.shareApp'), action: 'share' },
   ];
 
   const handleNavigation = (screen: string) => {
@@ -131,11 +133,11 @@ const CustomDrawer = (props: any) => {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.appName}>Geeta Bal Sanskaar</Text>
-        <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
+        <Text style={styles.appName}>{t('drawer.appName')}</Text>
+        <Text style={styles.tagline}>{t('drawer.tagline')}</Text>
         {user && (
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Welcome, {user.name || 'User'}</Text>
+            <Text style={styles.userName}>{t('drawer.welcome')}, {user.name || 'User'}</Text>
             <Text style={styles.userEmail}>{user.email}</Text>
           </View>
         )}
@@ -145,7 +147,7 @@ const CustomDrawer = (props: any) => {
       <ScrollView style={styles.menuScrollView} showsVerticalScrollIndicator={false}>
         {/* Main Menu */}
         <View style={[styles.section, styles.firstSection]}>
-          <Text style={styles.sectionTitle}>Main Menu</Text>
+          <Text style={styles.sectionTitle}>{t('drawer.mainMenu')}</Text>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -160,7 +162,7 @@ const CustomDrawer = (props: any) => {
 
         {/* Settings & Support */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Settings & Support</Text>
+          <Text style={styles.sectionTitle}>{t('drawer.settingsSupport')}</Text>
           {settingsItems.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -182,7 +184,7 @@ const CustomDrawer = (props: any) => {
             onPress={() => handleAction('logout')}
           >
             <MaterialDesignIcons name="logout" size={24} color="#FF6B6B" />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text style={styles.logoutText}>{t('drawer.logout')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -190,10 +192,10 @@ const CustomDrawer = (props: any) => {
             onPress={() => props.navigation.navigate('AuthModal')}
           >
             <MaterialDesignIcons name="login" size={24} color="#4CAF50" />
-            <Text style={styles.loginText}>Login</Text>
+            <Text style={styles.loginText}>{t('drawer.login')}</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.version}>Version 1.0.0</Text>
+        <Text style={styles.version}>{t('drawer.version')} 1.0.0</Text>
       </View>
     </View>
   );

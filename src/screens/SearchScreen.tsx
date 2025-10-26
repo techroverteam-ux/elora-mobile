@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { debounce } from '../utils/debounce';
 import AppBarHeader from '../components/AppBarHeader';
@@ -11,6 +12,7 @@ import { useSearchContentQuery } from '../data/redux/services/mediaApi';
 const SearchScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -73,7 +75,7 @@ const SearchScreen = () => {
         <View style={styles.emptyContainer}>
           <MaterialDesignIcons name="magnify" size={64} color={colors.onSurfaceVariant} />
           <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>
-            {debouncedQuery ? 'No results found' : 'Search for audios, videos, and PDFs'}
+            {debouncedQuery ? t('screens.search.noResults') : t('screens.search.searchPrompt')}
           </Text>
         </View>
       );
@@ -100,13 +102,13 @@ const SearchScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Search" />
+      <AppBarHeader title={t('common.search')} />
       
       <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
         <MaterialDesignIcons name="magnify" size={24} color={colors.onSurfaceVariant} />
         <TextInput
           style={[styles.searchInput, { color: colors.onSurface }]}
-          placeholder="Search audios, videos, PDFs..."
+          placeholder={t('screens.search.placeholder')}
           placeholderTextColor={colors.onSurfaceVariant}
           value={searchQuery}
           onChangeText={handleSearchChange}
