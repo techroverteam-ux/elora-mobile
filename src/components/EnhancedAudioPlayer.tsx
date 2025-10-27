@@ -11,6 +11,7 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -227,7 +228,9 @@ const EnhancedAudioPlayer = () => {
   // Separate effect for initial setup
   useEffect(() => {
     StatusBar.setBarStyle(dark ? 'light-content' : 'dark-content');
-    StatusBar.setBackgroundColor(dark ? '#1a1a1a' : '#ffffff');
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor(dark ? '#1a1a1a' : '#ffffff');
+    }
     
     // Stop all video when audio player mounts
     stopAllVideo();
@@ -251,7 +254,9 @@ const EnhancedAudioPlayer = () => {
 
     return () => {
       StatusBar.setBarStyle('dark-content');
-      StatusBar.setBackgroundColor('#ffffff');
+      if (Platform.OS === 'android') {
+        StatusBar.setBackgroundColor('#ffffff');
+      }
     };
   }, []); // Empty dependency array for one-time setup
   
