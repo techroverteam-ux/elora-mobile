@@ -1,4 +1,4 @@
-package com.geetafinal
+package com.geetabalsanskar
 
 import android.app.Application
 import com.facebook.react.PackageList

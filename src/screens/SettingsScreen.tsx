@@ -39,7 +39,7 @@ const SettingsScreen = () => {
           'Would you like to rate our app on the store?',
           [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
+            { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetabalsanskar') },
           ]
         );
       },
@@ -63,7 +63,7 @@ const SettingsScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppBarHeader title="Settings" />
-      
+
       <View style={styles.content}>
         {settingsOptions.map((option, index) => (
           <TouchableOpacity

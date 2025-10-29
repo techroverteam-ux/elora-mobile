@@ -57,25 +57,25 @@ const CustomDrawer = (props: any) => {
       'Language': 'MainTabs',
       'Theme': 'MainTabs',
     };
-    
+
     const targetScreen = screenMapping[screen] || screen;
-    
+
     if (screen === 'Categories') {
       props.navigation.navigate('MainTabs', { screen: 'Categories', params: { screen: 'CategoriesMain' } });
     } else if (screen === 'AudioLibrary') {
-      props.navigation.navigate('MainTabs', { 
+      props.navigation.navigate('MainTabs', {
         screen: 'Home',
         params: { screen: 'AllAudios' }
       });
     } else if (screen === 'VideoLibrary') {
-      props.navigation.navigate('MainTabs', { 
+      props.navigation.navigate('MainTabs', {
         screen: 'Home',
         params: { screen: 'AllVideos' }
       });
     } else if (screen === 'ImageLibrary') {
       props.navigation.navigate('GalleryList');
     } else if (screen === 'Books') {
-      props.navigation.navigate('MainTabs', { 
+      props.navigation.navigate('MainTabs', {
         screen: 'Home',
         params: { screen: 'AllPDFs' }
       });
@@ -103,7 +103,7 @@ const CustomDrawer = (props: any) => {
             'Would you like to rate our app on the store?',
             [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
+              { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetabalsanskar') },
             ]
           );
         });
@@ -112,7 +112,7 @@ const CustomDrawer = (props: any) => {
         import('react-native').then(({ Alert, Share }) => {
           Share.share({
             message: 'Check out Geeta Bal Sanskar app for spiritual learning!',
-            url: 'https://play.google.com/store/apps/details?id=com.geetafinal',
+            url: 'https://play.google.com/store/apps/details?id=com.geetabalsanskar',
           });
         });
         break;

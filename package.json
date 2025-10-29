@@ -1,5 +1,5 @@
 {
-  "name": "GeetaFinal",
+  "name": "GeetaBalSanskar",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -9,7 +9,7 @@
     "start": "react-native start",
     "test": "jest",
     "pod_install": "cd ios && pod install && cd ..",
-    "ios_icon": "npx rnvi-update-plist package.json ios/GeetaFinal/Info.plist && cd ios && pod install && cd ..",
+    "ios_icon": "npx rnvi-update-plist package.json ios/GeetaBalSanskar/Info.plist && cd ios && pod install && cd ..",
     "build:apk": "cd android && ./gradlew assembleRelease",
     "build:android": "npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res"
   },

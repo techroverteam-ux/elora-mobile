@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "GeetaFinal.app"
-               BlueprintName = "GeetaFinal"
-               ReferencedContainer = "container:GeetaFinal.xcodeproj">
+               BuildableName = "GeetaBalSanskar.app"
+               BlueprintName = "GeetaBalSanskar"
+               ReferencedContainer = "container:GeetaBalSanskar.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "GeetaFinalTests.xctest"
-               BlueprintName = "GeetaFinalTests"
-               ReferencedContainer = "container:GeetaFinal.xcodeproj">
+               BuildableName = "GeetaBalSanskarTests.xctest"
+               BlueprintName = "GeetaBalSanskarTests"
+               ReferencedContainer = "container:GeetaBalSanskar.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "GeetaFinal.app"
-            BlueprintName = "GeetaFinal"
-            ReferencedContainer = "container:GeetaFinal.xcodeproj">
+            BuildableName = "GeetaBalSanskar.app"
+            BlueprintName = "GeetaBalSanskar"
+            ReferencedContainer = "container:GeetaBalSanskar.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "GeetaFinal.app"
-            BlueprintName = "GeetaFinal"
-            ReferencedContainer = "container:GeetaFinal.xcodeproj">
+            BuildableName = "GeetaBalSanskar.app"
+            BlueprintName = "GeetaBalSanskar"
+            ReferencedContainer = "container:GeetaBalSanskar.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
