@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, FlatList, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppBarHeader from '../../components/AppBarHeader'
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard'
@@ -21,6 +22,7 @@ const AllVideos = () => {
   const navigation = useNavigation()
   const route = useRoute<AllVideosRouteProp>()
   const { colors } = useTheme()
+  const { t } = useTranslation()
   const [isGridView, setIsGridView] = useState(true)
   
   const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'video' })
@@ -38,17 +40,17 @@ const AllVideos = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Videos" />
+      <AppBarHeader title={t('mediaTypes.video')} />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading videos...</Text>
+          <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('common.loading')}</Text>
         </View>
       ) : (
         <>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.onBackground }]}>Featured Videos</Text>
+            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.featuredContent')} {t('mediaTypes.video')}</Text>
             <ViewToggle isGridView={isGridView} onToggle={setIsGridView} />
           </View>
           

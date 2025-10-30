@@ -1,12 +1,27 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useThemeContext } from '../../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
+import { translateContent } from '../../utils/contentTranslator';
 import AppBarHeader from '../../components/AppBarHeader';
 import { useTheme } from 'react-native-paper';
 
 const Appearence = () => {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
   const { preference, setPreference } = useThemeContext();
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      forceUpdate({});
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   const styles = StyleSheet.create({
     themeOptions: {
@@ -39,27 +54,27 @@ const Appearence = () => {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <AppBarHeader title="Appearance" />
+    <View key={i18n.language} style={{ flex: 1, backgroundColor: colors.background }}>
+      <AppBarHeader title={translateContent('Appearance')} />
 
       <View style={styles.themeOptions}>
         <Pressable
           onPress={() => setPreference('light')}
           style={[styles.themeOptionButton, preference === 'light' && styles.selectedButton]}
         >
-          <Text style={styles.themeOptionText}>Light</Text>
+          <Text style={styles.themeOptionText}>{translateContent('Light')}</Text>
         </Pressable>
         <Pressable
           onPress={() => setPreference('dark')}
           style={[styles.themeOptionButton, preference === 'dark' && styles.selectedButton]}
         >
-          <Text style={styles.themeOptionText}>Dark</Text>
+          <Text style={styles.themeOptionText}>{translateContent('Dark')}</Text>
         </Pressable>
         <Pressable
           onPress={() => setPreference('system')}
           style={[styles.themeOptionButton, preference === 'system' && styles.selectedButton]}
         >
-          <Text style={styles.themeOptionText}>System</Text>
+          <Text style={styles.themeOptionText}>{translateContent('System')}</Text>
         </Pressable>
       </View>
     </View>

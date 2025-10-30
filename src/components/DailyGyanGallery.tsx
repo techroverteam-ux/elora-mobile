@@ -7,7 +7,7 @@ import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
 import { wp, hp, normalize, getResponsiveSize } from '../utils/responsive';
-import { useBookmarks } from '../context/BookmarkContext';
+
 
 interface GalleryItem {
   _id: string;
@@ -29,7 +29,7 @@ interface DailyGyanGalleryProps {
 const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeAll }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
+
   
   // Fetch trending images from API
   const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
@@ -41,19 +41,7 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
   // Extract image items from the response
   const data = Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image') : [];
 
-  const handleBookmarkToggle = (item: GalleryItem, event: any) => {
-    event.stopPropagation();
-    
-    if (isBookmarked(item._id)) {
-      removeBookmark(item._id);
-    } else {
-      const bookmarkItem = {
-        ...item,
-        type: 'image'
-      };
-      addBookmark(bookmarkItem);
-    }
-  };
+
 
   const renderGalleryItem = ({ item, index }: { item: GalleryItem; index: number }) => {
     const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
@@ -73,21 +61,7 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
           style={styles.galleryImage}
           resizeMode="cover"
         />
-        <View style={styles.imageOverlay}>
-          <View style={[styles.playIcon, { backgroundColor: colors.primary }]}>
-            <MaterialDesignIcons name="eye" size={16} color="#fff" />
-          </View>
-          <TouchableOpacity
-            style={styles.bookmarkButton}
-            onPress={(event) => handleBookmarkToggle(item, event)}
-          >
-            <MaterialDesignIcons 
-              name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
-              size={16} 
-              color={isBookmarked(item._id) ? "#F8803B" : "#fff"} 
-            />
-          </TouchableOpacity>
-        </View>
+
         <View style={styles.imageGradient} />
         <Text style={styles.imageTitle} numberOfLines={2}>{item.title}</Text>
       </TouchableOpacity>
@@ -214,40 +188,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: normalize(16),
     borderTopRightRadius: normalize(16),
   },
-  imageOverlay: {
-    position: 'absolute',
-    top: wp(2),
-    right: wp(2),
-    zIndex: 2,
-  },
-  playIcon: {
-    borderRadius: normalize(12),
-    width: wp(7),
-    height: wp(7),
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  bookmarkButton: {
-    position: 'absolute',
-    top: wp(2),
-    left: wp(2),
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: normalize(12),
-    width: wp(7),
-    height: wp(7),
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+
+
   imageGradient: {
     position: 'absolute',
     bottom: 0,

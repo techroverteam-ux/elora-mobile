@@ -1,59 +1,74 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { translateContent } from '../utils/contentTranslator';
 import AppBarHeader from '../components/AppBarHeader';
 
 const SettingsScreen = () => {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      forceUpdate({});
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   const settingsOptions = [
     {
-      title: 'Appearance',
+      title: translateContent('Appearance'),
       icon: 'theme-light-dark',
-      onPress: () => (navigation as any).navigate('Account', { screen: 'Appearence' }),
+      onPress: () => (navigation as any).navigate('MainTabs', { screen: 'Account', params: { screen: 'Appearence' } }),
     },
     {
-      title: 'Language',
+      title: translateContent('Language'),
       icon: 'translate',
-      onPress: () => (navigation as any).navigate('Account', { screen: 'SelectLanguage' }),
+      onPress: () => (navigation as any).navigate('MainTabs', { screen: 'Account', params: { screen: 'SelectLanguage' } }),
     },
     {
-      title: 'About',
+      title: translateContent('About'),
       icon: 'information-outline',
       onPress: () => (navigation as any).navigate('About'),
     },
     {
-      title: 'Help & Support',
+      title: translateContent('Help & Support'),
       icon: 'help-circle-outline',
       onPress: () => (navigation as any).navigate('HelpSupport'),
     },
     {
-      title: 'Rate App',
+      title: translateContent('Rate App'),
       icon: 'star-outline',
       onPress: () => {
         Alert.alert(
-          'Rate App',
-          'Would you like to rate our app on the store?',
+          translateContent('Rate App'),
+          translateContent('Would you like to rate our app on the store?'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
+            { text: translateContent('Cancel'), style: 'cancel' },
+            { text: translateContent('Rate Now'), onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
           ]
         );
       },
     },
     {
-      title: 'Share App',
+      title: translateContent('Share App'),
       icon: 'share',
       onPress: () => {
         Alert.alert(
-          'Share App',
-          'Share Geeta Bal Sanskaar app with your friends and family!',
+          translateContent('Share App'),
+          translateContent('Share Geeta Bal Sanskaar app with your friends and family!'),
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Share', onPress: () => console.log('Share app') },
+            { text: translateContent('Cancel'), style: 'cancel' },
+            { text: translateContent('Share'), onPress: () => console.log('Share app') },
           ]
         );
       },
@@ -61,8 +76,8 @@ const SettingsScreen = () => {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Settings" />
+    <View key={i18n.language} style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppBarHeader title={translateContent('Settings')} />
       
       <View style={styles.content}>
         {settingsOptions.map((option, index) => (

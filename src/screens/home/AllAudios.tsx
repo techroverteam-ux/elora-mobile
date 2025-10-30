@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppBarHeader from '../../components/AppBarHeader'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard';
 import MediaListItem from '../../components/MediaListItem';
@@ -9,6 +10,7 @@ import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from 'react-native-paper';
 import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi';
+import { translateContent } from '../../utils/contentTranslator';
 
 const buttons = [
   { label: 'Bhajans', color: '#f97316' },    // Orange
@@ -21,6 +23,7 @@ const AllAudios = () => {
   type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
   const { navigate } = useNavigation<HomeNavigationProp>();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [isGridView, setIsGridView] = useState(true);
 
   const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'audio' });
@@ -46,7 +49,7 @@ const AllAudios = () => {
 
   return (
     <View>
-      <AppBarHeader title="Audios" />
+      <AppBarHeader title={t('mediaTypes.audio')} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {rows.map((row, rowIndex) => (
@@ -60,7 +63,7 @@ const AllAudios = () => {
                   console.log('Pressed:', btn.label)
                 }}
               >
-                <Text style={styles.text}>{btn.label}</Text>
+                <Text style={styles.text}>{translateContent(btn.label)}</Text>
                 <Text style={styles.arrow}>›</Text>
               </TouchableOpacity>
             ))}
@@ -70,12 +73,12 @@ const AllAudios = () => {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading audios...</Text>
+            <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('common.loading')}</Text>
           </View>
         ) : (
           <>
             <View style={styles.header}>
-              <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Featured Audios</Text>
+              <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{t('screens.home.featuredContent')} {t('mediaTypes.audio')}</Text>
               <ViewToggle isGridView={isGridView} onToggle={setIsGridView} />
             </View>
             

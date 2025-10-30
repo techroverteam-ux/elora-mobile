@@ -7,6 +7,8 @@ import SpotifyMediaCard from '../../components/SpotifyMediaCard';
 import { HomeStackParamList } from '../../navigation/types';
 import { useTheme } from 'react-native-paper';
 import { useSearchContentQuery } from '../../data/redux/services/mediaApi';
+import { translateContent } from '../../utils/contentTranslator';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 type AudioCategoryNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -38,12 +40,12 @@ const AudioCategoryScreen = ({ route }: { route: any }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title={title} />
+      <AppBarHeader title={translateContent(title)} />
       
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading {title}...</Text>
+          <Text style={[styles.loadingText, { color: colors.onBackground }]}>{translateContent('Loading')} {translateContent(title)}...</Text>
         </View>
       ) : categoryAudios.length > 0 ? (
         <FlatList
@@ -63,7 +65,9 @@ const AudioCategoryScreen = ({ route }: { route: any }) => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.onBackground }]}>No {title} found</Text>
+          <MaterialDesignIcons name="music-off" size={80} color={colors.onSurfaceVariant} />
+          <Text style={[styles.emptyTitle, { color: colors.onSurface }]}>{translateContent('No content found')}</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.onSurfaceVariant }]}>{translateContent('Coming soon')}</Text>
         </View>
       )}
     </View>
@@ -96,9 +100,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  emptyText: {
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
     fontSize: 16,
+    marginTop: 8,
     textAlign: 'center',
   },
 })

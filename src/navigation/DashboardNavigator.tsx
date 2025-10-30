@@ -7,6 +7,7 @@ import { PlatformPressable } from '@react-navigation/elements';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { translateContent } from '../utils/contentTranslator';
 
 // Import stack navigators
 import HomeStack from './stack/HomeStack';
@@ -25,6 +26,7 @@ import BookmarksScreen from '../screens/BookmarksScreen';
 import RecentlyPlayedScreen from '../screens/RecentlyPlayedScreen';
 import MiniPlayer from '../components/MiniPlayer';
 import { useCurrentPlayer } from '../context/CurrentPlayerContext';
+import AuthModalWrapper from './AuthModalWrapper';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -71,7 +73,7 @@ function MyTabBar({ state, descriptors, navigation }: any) {
           switch (route.name) {
             case 'Home': return t('navigation.home');
             case 'Categories': return t('navigation.categories');
-            case 'Account': return t('account.title');
+            case 'Account': return translateContent('Account');
             default: return options.tabBarLabel ?? options.title ?? route.name;
           }
         };
@@ -203,6 +205,14 @@ const DashboardNavigator = () => {
       <Drawer.Screen name="ReportIssue" component={ReportIssueScreen} />
       <Drawer.Screen name="FeatureRequest" component={FeatureRequestScreen} />
       <Drawer.Screen name="GalleryList" component={GalleryListScreen} />
+      <Drawer.Screen 
+        name="AuthModal" 
+        component={AuthModalWrapper} 
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+        }}
+      />
     </Drawer.Navigator>
   );
 };

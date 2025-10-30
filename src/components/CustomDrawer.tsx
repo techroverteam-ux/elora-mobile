@@ -12,6 +12,7 @@ import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useAuth } from '../context/AuthContext';
+import { translateContent } from '../utils/contentTranslator';
 
 const CustomDrawer = (props: any) => {
   const { user, logout } = useAuth();
@@ -99,11 +100,11 @@ const CustomDrawer = (props: any) => {
       case 'rate':
         import('react-native').then(({ Alert, Linking }) => {
           Alert.alert(
-            'Rate App',
-            'Would you like to rate our app on the store?',
+            translateContent('Rate App'),
+            translateContent('Would you like to rate our app on the store?'),
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Rate Now', onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
+              { text: translateContent('Cancel'), style: 'cancel' },
+              { text: translateContent('Rate Now'), onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
             ]
           );
         });
@@ -111,7 +112,7 @@ const CustomDrawer = (props: any) => {
       case 'share':
         import('react-native').then(({ Alert, Share }) => {
           Share.share({
-            message: 'Check out Geeta Bal Sanskar app for spiritual learning!',
+            message: translateContent('Share Geeta Bal Sanskaar app with your friends and family!'),
             url: 'https://play.google.com/store/apps/details?id=com.geetafinal',
           });
         });
@@ -133,8 +134,8 @@ const CustomDrawer = (props: any) => {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.appName}>{t('drawer.appName')}</Text>
-        <Text style={styles.tagline}>{t('drawer.tagline')}</Text>
+        <Text style={styles.appName}>{translateContent('Geeta Bal Sanskar')}</Text>
+        <Text style={styles.tagline}>{translateContent('Spiritual Wisdom & Guidance')}</Text>
         {user && (
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{t('drawer.welcome')}, {user.name || 'User'}</Text>

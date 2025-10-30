@@ -1,0 +1,203 @@
+{
+  "language": "संस्कृतम्",
+  "common": {
+    "loading": "लोड्यते...",
+    "error": "त्रुटिः",
+    "retry": "पुनः प्रयासः",
+    "ok": "सम्यक्",
+    "share": "साझीकरणम्",
+    "search": "अन्वेषणम्",
+    "close": "बन्धनम्",
+    "back": "पश्चात्",
+    "next": "अग्रिमम्",
+    "previous": "पूर्वम्",
+    "play": "चालनम्",
+    "pause": "विरामः",
+    "bookmark": "पुस्तकचिह्नम्",
+    "unknown": "अज्ञातम्",
+    "category": "वर्गः",
+    "continue": "चालयतु",
+    "cancel": "निरसनम्"
+  },
+  "navigation": {
+    "home": "गृहम्",
+    "categories": "वर्गाः",
+    "bookmarks": "पुस्तकचिह्नानि",
+    "recentlyPlayed": "सद्यः चालितम्",
+    "settings": "व्यवस्थाः",
+    "language": "भाषा"
+  },
+  "screens": {
+    "bookmarks": {
+      "title": "पुस्तकचिह्नानि",
+      "underDevelopment": "विकासाधीनम्",
+      "noBookmarks": "अद्यापि न कानिचित् पुस्तकचिह्नानि",
+      "noBookmarksDesc": "स्वप्रियाध्यात्मिकसामग्रीं चिह्नितुं आरभत",
+      "exploreContent": "सामग्री अन्वेषयतु",
+      "addedToBookmarks": "पुस्तकचिह्नेषु योजितम्!",
+      "removedFromBookmarks": "पुस्तकचिह्नेभ्यः अपसारितम्"
+    },
+    "recentlyPlayed": {
+      "title": "सद्यः चालितम्",
+      "underDevelopment": "विकासाधीनम्",
+      "noRecentActivity": "न कोऽपि सद्यः क्रियाकलापः",
+      "noRecentDesc": "श्रवणं वा पठनं वा आरभत",
+      "startExploring": "अन्वेषणं आरभत"
+    },
+    "audioPlayer": {
+      "nowPlaying": "इदानीं चालयति",
+      "unknownArtist": "अज्ञातः कलाकारः",
+      "upNext": "अग्रे किम्",
+      "noAudios": "न कानिचित् श्रव्याणि उपलब्धानि",
+      "shareError": "एतत् श्रव्यं साझीकर्तुं न शक्यते",
+      "noAudioData": "न कानिचित् श्रव्यदत्तांशाः प्रदत्ताः"
+    },
+    "videoPlayer": {
+      "subtitle": "उपशीर्षकम्",
+      "speed": "वेगः",
+      "nextUp": "अग्रे किम्",
+      "mute": "मौनम्",
+      "unmute": "शब्दं चालयतु",
+      "shareError": "एतत् दृश्यं साझीकर्तुं न शक्यते",
+      "noVideoUrl": "न कोऽपि दृश्यसङ्केतः प्रदत्तः"
+    },
+    "pdfViewer": {
+      "title": "पुस्तकदर्शकः",
+      "loadingBooks": "पुस्तकानि लोड्यन्ते...",
+      "noPdfAvailable": "न कानिचित् पुस्तकानि उपलब्धानि",
+      "pdfSections": "पुस्तकखण्डाः",
+      "firstPage": "प्रथमपृष्ठम्",
+      "middle": "मध्यम्",
+      "lastPage": "अन्तिमपृष्ठम्",
+      "noPdfApp": "न कोऽपि पीडीएफ्दर्शकः प्राप्तः। कृपया पीडीएफ्पाठकं स्थापयतु।",
+      "failedToOpen": "बाह्यसाधने पीडीएफ् खोलने असफलम्"
+    },
+    "categories": {
+      "loadingCategories": "वर्गाः लोड्यन्ते...",
+      "noCategories": "न कोऽपि वर्गः उपलब्धः",
+      "errorLoading": "वर्गान् लोडने त्रुटिः",
+      "checkConnection": "कृपया स्वजालसम्बन्धं परीक्षताम्"
+    },
+    "home": {
+      "dailyGyan": "दैनिकज्ञानम्",
+      "seeAll": "सर्वाणि पश्यतु",
+      "featuredContent": "विशेषसामग्री",
+      "trending": "लोकप्रियम्",
+      "recentUploads": "सद्यः उपारोपिताः",
+      "loadingDashboard": "डैशबोर्डं लोड्यते...",
+      "failedToLoad": "डैशबोर्डं लोडने असफलम्।",
+      "tapToRetry": "पुनः प्रयासार्थं स्पृशतु"
+    },
+    "gallery": {
+      "title": "चित्रशाला",
+      "loadingImages": "चित्राणि लोड्यन्ते...",
+      "noImages": "न कानिचित् चित्राणि प्राप्तानि",
+      "tapToView": "द्रष्टुं स्पृशतु"
+    },
+    "search": {
+      "placeholder": "श्रव्याणि, दृश्यानि, पीडीएफ् अन्वेषयतु...",
+      "noResults": "न कानिचित् परिणामानि प्राप्तानि",
+      "searchPrompt": "श्रव्याणि, दृश्यानि च पीडीएफ् अन्वेषयतु"
+    }
+  },
+  "mediaTypes": {
+    "audio": "श्रव्यम्",
+    "video": "दृश्यम्",
+    "image": "चित्रम्",
+    "pdf": "पुस्तकम्",
+    "book": "पुस्तकम्"
+  },
+  "drawer": {
+    "appName": "गीता बाल संस्कारः",
+    "tagline": "आध्यात्मिकज्ञानं मार्गदर्शनं च",
+    "welcome": "स्वागतम्",
+    "mainMenu": "मुख्यसूची",
+    "settingsSupport": "व्यवस्थाः सहायता च",
+    "home": "गृहम्",
+    "categories": "वर्गाः",
+    "audioLibrary": "श्रव्यसङ्ग्रहालयः",
+    "videoLibrary": "दृश्यसङ्ग्रहालयः",
+    "books": "पुस्तकानि",
+    "imageLibrary": "चित्रसङ्ग्रहालयः",
+    "bookmarks": "पुस्तकचिह्नानि",
+    "recentlyPlayed": "सद्यः चालितम्",
+    "settings": "व्यवस्थाः",
+    "language": "भाषा",
+    "theme": "विषयः",
+    "about": "विषये",
+    "helpSupport": "सहायता समर्थनं च",
+    "rateApp": "एप्लिकेशनं मूल्यांकनं करोतु",
+    "shareApp": "एप्लिकेशनं साझीकरोतु",
+    "logout": "निर्गमः",
+    "login": "प्रवेशः",
+    "version": "संस्करणम्"
+  },
+  "account": {
+    "title": "खाताव्यवस्थाः",
+    "settings": "व्यवस्थाः",
+    "appearance": "रूपम्",
+    "selectLanguage": "भाषां चिनुत",
+    "about": "विषये",
+    "helpSupport": "सहायता समर्थनं च",
+    "pdfViewer": "पीडीएफ्दर्शकः",
+    "audioPlayer": "श्रव्यचालकः",
+    "videoPlayer": "दृश्यचालकः",
+    "favorites": "प्रियाणि",
+    "history": "इतिहासः",
+    "playlists": "चालनसूची",
+    "notifications": "सूचनाः",
+    "privacy": "गोपनीयता",
+    "feedback": "प्रतिक्रिया",
+    "shareApp": "एप्लिकेशनं साझीकरोतु",
+    "logout": "निर्गमः",
+    "logoutConfirm": "किं भवान् वास्तवे निर्गन्तुम् इच्छति?",
+    "cancel": "निरसनम्"
+  },
+  "header": {
+    "namaste": "नमस्ते",
+    "welcomeTagline": "आध्यात्मिकज्ञाने स्वागतम्"
+  },
+  "auth": {
+    "login": {
+      "title": "पुनरागमने स्वागतम्",
+      "subtitle": "गीताबालसंस्कारे निरन्तरार्थं प्रविशतु",
+      "emailPlaceholder": "ईमेल पता",
+      "passwordPlaceholder": "गुप्तशब्दः",
+      "signInButton": "प्रवेशः",
+      "noAccount": "न कोऽपि खाता?",
+      "signUp": "पञ्जीकरणम्",
+      "emailRequired": "ईमेल आवश्यकम्",
+      "emailInvalid": "कृपया वैधं ईमेल पतं प्रविशतु",
+      "passwordRequired": "गुप्तशब्दः आवश्यकः",
+      "passwordMinLength": "गुप्तशब्दः न्यूनतमं ६ अक्षराणां भवेत्",
+      "invalidCredentials": "अवैधं ईमेल अथवा गुप्तशब्दः। कृपया पुनः प्रयासं करोतु।",
+      "tooManyAttempts": "अत्यधिकाः प्रवेशप्रयासाः। कृपया पश्चात् पुनः प्रयासं करोतु।",
+      "serverError": "सर्वरत्रुटिः। कृपया पश्चात् पुनः प्रयासं करोतु।",
+      "loginFailed": "प्रवेशः असफलः। कृपया स्वसम्बन्धं परीक्ष्य पुनः प्रयासं करोतु।"
+    },
+    "register": {
+      "title": "खातां सृजतु",
+      "subtitle": "अद्यैव गीताबालसंस्कारसमुदाये सम्मिलध्वम्",
+      "namePlaceholder": "पूर्णनाम",
+      "emailPlaceholder": "ईमेल पता",
+      "passwordPlaceholder": "गुप्तशब्दः",
+      "createAccountButton": "खातां सृजतु",
+      "haveAccount": "पूर्वतः खाता अस्ति?",
+      "signIn": "प्रवेशः",
+      "nameRequired": "पूर्णनाम आवश्यकम्",
+      "nameMinLength": "नाम न्यूनतमं २ अक्षराणां भवेत्",
+      "emailRequired": "ईमेल आवश्यकम्",
+      "emailInvalid": "कृपया वैधं ईमेल पतं प्रविशतु",
+      "passwordRequired": "गुप्तशब्दः आवश्यकः",
+      "passwordMinLength": "गुप्तशब्दः न्यूनतमं ८ अक्षराणां भवेत्",
+      "passwordComplexity": "गुप्तशब्दे न्यूनतमं एकं बृहदक्षरम्, एकं लघुअक्षरम्, एकं सङ्ख्या च भवेत्",
+      "registrationSuccess": "पञ्जीकरणं सफलम्! इदानीं भवान् स्वप्रमाणपत्रैः प्रवेष्टुं शक्नोति।",
+      "emailExists": "एतेन ईमेलेन पूर्वतः एका खाता विद्यते।",
+      "tooManyAttempts": "अत्यधिकाः पञ्जीकरणप्रयासाः। कृपया पश्चात् पुनः प्रयासं करोतु।",
+      "serverError": "सर्वरत्रुटिः। कृपया पश्चात् पुनः प्रयासं करोतु।",
+      "registrationFailed": "पञ्जीकरणं असफलम्। कृपया स्वसम्बन्धं परीक्ष्य पुनः प्रयासं करोतु।",
+      "success": "सफलता",
+      "ok": "सम्यक्"
+    }
+  }
+}

@@ -156,5 +156,48 @@
   "header": {
     "namaste": "नमस्ते",
     "welcomeTagline": "आध्यात्मिक ज्ञान में आपका स्वागत है"
+  },
+  "auth": {
+    "login": {
+      "title": "वापस आपका स्वागत है",
+      "subtitle": "गीता बाल संस्कार में जारी रखने के लिए साइन इन करें",
+      "emailPlaceholder": "ईमेल पता",
+      "passwordPlaceholder": "पासवर्ड",
+      "signInButton": "साइन इन",
+      "noAccount": "कोई खाता नहीं है?",
+      "signUp": "साइन अप",
+      "emailRequired": "ईमेल आवश्यक है",
+      "emailInvalid": "कृपया एक वैध ईमेल पता दर्ज करें",
+      "passwordRequired": "पासवर्ड आवश्यक है",
+      "passwordMinLength": "पासवर्ड कम से कम 6 अक्षर का होना चाहिए",
+      "invalidCredentials": "गलत ईमेल या पासवर्ड। कृपया पुनः प्रयास करें।",
+      "tooManyAttempts": "बहुत सारे लॉगिन प्रयास। कृपया बाद में पुनः प्रयास करें।",
+      "serverError": "सर्वर त्रुटि। कृपया बाद में पुनः प्रयास करें।",
+      "loginFailed": "लॉगिन विफल। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।"
+    },
+    "register": {
+      "title": "खाता बनाएं",
+      "subtitle": "आज ही गीता बाल संस्कार समुदाय में शामिल हों",
+      "namePlaceholder": "पूरा नाम",
+      "emailPlaceholder": "ईमेल पता",
+      "passwordPlaceholder": "पासवर्ड",
+      "createAccountButton": "खाता बनाएं",
+      "haveAccount": "पहले से खाता है?",
+      "signIn": "साइन इन",
+      "nameRequired": "पूरा नाम आवश्यक है",
+      "nameMinLength": "नाम कम से कम 2 अक्षर का होना चाहिए",
+      "emailRequired": "ईमेल आवश्यक है",
+      "emailInvalid": "कृपया एक वैध ईमेल पता दर्ज करें",
+      "passwordRequired": "पासवर्ड आवश्यक है",
+      "passwordMinLength": "पासवर्ड कम से कम 8 अक्षर का होना चाहिए",
+      "passwordComplexity": "पासवर्ड में कम से कम एक बड़ा अक्षर, एक छोटा अक्षर और एक संख्या होनी चाहिए",
+      "registrationSuccess": "पंजीकरण सफल! अब आप अपनी साख के साथ लॉगिन कर सकते हैं।",
+      "emailExists": "इस ईमेल के साथ पहले से एक खाता मौजूद है।",
+      "tooManyAttempts": "बहुत सारे पंजीकरण प्रयास। कृपया बाद में पुनः प्रयास करें।",
+      "serverError": "सर्वर त्रुटि। कृपया बाद में पुनः प्रयास करें।",
+      "registrationFailed": "पंजीकरण विफल। कृपया अपना कनेक्शन जांचें और पुनः प्रयास करें।",
+      "success": "सफलता",
+      "ok": "ठीक है"
+    }
   }
 }

@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { useTranslation } from 'react-i18next';
+import { translateContent } from '../utils/contentTranslator';
 import { AppColors } from '../theme/colors';
 
 const { width, height } = Dimensions.get('window');
@@ -19,6 +21,7 @@ interface SplashScreenProps {
 }
 
 const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+  const { t } = useTranslation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -99,8 +102,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             },
           ]}
         >
-          <Text style={styles.appName}>Geeta Bal Sanskaar</Text>
-          <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
+          <Text style={styles.appName}>{translateContent('Geeta Bal Sanskar')}</Text>
+          <Text style={styles.tagline}>{translateContent('Spiritual Wisdom & Guidance')}</Text>
         </Animated.View>
       </View>
 
@@ -118,7 +121,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           <View style={styles.loadingDot} />
           <View style={styles.loadingDot} />
         </View>
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
       </Animated.View>
     </LinearGradient>
   );

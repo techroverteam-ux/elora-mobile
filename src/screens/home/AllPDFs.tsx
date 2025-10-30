@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from 'react-native-paper';
 import AppBarHeader from '../../components/AppBarHeader';
 import UnifiedMediaCard from '../../components/UnifiedMediaCard';
@@ -15,6 +16,7 @@ type PDFNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 const AllPDFs = () => {
   const navigation = useNavigation<PDFNavigationProp>();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const [isGridView, setIsGridView] = useState(true);
 
   const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'pdf' });
@@ -32,17 +34,17 @@ const AllPDFs = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Books" />
+      <AppBarHeader title={t('mediaTypes.book')} />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading PDFs...</Text>
+          <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('common.loading')}</Text>
         </View>
       ) : pdfData.length > 0 ? (
         <>
           <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.onBackground }]}>Books</Text>
+            <Text style={[styles.title, { color: colors.onBackground }]}>{t('mediaTypes.book')}</Text>
             <ViewToggle isGridView={isGridView} onToggle={setIsGridView} />
           </View>
           
@@ -73,7 +75,7 @@ const AllPDFs = () => {
         </>
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: colors.onBackground }]}>No PDFs available</Text>
+          <Text style={[styles.emptyText, { color: colors.onBackground }]}>{t('screens.pdfViewer.noPdfAvailable')}</Text>
         </View>
       )}
     </View>

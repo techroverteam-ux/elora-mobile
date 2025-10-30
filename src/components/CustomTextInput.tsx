@@ -62,12 +62,15 @@ const CustomTextInput: React.FC<CustomTextInputProps> = ({
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize="none"
+        autoCorrect={false}
+        textContentType="none"
         {...rest}
       />
       {showToggle && setShowPassword && (
         <TouchableOpacity
           onPress={() => setShowPassword(!showPassword)}
           style={styles.eyeButton}
+          activeOpacity={0.7}
         >
           <MaterialDesignIcons
             name={showPassword ? 'eye-off' : 'eye'}
@@ -84,6 +87,8 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     padding: 0,
+    minHeight: 40,
+    textAlignVertical: 'center',
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -95,6 +100,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 44,
+    minHeight: 44,
   },
 });
 

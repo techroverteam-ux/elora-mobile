@@ -11,14 +11,16 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import AudioBottomSheet from '../../components/AudioBottomSheet';
 import { BottomSheetMethods } from '@gorhom/bottom-sheet/lib/typescript/types';
 import { useThemeContext } from '../../context/ThemeContext';
+import { translateContent } from '../../utils/contentTranslator';
 
 const Account = () => {
   type AccountNavigationProp = NativeStackNavigationProp<AccountStackParamList, 'AccountMain'>;
   const sheetRef = useRef<BottomSheetMethods | null>(null);
-  const { navigate } = useNavigation<AccountNavigationProp>();
+  const navigation = useNavigation<AccountNavigationProp>();
+  const { navigate } = navigation;
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const openAudioPlayer = () => {
     console.log('Opening sheet');
@@ -29,6 +31,9 @@ const Account = () => {
     <View style={{ flex: 1 }}>
 
       <View style={[styles.headerContainer, { backgroundColor: colors.background }]}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
+        </Pressable>
         <Text style={[styles.headerText, { color: colors.onSurface }]}>{t('account.title')}</Text>
       </View>
 
@@ -39,17 +44,7 @@ const Account = () => {
           onPress={() => navigate('Settings')}
         />
 
-        <AccountOption
-          label={t('account.appearance')}
-          icon="theme-light-dark"
-          onPress={() => navigate('Appearence')}
-        />
 
-        <AccountOption
-          label={t('account.selectLanguage')}
-          icon="translate"
-          onPress={() => navigate('SelectLanguage')}
-        />
 
         <AccountOption
           label={t('account.about')}
@@ -66,111 +61,80 @@ const Account = () => {
         <AccountOption
           label={t('account.pdfViewer')}
           icon="file-document-outline"
-          onPress={() => navigate('PdfViewer')}
+          onPress={() => {
+            try {
+              const rootNav = navigation.getParent()?.getParent();
+              rootNav?.navigate('MainTabs' as never, { screen: 'Home', params: { screen: 'AllPDFs' } } as never);
+            } catch (error) {
+              console.log('PDF navigation error:', error);
+            }
+          }}
         />
 
         <AccountOption
           label={t('account.audioPlayer')}
           icon="home-sound-in-outline"
           onPress={() => {
-            // openAudioPlayer()
-
-            navigate('AudioPlayer', {
-              item: {
-                title: 'Shree Krishna Govind',
-                artist: 'Singer, Composer Names',
-                imageUrl: require('../../assets/images/shreeKrishna.png'),
-                // audioUrl: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-01.mp3'
-                audioUrl: 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=https%3A%2F%2Fgbsprod.blob.core.windows.net%https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=https%3A%2F%2Fgbsprod.blob.core.windows.net%2Fgbsdata%2Fmedia%2FEducational%2Ffile_01.-Preface_1761104410521_p2ikti.mp3'
-              }
-            })
+            try {
+              const rootNav = navigation.getParent()?.getParent();
+              rootNav?.navigate('MainTabs' as never, { screen: 'Home', params: { screen: 'AllAudios' } } as never);
+            } catch (error) {
+              console.log('Audio navigation error:', error);
+            }
           }}
         />
 
         <AccountOption
           label={t('account.videoPlayer')}
           icon="video-outline"
-          onPress={() => navigate('VideoPlayer', {
-            item: {
-              videoUri: 'https://www.w3schools.com/html/mov_bbb.mp4',
-              title: 'Big Buck Bunny',
-              // showDebugInfo: true,
-              // params: { item: {} },
-              showHeaderFromRoutes: ['AccountMain'],
-            }
-          })}
-        />
-
-        {/* Bottom Action Buttons */}
-        <View style={styles.bottomActions}>
-          <View style={styles.actionRow}>
-
-            <AccountActionButton
-              label={t('account.favorites')}
-              icon="heart"
-              onPress={() => Alert.alert(t('account.favorites'), 'View your favorite content')}
-            />
-          </View>
-          
-          <View style={styles.actionRow}>
-            <AccountActionButton
-              label={t('account.history')}
-              icon="history"
-              onPress={() => Alert.alert(t('account.history'), 'View your listening/viewing history')}
-            />
-            <AccountActionButton
-              label={t('account.playlists')}
-              icon="playlist-music"
-              onPress={() => Alert.alert(t('account.playlists'), 'Manage your playlists')}
-            />
-          </View>
-          
-          <View style={styles.actionRow}>
-            <AccountActionButton
-              label={t('account.notifications')}
-              icon="bell"
-              onPress={() => Alert.alert(t('account.notifications'), 'Manage notification settings')}
-            />
-            <AccountActionButton
-              label={t('account.privacy')}
-              icon="shield-account"
-              onPress={() => Alert.alert(t('account.privacy'), 'Privacy and security settings')}
-            />
-          </View>
-          
-          <View style={styles.actionRow}>
-            <AccountActionButton
-              label={t('account.feedback')}
-              icon="message-text"
-              onPress={() => navigate('ReportIssue')}
-            />
-            <AccountActionButton
-              label={t('account.shareApp')}
-              icon="share-variant"
-              onPress={() => Alert.alert('Share', 'Share Geeta Bal Sanskar app with friends')}
-            />
-          </View>
-        </View>
-
-        <AccountOption
-          label={t('account.logout')}
-          icon="logout"
           onPress={() => {
-            Alert.alert(
-              t('account.logout'),
-              t('account.logoutConfirm'),
-              [
-                { text: t('account.cancel'), style: 'cancel' },
-                {
-                  text: t('account.logout'),
-                  style: 'destructive',
-                  onPress: logout,
-                },
-              ],
-              { cancelable: true }
-            );
+            try {
+              const rootNav = navigation.getParent()?.getParent();
+              rootNav?.navigate('MainTabs' as never, { screen: 'Home', params: { screen: 'AllVideos' } } as never);
+            } catch (error) {
+              console.log('Video navigation error:', error);
+            }
           }}
         />
+
+
+
+        {user ? (
+          <AccountOption
+            label={translateContent('Logout')}
+            icon="logout"
+            onPress={() => {
+              Alert.alert(
+                translateContent('Logout'),
+                translateContent('Are you sure you want to logout?'),
+                [
+                  { text: translateContent('Cancel'), style: 'cancel' },
+                  {
+                    text: translateContent('Logout'),
+                    style: 'destructive',
+                    onPress: () => {
+                      logout();
+                    },
+                  },
+                ],
+                { cancelable: true }
+              );
+            }}
+          />
+        ) : (
+          <AccountOption
+            label={translateContent('Login')}
+            icon="login"
+            onPress={() => {
+              try {
+                const rootNav = navigation.getParent()?.getParent();
+                rootNav?.navigate('AuthModal' as never);
+              } catch (error) {
+                console.log('Login navigation error:', error);
+              }
+            }}
+          />
+        )}
       </ScrollView>
 
       {/* 👇 Bottom sheet always mounted, just hidden initially */}
@@ -242,12 +206,16 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    // alignItems: 'center',
-    // justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5', // You can use colors.outlineVariant if using Paper v5+
+    borderBottomColor: '#E5E5E5',
+  },
+  backButton: {
+    marginRight: 12,
+    padding: 4,
   },
 
   headerText: {

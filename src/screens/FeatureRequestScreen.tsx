@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView,
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { translateContent } from '../utils/contentTranslator';
 import AppBarHeader from '../components/AppBarHeader';
 
 const FeatureRequestScreen = () => {
@@ -20,7 +21,7 @@ const FeatureRequestScreen = () => {
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.description.trim() || !formData.email.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(translateContent('Error'), translateContent('Please fill in all required fields'));
       return;
     }
 
@@ -40,15 +41,15 @@ const FeatureRequestScreen = () => {
 
       if (response.ok) {
         Alert.alert(
-          'Success',
-          'Your feature request has been submitted successfully. Thank you for your suggestion!',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          translateContent('Success'),
+          translateContent('Your feature request has been submitted successfully. Thank you for your suggestion!'),
+          [{ text: translateContent('OK'), onPress: () => navigation.goBack() }]
         );
       } else {
         throw new Error('Failed to submit');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit your request. Please try again.');
+      Alert.alert(translateContent('Error'), translateContent('Failed to submit your request. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -56,24 +57,24 @@ const FeatureRequestScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Feature Request" />
+      <AppBarHeader title={translateContent('Feature Request')} />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.description, { color: colors.onSurfaceVariant }]}>
-          Have an idea for a new feature? We'd love to hear your suggestions!
+          {translateContent('Have an idea for a new feature? We\'d love to hear your suggestions!')}
         </Text>
 
         <View style={styles.form}>
-          <Text style={[styles.label, { color: colors.onBackground }]}>Feature Title *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Feature Title')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.onSurface }]}
-            placeholder="Brief title for your feature idea"
+            placeholder={translateContent('Brief title for your feature idea')}
             placeholderTextColor={colors.onSurfaceVariant}
             value={formData.title}
             onChangeText={(text) => setFormData({ ...formData, title: text })}
           />
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Priority</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Priority')}</Text>
           <View style={styles.priorityContainer}>
             {priorities.map((priority) => (
               <TouchableOpacity
@@ -88,16 +89,16 @@ const FeatureRequestScreen = () => {
                   styles.priorityText,
                   { color: formData.priority === priority ? '#fff' : colors.onSurface }
                 ]}>
-                  {priority}
+                  {translateContent(priority)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Feature Description *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Feature Description')} *</Text>
           <TextInput
             style={[styles.textArea, { backgroundColor: colors.surface, color: colors.onSurface }]}
-            placeholder="Please describe your feature idea in detail. How would it work? What problem would it solve?"
+            placeholder={translateContent('Please describe your feature idea in detail. How would it work? What problem would it solve?')}
             placeholderTextColor={colors.onSurfaceVariant}
             multiline
             numberOfLines={8}
@@ -106,7 +107,7 @@ const FeatureRequestScreen = () => {
             onChangeText={(text) => setFormData({ ...formData, description: text })}
           />
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Email *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Email')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.onSurface }]}
             placeholder="your.email@example.com"
@@ -127,7 +128,7 @@ const FeatureRequestScreen = () => {
             ) : (
               <>
                 <MaterialDesignIcons name="lightbulb-outline" size={20} color="#fff" />
-                <Text style={styles.submitButtonText}>Submit Request</Text>
+                <Text style={styles.submitButtonText}>{translateContent('Submit Request')}</Text>
               </>
             )}
           </TouchableOpacity>

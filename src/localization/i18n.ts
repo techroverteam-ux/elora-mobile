@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import en from "./translations/en.json";
 import fr from "./translations/fr.json";
 import hi from "./translations/hi.json";
+import sa from "./translations/sa.json";
 
 const STORE_LANGUAGE_KEY = "settings.lang";
 
@@ -49,6 +50,9 @@ const resources = {
   },
   hi: {
     translation: hi,
+  },
+  sa: {
+    translation: sa,
   },
 };
 

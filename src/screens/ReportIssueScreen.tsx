@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView,
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { translateContent } from '../utils/contentTranslator';
 import AppBarHeader from '../components/AppBarHeader';
 
 const ReportIssueScreen = () => {
@@ -20,7 +21,7 @@ const ReportIssueScreen = () => {
 
   const handleSubmit = async () => {
     if (!formData.title.trim() || !formData.description.trim() || !formData.email.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert(translateContent('Error'), translateContent('Please fill in all required fields'));
       return;
     }
 
@@ -40,15 +41,15 @@ const ReportIssueScreen = () => {
 
       if (response.ok) {
         Alert.alert(
-          'Success',
-          'Your issue has been reported successfully. We will get back to you soon.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          translateContent('Success'),
+          translateContent('Your issue has been reported successfully. We will get back to you soon.'),
+          [{ text: translateContent('OK'), onPress: () => navigation.goBack() }]
         );
       } else {
         throw new Error('Failed to submit');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to submit your report. Please try again.');
+      Alert.alert(translateContent('Error'), translateContent('Failed to submit your report. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -56,24 +57,24 @@ const ReportIssueScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Report Issue" />
+      <AppBarHeader title={translateContent('Report Issue')} />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={[styles.description, { color: colors.onSurfaceVariant }]}>
-          Help us improve the app by reporting any issues you encounter.
+          {translateContent('Help us improve the app by reporting any issues you encounter.')}
         </Text>
 
         <View style={styles.form}>
-          <Text style={[styles.label, { color: colors.onBackground }]}>Issue Title *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Issue Title')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.onSurface }]}
-            placeholder="Brief description of the issue"
+            placeholder={translateContent('Brief description of the issue')}
             placeholderTextColor={colors.onSurfaceVariant}
             value={formData.title}
             onChangeText={(text) => setFormData({ ...formData, title: text })}
           />
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Category</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Category')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryContainer}>
             {categories.map((category) => (
               <TouchableOpacity
@@ -88,16 +89,16 @@ const ReportIssueScreen = () => {
                   styles.categoryText,
                   { color: formData.category === category ? '#fff' : colors.onSurface }
                 ]}>
-                  {category}
+                  {translateContent(category)}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Description *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Description')} *</Text>
           <TextInput
             style={[styles.textArea, { backgroundColor: colors.surface, color: colors.onSurface }]}
-            placeholder="Please describe the issue in detail..."
+            placeholder={translateContent('Please describe the issue in detail...')}
             placeholderTextColor={colors.onSurfaceVariant}
             multiline
             numberOfLines={6}
@@ -106,7 +107,7 @@ const ReportIssueScreen = () => {
             onChangeText={(text) => setFormData({ ...formData, description: text })}
           />
 
-          <Text style={[styles.label, { color: colors.onBackground }]}>Email *</Text>
+          <Text style={[styles.label, { color: colors.onBackground }]}>{translateContent('Email')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surface, color: colors.onSurface }]}
             placeholder="your.email@example.com"
@@ -127,7 +128,7 @@ const ReportIssueScreen = () => {
             ) : (
               <>
                 <MaterialDesignIcons name="send" size={20} color="#fff" />
-                <Text style={styles.submitButtonText}>Submit Report</Text>
+                <Text style={styles.submitButtonText}>{translateContent('Submit Report')}</Text>
               </>
             )}
           </TouchableOpacity>

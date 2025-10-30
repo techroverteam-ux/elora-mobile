@@ -1,53 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import { translateContent } from '../utils/contentTranslator';
 import AppBarHeader from '../components/AppBarHeader';
 
 const HelpSupportScreen = () => {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      forceUpdate({});
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   const faqData = [
     {
-      question: 'How do I download content for offline viewing?',
-      answer: 'Tap the download icon next to any audio, video, or PDF content. Downloaded content will be available in the Downloads section.',
+      question: translateContent('How do I download content for offline viewing?'),
+      answer: translateContent('Tap the download icon next to any audio, video, or PDF content. Downloaded content will be available in the Downloads section.'),
     },
     {
-      question: 'Can I change the app language?',
-      answer: 'Yes! Go to Settings > Language to select from available languages including Hindi, English, and Sanskrit.',
+      question: translateContent('Can I change the app language?'),
+      answer: translateContent('Yes! Go to Settings > Language to select from available languages including Hindi, English, and Sanskrit.'),
     },
     {
-      question: 'How do I switch between light and dark themes?',
-      answer: 'Navigate to Settings > Appearance and choose between Light, Dark, or System theme options.',
+      question: translateContent('How do I switch between light and dark themes?'),
+      answer: translateContent('Navigate to Settings > Appearance and choose between Light, Dark, or System theme options.'),
     },
     {
-      question: 'Is the content free to access?',
-      answer: 'Yes, all spiritual content including audio lectures, videos, and books are completely free to access.',
+      question: translateContent('Is the content free to access?'),
+      answer: translateContent('Yes, all spiritual content including audio lectures, videos, and books are completely free to access.'),
     },
     {
-      question: 'How do I report a technical issue?',
-      answer: 'You can contact our support team using the contact options below or send us an email with details about the issue.',
+      question: translateContent('How do I report a technical issue?'),
+      answer: translateContent('You can contact our support team using the contact options below or send us an email with details about the issue.'),
     },
   ];
 
   const contactOptions = [
     {
-      title: 'Email Support',
+      title: translateContent('Email Support'),
       subtitle: 'support@geetabalsanskar.org',
       icon: 'email-outline',
       onPress: () => Linking.openURL('mailto:support@geetabalsanskar.org'),
     },
     {
-      title: 'Website',
-      subtitle: 'Visit our official website',
+      title: translateContent('Website'),
+      subtitle: translateContent('Visit our official website'),
       icon: 'web',
       onPress: () => Linking.openURL('https://gbs.org.in'),
     },
     {
-      title: 'Phone Support',
+      title: translateContent('Phone Support'),
       subtitle: '+91 12345 67890',
       icon: 'phone-outline',
       onPress: () => Linking.openURL('tel:+911234567890'),
@@ -59,13 +74,13 @@ const HelpSupportScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="Help & Support" />
+    <View key={i18n.language} style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppBarHeader title={translateContent('Help & Support')} />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Contact Options */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Contact Us</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Contact Us')}</Text>
           {contactOptions.map((option, index) => (
             <TouchableOpacity
               key={index}
@@ -89,7 +104,7 @@ const HelpSupportScreen = () => {
         {/* FAQ Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>
-            Frequently Asked Questions
+            {translateContent('Frequently Asked Questions')}
           </Text>
           {faqData.map((faq, index) => (
             <View key={index} style={[styles.faqItem, { backgroundColor: colors.surface }]}>
@@ -119,14 +134,14 @@ const HelpSupportScreen = () => {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Quick Actions</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Quick Actions')}</Text>
           
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.primary }]}
             onPress={() => (navigation as any).navigate('ReportIssue')}
           >
             <MaterialDesignIcons name="bug-outline" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Report an Issue</Text>
+            <Text style={styles.actionButtonText}>{translateContent('Report an Issue')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -134,7 +149,7 @@ const HelpSupportScreen = () => {
             onPress={() => (navigation as any).navigate('FeatureRequest')}
           >
             <MaterialDesignIcons name="lightbulb-outline" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Request Feature</Text>
+            <Text style={styles.actionButtonText}>{translateContent('Request Feature')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

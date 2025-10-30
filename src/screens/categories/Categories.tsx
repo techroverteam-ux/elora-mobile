@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, memo } from 'react';
+import React, { useCallback, useEffect, memo, useMemo } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -15,6 +15,7 @@ import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetSectionsMutation } from '../../data/redux/services/sectionsApi';
 import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
+import { useContentTranslation } from '../../hooks/useContentTranslation';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 const { width } = Dimensions.get('window');
@@ -65,7 +66,21 @@ const getRandomColor = (id: string) => {
 
 const Categories = () => {
   const { t } = useTranslation();
+  const { translateItems } = useContentTranslation();
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
+
+  // Translate sections data when language changes
+  const translatedSections = useMemo(() => {
+    if (!sectionData?.data) return [];
+    
+    console.log('Categories - Original sections:', sectionData.data.map(item => ({ title: item.title, description: item.description })));
+    
+    const translated = translateItems(sectionData.data, ['title', 'description']);
+    
+    console.log('Categories - Translated sections:', translated.map(item => ({ title: item.title, description: item.description })));
+    
+    return translated;
+  }, [sectionData?.data, translateItems]);
 
   useEffect(() => {
     try {
@@ -126,7 +141,7 @@ const Categories = () => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={sectionData?.data || []}
+        data={translatedSections as CategoryItem[]}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         numColumns={2}
@@ -177,7 +192,7 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
     >
       <View style={styles.iconWrapper}>
         <MaterialDesignIcons 
-          name={item.icon || getSpiritualIcon(item.title, item._id)} 
+          name={(item.icon || getSpiritualIcon(item.title, item._id)) as any} 
           size={28} 
           color="#F8803B" 
         />

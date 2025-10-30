@@ -4,7 +4,7 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -13,11 +13,16 @@ import AppBarHeader from '../../components/AppBarHeader';
 import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetCategoriesMutation } from '../../data/redux/services/sectionsApi';
+import { useContentTranslation } from '../../hooks/useContentTranslation';
 
 const CategorieDataList = () => {
   const { t } = useTranslation();
+  const { translateItems, translateText } = useContentTranslation();
   const route = useRoute<RouteProp<CategoriesStackParamList, 'CategorieDataList'>>();
   const { title, id } = route.params;
+  
+  // Translate the title from route params
+  const translatedTitle = translateText(title);
 
   type CategorieDataListNavigationProp = NativeStackNavigationProp<
     CategoriesStackParamList,
@@ -26,6 +31,12 @@ const CategorieDataList = () => {
   const { navigate } = useNavigation<CategorieDataListNavigationProp>();
 
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
+
+  // Translate categories data when language changes
+  const translatedCategories = useMemo(() => {
+    if (!data?.data) return [];
+    return translateItems(data.data, ['title', 'description', 'name']);
+  }, [data?.data, translateItems]);
 
   useEffect(() => {
     console.log('CategorieDataList - Fetching categories for section ID:', id);
@@ -40,7 +51,7 @@ const CategorieDataList = () => {
 
   return (
     <View style={{ flex: 1 }}>
-      <AppBarHeader title={title} />
+      <AppBarHeader title={translatedTitle} />
 
       {isLoading ? (
         <View style={styles.loaderContainer}>
@@ -54,9 +65,9 @@ const CategorieDataList = () => {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <Text style={styles.debugText}>Data count: {data?.data?.length || 0}</Text>
+          <Text style={styles.debugText}>Data count: {translatedCategories?.length || 0}</Text>
           <CustomVerticalFlatlist
-            data={data?.data}
+            data={translatedCategories}
             onItemPress={(item) => {
               console.log('Item pressed:', item);
               navigate('BlogPage', { categoryData: item });

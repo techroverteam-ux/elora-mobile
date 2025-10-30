@@ -16,6 +16,7 @@ import {
 import { useAuth, UserType } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { AuthStackParamList } from '../../navigation/types';
 import { useGetLoginUserMutation } from '../../data/redux/services/authApi';
 import AutoLoginCredentials from '../AutoLoginCredentials';
@@ -33,6 +34,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const navigation = useNavigation<AuthNav>();
   const { login } = useAuth();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [isAutoLoginOn, setIsAutoLoginOn] = useState(__DEV__);
 
@@ -48,20 +50,20 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      return 'Email is required';
+      return t('auth.login.emailRequired');
     }
     if (!emailRegex.test(email)) {
-      return 'Please enter a valid email address';
+      return t('auth.login.emailInvalid');
     }
     return '';
   };
 
   const validatePassword = (password: string) => {
     if (!password) {
-      return 'Password is required';
+      return t('auth.login.passwordRequired');
     }
     if (password.length < 6) {
-      return 'Password must be at least 6 characters long';
+      return t('auth.login.passwordMinLength');
     }
     return '';
   };
@@ -113,10 +115,10 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
     } catch (error: any) {
       console.error('Login error:', error);
       const message = error?.data?.message || 
-        (error?.status === 401 ? 'Invalid email or password. Please try again.' : 
-         error?.status === 429 ? 'Too many login attempts. Please try again later.' :
-         error?.status >= 500 ? 'Server error. Please try again later.' :
-         'Login failed. Please check your connection and try again.');
+        (error?.status === 401 ? t('auth.login.invalidCredentials') : 
+         error?.status === 429 ? t('auth.login.tooManyAttempts') :
+         error?.status >= 500 ? t('auth.login.serverError') :
+         t('auth.login.loginFailed'));
       setGeneralError(message);
     }
   };
@@ -157,8 +159,8 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue to Geeta Bal Sanskar</Text>
+            <Text style={styles.title}>{t('auth.login.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.login.subtitle')}</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -185,7 +187,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
               if (emailError) setEmailError('');
               if (generalError) setGeneralError('');
             }}
-            placeholder="Email Address"
+            placeholder={t('auth.login.emailPlaceholder')}
             keyboardType="email-address"
             style={styles.input}
             autoCapitalize="none"
@@ -202,7 +204,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
               if (passwordError) setPasswordError('');
               if (generalError) setGeneralError('');
             }}
-            placeholder="Password"
+            placeholder={t('auth.login.passwordPlaceholder')}
             secureTextEntry={!showPassword}
             showToggle
             showPassword={showPassword}
@@ -220,7 +222,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
           {isLoading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.loginButtonText}>Sign In</Text>
+            <Text style={styles.loginButtonText}>{t('auth.login.signInButton')}</Text>
           )}
         </TouchableOpacity>
 
@@ -229,7 +231,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess?: () => void }) => {
           onPress={() => navigation.navigate('Register')}
         >
           <Text style={styles.registerText}>
-            Don't have an account? <Text style={styles.registerTextBold}>Sign Up</Text>
+            {t('auth.login.noAccount')} <Text style={styles.registerTextBold}>{t('auth.login.signUp')}</Text>
           </Text>
         </TouchableOpacity>
           </View>

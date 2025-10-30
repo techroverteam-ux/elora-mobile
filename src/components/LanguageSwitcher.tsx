@@ -15,6 +15,7 @@ const LanguageSwitcher: React.FC<Props> = ({ onLanguageChange }) => {
   const languages = [
     { code: 'en', label: 'English', nativeName: 'English', emoji: '🇺🇸' },
     { code: 'hi', label: 'Hindi', nativeName: 'हिन्दी', emoji: '🇮🇳' },
+    { code: 'sa', label: 'Sanskrit', nativeName: 'संस्कृतम्', emoji: '🕉️' },
   ];
 
   const handleLanguageChange = (langCode: string) => {
@@ -24,7 +25,6 @@ const LanguageSwitcher: React.FC<Props> = ({ onLanguageChange }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: colors.onBackground }]}>{t('navigation.language')}</Text>
       {languages.map((lang) => {
         const isActive = lang.code === i18n.language;
 
@@ -61,11 +61,6 @@ export default LanguageSwitcher;
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
   },
   languageItem: {
     flexDirection: 'row',

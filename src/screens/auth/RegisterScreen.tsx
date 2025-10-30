@@ -16,6 +16,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
 import { useGetRegisterUserMutation } from '../../data/redux/services/authApi';
 import { getErrorMessage } from '../../data/redux/services/baseQuery';
 import CustomTextInput from '../../components/CustomTextInput';
@@ -31,6 +32,7 @@ type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 const RegisterScreen = () => {
   const navigation = useNavigation<AuthNav>();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -45,10 +47,10 @@ const RegisterScreen = () => {
 
   const validateName = (name: string) => {
     if (!name.trim()) {
-      return 'Full name is required';
+      return t('auth.register.nameRequired');
     }
     if (name.trim().length < 2) {
-      return 'Name must be at least 2 characters long';
+      return t('auth.register.nameMinLength');
     }
     return '';
   };
@@ -56,23 +58,23 @@ const RegisterScreen = () => {
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      return 'Email is required';
+      return t('auth.register.emailRequired');
     }
     if (!emailRegex.test(email)) {
-      return 'Please enter a valid email address';
+      return t('auth.register.emailInvalid');
     }
     return '';
   };
 
   const validatePassword = (password: string) => {
     if (!password) {
-      return 'Password is required';
+      return t('auth.register.passwordRequired');
     }
     if (password.length < 8) {
-      return 'Password must be at least 8 characters long';
+      return t('auth.register.passwordMinLength');
     }
     if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      return 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+      return t('auth.register.passwordComplexity');
     }
     return '';
   };
@@ -114,16 +116,16 @@ const RegisterScreen = () => {
       }).unwrap();
       console.log('Registered:', result);
 
-      Alert.alert('Success', 'Registration successful! You can now login with your credentials.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(t('auth.register.success'), t('auth.register.registrationSuccess'), [
+        { text: t('auth.register.ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
       console.error('Register failed:', err);
       const message = err?.data?.message ||
-        (err?.status === 409 ? 'An account with this email already exists.' :
-         err?.status === 429 ? 'Too many registration attempts. Please try again later.' :
-         err?.status >= 500 ? 'Server error. Please try again later.' :
-         'Registration failed. Please check your connection and try again.');
+        (err?.status === 409 ? t('auth.register.emailExists') :
+         err?.status === 429 ? t('auth.register.tooManyAttempts') :
+         err?.status >= 500 ? t('auth.register.serverError') :
+         t('auth.register.registrationFailed'));
       setGeneralError(message);
     }
   };
@@ -159,8 +161,8 @@ const RegisterScreen = () => {
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Geeta Bal Sanskar community today</Text>
+            <Text style={styles.title}>{t('auth.register.title')}</Text>
+            <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -173,7 +175,7 @@ const RegisterScreen = () => {
         <View style={[styles.inputContainer, nameError ? styles.inputError : null]}>
           <MaterialDesignIcons name="account-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
-            placeholder="Full Name"
+            placeholder={t('auth.register.namePlaceholder')}
             value={name}
             onChangeText={(text) => {
               setName(text);
@@ -188,7 +190,7 @@ const RegisterScreen = () => {
         <View style={[styles.inputContainer, emailError ? styles.inputError : null]}>
           <MaterialDesignIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
-            placeholder="Email Address"
+            placeholder={t('auth.register.emailPlaceholder')}
             value={email}
             onChangeText={(text) => {
               setEmail(text);
@@ -205,7 +207,7 @@ const RegisterScreen = () => {
         <View style={[styles.inputContainer, passwordError ? styles.inputError : null]}>
           <MaterialDesignIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
           <CustomTextInput
-            placeholder="Password"
+            placeholder={t('auth.register.passwordPlaceholder')}
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -229,7 +231,7 @@ const RegisterScreen = () => {
           {isLoading ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.registerButtonText}>Create Account</Text>
+            <Text style={styles.registerButtonText}>{t('auth.register.createAccountButton')}</Text>
           )}
         </TouchableOpacity>
 
@@ -238,7 +240,7 @@ const RegisterScreen = () => {
           onPress={() => navigation.goBack()}
         >
           <Text style={styles.loginText}>
-            Already have an account? <Text style={styles.loginTextBold}>Sign In</Text>
+            {t('auth.register.haveAccount')} <Text style={styles.loginTextBold}>{t('auth.register.signIn')}</Text>
           </Text>
         </TouchableOpacity>
           </View>

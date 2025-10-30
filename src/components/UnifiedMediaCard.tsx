@@ -115,21 +115,21 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     );
   }
 
-  // Grid View Layout (existing)
+  // Grid View Layout (Netflix-style)
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: colors.surface }]}
+      style={styles.netflixCard}
       onPress={() => onPress(item)}
       activeOpacity={0.8}
     >
-      <View style={styles.imageContainer}>
+      <View style={styles.netflixImageContainer}>
         {getImageUrl() ? (
           <CustomFastImage
-            style={styles.image}
+            style={styles.netflixImage}
             imageUrl={getImageUrl()}
           />
         ) : (
-          <View style={[styles.placeholderImage, { backgroundColor: colors.surfaceVariant }]}>
+          <View style={[styles.netflixPlaceholderImage, { backgroundColor: colors.surfaceVariant }]}>
             <MaterialDesignIcons
               name={getIcon()}
               size={40}
@@ -138,27 +138,38 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
           </View>
         )}
         
-
-      </View>
-
-      <View style={styles.content}>
-        <Text
-          style={[styles.title, { color: colors.onSurface }]}
-          numberOfLines={2}
-        >
-          {item.title || t('common.untitled')}
-        </Text>
-        <Text
-          style={[styles.subtitle, { color: colors.onSurfaceVariant }]}
-          numberOfLines={1}
-        >
-          {item.artist || item.description || item.subtitle || t('common.unknown')}
-        </Text>
-        {item.duration && (
-          <Text style={[styles.duration, { color: colors.onSurfaceVariant }]}>
-            {formatDuration(item.duration)}
+        {/* Netflix-style gradient overlay */}
+        <View style={styles.gradientOverlay} />
+        
+        {/* Text overlay on image */}
+        <View style={styles.textOverlay}>
+          <Text
+            style={styles.overlayTitle}
+            numberOfLines={2}
+          >
+            {item.title || t('common.untitled')}
           </Text>
-        )}
+          <Text
+            style={styles.overlaySubtitle}
+            numberOfLines={1}
+          >
+            {item.artist || item.description || item.subtitle || t('common.unknown')}
+          </Text>
+          {item.duration && (
+            <Text style={styles.overlayDuration}>
+              {formatDuration(item.duration)}
+            </Text>
+          )}
+        </View>
+        
+        {/* Play button overlay */}
+        <View style={styles.playOverlay}>
+          <MaterialDesignIcons
+            name="play"
+            size={16}
+            color="#fff"
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -171,6 +182,87 @@ const formatDuration = (seconds: number): string => {
 };
 
 const styles = StyleSheet.create({
+  // Netflix-style card
+  netflixCard: {
+    width: CARD_WIDTH,
+    marginBottom: 16,
+    marginHorizontal: 8,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  netflixImageContainer: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+    height: CARD_WIDTH * 1.2, // Taller for better text space
+  },
+  netflixImage: {
+    width: '100%',
+    height: '100%',
+  },
+  netflixPlaceholderImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  textOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    zIndex: 2,
+  },
+  overlayTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  overlaySubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  overlayDuration: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+  playOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  // Legacy styles for backward compatibility
   card: {
     width: CARD_WIDTH,
     marginBottom: 16,
@@ -195,17 +287,6 @@ const styles = StyleSheet.create({
   placeholderImage: {
     width: '100%',
     height: CARD_WIDTH * 0.75,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playOverlay: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },

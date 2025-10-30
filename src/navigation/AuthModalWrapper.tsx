@@ -1,10 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, TouchableWithoutFeedback, Text, TouchableOpacity } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import AuthNavigator from './AuthNavigator';
 import { useRedirect } from '../context/RedirectContext';
+import { translateContent } from '../utils/contentTranslator';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 
 const AuthModalWrapper = ({ navigation, route }: any) => {
+  const { t } = useTranslation();
   const { redirectTo, redirectParams, clearRedirect } = useRedirect();
   const onAuthSuccess = route?.params?.onAuthSuccess;
 
@@ -36,7 +39,7 @@ const AuthModalWrapper = ({ navigation, route }: any) => {
             onPress={() => navigation.goBack()}
           >
             <MaterialDesignIcons name="close" size={24} color="#666" />
-            <Text style={styles.skipText}>Skip for now</Text>
+            <Text style={styles.skipText}>{translateContent('Skip')}</Text>
           </TouchableOpacity>
         </View>
         <AuthNavigator onLoginSuccess={handleLoginSuccess} />

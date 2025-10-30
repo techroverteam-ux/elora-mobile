@@ -1,14 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from 'react-i18next';
+import { translateContent } from '../utils/contentTranslator';
 import AppBarHeader from '../components/AppBarHeader';
 
 const AboutScreen = () => {
   const { colors } = useTheme();
+  const { t, i18n } = useTranslation();
+  const [, forceUpdate] = useState({});
+
+  useEffect(() => {
+    const handleLanguageChange = () => {
+      forceUpdate({});
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18n]);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title="About" />
+    <View key={i18n.language} style={[styles.container, { backgroundColor: colors.background }]}>
+      <AppBarHeader title={translateContent('About Us')} />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.logoContainer, { backgroundColor: colors.primary }]}>
@@ -19,71 +34,71 @@ const AboutScreen = () => {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.appName}>Geeta Bal Sanskar</Text>
-          <Text style={styles.tagline}>Spiritual Wisdom & Guidance</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.appName}>{translateContent('Geeta Bal Sanskar')}</Text>
+          <Text style={styles.tagline}>{translateContent('Spiritual Wisdom & Guidance')}</Text>
+          <Text style={styles.version}>{translateContent('Version')} 1.0.0</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>About the App</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('About the App')}</Text>
           <Text style={[styles.description, { color: colors.onSurfaceVariant }]}>
-            Geeta Bal Sanskar is a comprehensive spiritual learning platform that brings the timeless wisdom of the Bhagavad Gita to modern learners. Our app provides access to audio lectures, video content, and digital books to help you on your spiritual journey.
+            {translateContent('Geeta Bal Sanskar is a comprehensive spiritual learning platform that brings the timeless wisdom of the Bhagavad Gita to modern learners. Our app provides access to audio lectures, video content, and digital books to help you on your spiritual journey.')}
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Features</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Features')}</Text>
           <View style={styles.featureList}>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Audio lectures and spiritual discourses
+              {translateContent('• Audio lectures and spiritual discourses')}
             </Text>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Video content and teachings
+              {translateContent('• Video content and teachings')}
             </Text>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Digital books and PDFs
+              {translateContent('• Digital books and PDFs')}
             </Text>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Multiple language support
+              {translateContent('• Multiple language support')}
             </Text>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Dark and light theme options
+              {translateContent('• Dark and light theme options')}
             </Text>
             <Text style={[styles.featureItem, { color: colors.onSurfaceVariant }]}>
-              • Offline content access
+              {translateContent('• Offline content access')}
             </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Mission</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Mission')}</Text>
           <Text style={[styles.description, { color: colors.onSurfaceVariant }]}>
-            Our mission is to make spiritual knowledge accessible to everyone, everywhere. We believe that the teachings of the Bhagavad Gita can transform lives and bring peace, wisdom, and happiness to all who seek it.
+            {translateContent('Our mission is to make spiritual knowledge accessible to everyone, everywhere. We believe that the teachings of the Bhagavad Gita can transform lives and bring peace, wisdom, and happiness to all who seek it.')}
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Developer Information</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Developer Information')}</Text>
           <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.infoTitle, { color: colors.primary }]}>Login Credentials (Demo)</Text>
-            <Text style={[styles.infoText, { color: colors.onSurface }]}>Email: demo@gbs.org.in</Text>
-            <Text style={[styles.infoText, { color: colors.onSurface }]}>Password: demo123</Text>
+            <Text style={[styles.infoTitle, { color: colors.primary }]}>{translateContent('Login Credentials (Demo)')}</Text>
+            <Text style={[styles.infoText, { color: colors.onSurface }]}>{translateContent('Email: demo@gbs.org.in')}</Text>
+            <Text style={[styles.infoText, { color: colors.onSurface }]}>{translateContent('Password: demo123')}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>Contact</Text>
+          <Text style={[styles.sectionTitle, { color: colors.onBackground }]}>{translateContent('Contact')}</Text>
           <Text style={[styles.contactInfo, { color: colors.onSurfaceVariant }]}>
-            Email: support@gbs.org.in
+            {translateContent('Email: support@gbs.org.in')}
           </Text>
           <Text style={[styles.contactInfo, { color: colors.onSurfaceVariant }]}>
-            Website: gbs.org.in
+            {translateContent('Website: gbs.org.in')}
           </Text>
         </View>
 
         <View style={styles.footer}>
           <Text style={[styles.copyright, { color: colors.onSurfaceVariant }]}>
-            © 2024 Geeta Bal Sanskar. All rights reserved.
+            {translateContent('© 2024 Geeta Bal Sanskar. All rights reserved.')}
           </Text>
         </View>
       </ScrollView>

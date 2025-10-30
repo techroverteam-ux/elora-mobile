@@ -117,6 +117,36 @@
       "placeholder": "Search audios, videos, PDFs...",
       "noResults": "No results found",
       "searchPrompt": "Search for audios, videos and PDFs"
+    },
+    "about": {
+      "title": "About",
+      "appName": "Geeta Bal Sanskar",
+      "tagline": "Spiritual Wisdom & Guidance",
+      "version": "Version 1.0.0",
+      "aboutApp": "About the App",
+      "appDescription": "Geeta Bal Sanskar is a comprehensive spiritual learning platform that brings the timeless wisdom of the Bhagavad Gita to modern learners. Our app provides access to audio lectures, video content, and digital books to help you on your spiritual journey.",
+      "features": "Features",
+      "feature1": "• Audio lectures and spiritual discourses",
+      "feature2": "• Video content and teachings",
+      "feature3": "• Digital books and PDFs",
+      "feature4": "• Multiple language support",
+      "feature5": "• Dark and light theme options",
+      "feature6": "• Offline content access",
+      "mission": "Mission",
+      "missionDescription": "Our mission is to make spiritual knowledge accessible to everyone, everywhere. We believe that the teachings of the Bhagavad Gita can transform lives and bring peace, wisdom, and happiness to all who seek it.",
+      "developerInfo": "Developer Information",
+      "loginCredentials": "Login Credentials (Demo)",
+      "email": "Email: demo@gbs.org.in",
+      "password": "Password: demo123",
+      "contact": "Contact",
+      "supportEmail": "Email: support@gbs.org.in",
+      "website": "Website: gbs.org.in",
+      "copyright": "© 2024 Geeta Bal Sanskar. All rights reserved."
+    },
+    "splash": {
+      "appName": "Geeta Bal Sanskaar",
+      "tagline": "Spiritual Wisdom & Guidance",
+      "loading": "Loading..."
     }
   },
   "mediaTypes": {
@@ -175,5 +205,48 @@
   "header": {
     "namaste": "Namaste",
     "welcomeTagline": "Welcome to Spiritual Wisdom"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to continue to Geeta Bal Sanskar",
+      "emailPlaceholder": "Email Address",
+      "passwordPlaceholder": "Password",
+      "signInButton": "Sign In",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign Up",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email address",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 6 characters long",
+      "invalidCredentials": "Invalid email or password. Please try again.",
+      "tooManyAttempts": "Too many login attempts. Please try again later.",
+      "serverError": "Server error. Please try again later.",
+      "loginFailed": "Login failed. Please check your connection and try again."
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "Join Geeta Bal Sanskar community today",
+      "namePlaceholder": "Full Name",
+      "emailPlaceholder": "Email Address",
+      "passwordPlaceholder": "Password",
+      "createAccountButton": "Create Account",
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign In",
+      "nameRequired": "Full name is required",
+      "nameMinLength": "Name must be at least 2 characters long",
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email address",
+      "passwordRequired": "Password is required",
+      "passwordMinLength": "Password must be at least 8 characters long",
+      "passwordComplexity": "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+      "registrationSuccess": "Registration successful! You can now login with your credentials.",
+      "emailExists": "An account with this email already exists.",
+      "tooManyAttempts": "Too many registration attempts. Please try again later.",
+      "serverError": "Server error. Please try again later.",
+      "registrationFailed": "Registration failed. Please check your connection and try again.",
+      "success": "Success",
+      "ok": "OK"
+    }
   }
 }
