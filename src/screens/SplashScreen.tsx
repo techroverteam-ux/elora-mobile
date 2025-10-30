@@ -7,6 +7,7 @@ import {
   StatusBar,
   Animated,
   Image,
+  Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
@@ -28,7 +29,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
   useEffect(() => {
     StatusBar.setBarStyle('light-content');
-    StatusBar.setBackgroundColor(AppColors.primary);
+    if (Platform.OS === 'android') {
+      StatusBar.setBackgroundColor(AppColors.primary);
+    }
 
     // Animation sequence
     Animated.sequence([
@@ -62,7 +65,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     return () => {
       clearTimeout(timer);
       StatusBar.setBarStyle('dark-content');
-      StatusBar.setBackgroundColor('#ffffff');
+      if (Platform.OS === 'android') {
+        StatusBar.setBackgroundColor('#ffffff');
+      }
     };
   }, [fadeAnim, scaleAnim, slideAnim, onFinish]);
 
