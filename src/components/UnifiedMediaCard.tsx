@@ -23,7 +23,10 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   const { resourceUrls } = useAzureAssets(item || {});
 
   const getIcon = () => {
-    switch (type) {
+    // Check actual item type first, then fallback to prop type
+    const actualType = item?.type || type;
+    switch (actualType) {
+      case 'image': return 'image';
       case 'video': return 'play-circle';
       case 'pdf': return 'book-open-variant';
       default: return 'music-circle';
@@ -31,22 +34,35 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   };
 
   const getImageUrl = () => {
-    const urls = [
+    // For image type items, prioritize streamingUrl
+    const urls = item?.type === 'image' ? [
+      item?.streamingUrl,
+      item?.imageUrl,
+      item?.thumbnailUrl,
+      item?.mainImage,
+      item?.headerImage,
+      resourceUrls?.thumbnailImage,
+      resourceUrls?.mainImage
+    ] : [
       resourceUrls?.thumbnailImage,
       resourceUrls?.mainImage,
       item?.thumbnailUrl,
       item?.imageUrl,
       item?.coverImage,
       item?.headerImage,
-      item?.mainImage
+      item?.mainImage,
+      item?.streamingUrl
     ];
+
+    console.log('UnifiedMediaCard - Processing URLs for item:', item?.title, 'type:', item?.type);
+    console.log('UnifiedMediaCard - Available URLs:', urls.filter(url => url));
 
     // Try processed Azure URLs
     for (const url of urls) {
       if (url) {
         const processedUrl = processAzureUrl(url);
         if (processedUrl) {
-          // console.log('UnifiedMediaCard - Using processed URL:', processedUrl, 'for item:', item?.title);
+          console.log('UnifiedMediaCard - Using processed URL:', processedUrl);
           return processedUrl;
         }
       }
@@ -55,12 +71,12 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     // Try direct URLs
     for (const url of urls) {
       if (url) {
-        console.log('UnifiedMediaCard - Using direct URL:', url, 'for item:', item?.title);
+        console.log('UnifiedMediaCard - Using direct URL:', url);
         return url;
       }
     }
 
-    console.log('UnifiedMediaCard - No image URL found for item:', item?.title);
+    console.log('UnifiedMediaCard - No image URL found');
     return '';
   };
 

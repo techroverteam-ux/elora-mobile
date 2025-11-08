@@ -493,6 +493,13 @@ const contentTranslations: Record<string, string> = {
   'Low': 'कम',
   'Medium': 'मध्यम',
   'High': 'उच्च',
+  
+  // Recently Played
+  'Recently Played': 'हाल ही में चलाया गया',
+  'No Recent Activity': 'कोई हालिया गतिविधि नहीं',
+  'Start playing content to see your recent activity here': 'अपनी हालिया गतिविधि देखने के लिए सामग्री चलाना शुरू करें',
+  'Start Exploring': 'खोजना शुरू करें',
+  'Unknown': 'अज्ञात',
 };
 
 // Sanskrit translations
@@ -549,6 +556,13 @@ const sanskritTranslations: Record<string, string> = {
   'Next': 'अग्रिमम्',
   'Previous': 'पूर्वम्',
   'Continue': 'चलतु',
+  
+  // Recently Played
+  'Recently Played': 'सद्यः क्रीडितानि',
+  'No Recent Activity': 'न कोऽपि सद्यः गतिविधिः',
+  'Start playing content to see your recent activity here': 'अत्र स्वस्य सद्यः गतिविधिं द्रष्टुं सामग्री क्रीडनं आरभत',
+  'Start Exploring': 'अन्वेषणं आरभत',
+  'Unknown': 'अज्ञातः',
   'Save': 'रक्षतु',
   'Delete': 'नाशयतु',
   'Edit': 'संपादयतु',

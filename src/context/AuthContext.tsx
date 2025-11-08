@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove([AUTH_KEY, USER_KEY]);
+      await AsyncStorage.multiRemove([AUTH_KEY, USER_KEY, 'recentlyPlayed']);
       setUser(null);
       setIsAuthenticated(false);
       await fetchAndFormatStorage();

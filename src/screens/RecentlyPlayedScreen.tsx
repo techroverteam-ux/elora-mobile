@@ -7,6 +7,7 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import CustomFastImage from '../components/CustomFastImage';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 import { processAzureUrl } from '../utils/azureUrlHelper';
+import { translateContent } from '../utils/contentTranslator';
 
 const { width } = Dimensions.get('window');
 
@@ -17,23 +18,48 @@ const RecentlyPlayedScreen = () => {
   const { recentItems } = useRecentlyPlayed();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
+  const { addRecentItem, removeRecentItem } = useRecentlyPlayed();
+
   const handleItemPress = (item: any) => {
+    // Don't add to recent items again - just navigate
+    
     if (item.type === 'image') {
-      const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl);
+      const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
       (navigation as any).navigate('ImageViewer', {
-        images: [imageUrl],
+        images: [imageUrl].filter(url => url),
         initialIndex: 0,
         title: item.title || 'Image'
       });
-    } else if (item.type === 'audio' || item.audioUrl || item.streamingUrl) {
-      (navigation as any).navigate('EnhancedAudioPlayer', { item });
-    } else if (item.type === 'video' || item.videoUrl) {
-      (navigation as any).navigate('EnhancedVideoPlayer', { item });
-    } else if (item.type === 'pdf' || item.pdfUrl || (!item.type && (item.title || item.author))) {
-      (navigation as any).navigate('PdfViewer', { item });
+    } else if (item.type === 'video' || item.videoUrl || item.videoUri) {
+      (navigation as any).navigate('EnhancedVideoPlayer', {
+        item: {
+          ...item,
+          videoUri: item.videoUrl || item.videoUri || item.streamingUrl || '',
+          videoUrl: item.videoUrl || item.streamingUrl || '',
+          streamingUrl: item.streamingUrl || '',
+          thumbnailUrl: item.thumbnailUrl || item.imageUrl || '',
+        },
+        playlist: []
+      });
+    } else if (item.type === 'pdf' || item.pdfUrl || item.downloadUrl) {
+      (navigation as any).navigate('PdfViewer', {
+        uri: item.streamingUrl || item.pdfUrl || item.downloadUrl,
+        title: item.title,
+        description: item.description,
+        item: item
+      });
     } else {
-      // Default to audio player for unknown types
-      (navigation as any).navigate('EnhancedAudioPlayer', { item });
+      // Default to audio player
+      (navigation as any).navigate('EnhancedAudioPlayer', {
+        item: {
+          ...item,
+          audioUrl: item.streamingUrl || item.audioUrl || '',
+          streamingUrl: item.streamingUrl || item.audioUrl || '',
+          imageUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage || '',
+          thumbnailUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || '',
+        },
+        playlist: []
+      });
     }
   };
 
@@ -81,25 +107,35 @@ const RecentlyPlayedScreen = () => {
   };
 
   const renderListItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[styles.listItem, { backgroundColor: colors.surface }]}
-      onPress={() => handleItemPress(item)}
-    >
+    <View style={[styles.listItem, { backgroundColor: colors.surface }]}>
+      <TouchableOpacity
+        style={styles.itemTouchable}
+        onPress={() => handleItemPress(item)}
+      >
       <View style={styles.itemImage}>
-        {(item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage) ? (
-          <CustomFastImage 
-            style={styles.thumbnail} 
-            imageUrl={processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.coverImage) || processAzureUrl(item.headerImage) || processAzureUrl(item.mainImage)} 
-          />
-        ) : (
-          <View style={[styles.placeholder, { backgroundColor: colors.surfaceVariant }]}>
-            <MaterialDesignIcons 
-              name={getPlaceholderIcon(item)} 
-              size={24} 
-              color={colors.onSurfaceVariant} 
+        {(() => {
+          const imageUrl = processAzureUrl(item.thumbnailUrl) || 
+                          processAzureUrl(item.imageUrl) || 
+                          processAzureUrl(item.coverImage) || 
+                          processAzureUrl(item.headerImage) || 
+                          processAzureUrl(item.mainImage) || 
+                          processAzureUrl(item.streamingUrl);
+          
+          return imageUrl ? (
+            <CustomFastImage 
+              style={styles.thumbnail} 
+              imageUrl={imageUrl} 
             />
-          </View>
-        )}
+          ) : (
+            <View style={[styles.placeholder, { backgroundColor: colors.surfaceVariant }]}>
+              <MaterialDesignIcons 
+                name={getPlaceholderIcon(item)} 
+                size={24} 
+                color={colors.onSurfaceVariant} 
+              />
+            </View>
+          );
+        })()}
       </View>
       
       <View style={styles.itemContent}>
@@ -107,7 +143,7 @@ const RecentlyPlayedScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.itemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || t('common.unknown')}
+          {item.artist || item.author || translateContent('Unknown')}
         </Text>
         <Text style={[styles.playedTime, { color: colors.primary }]}>
           {formatPlayedTime(item.playedAt)}
@@ -119,7 +155,19 @@ const RecentlyPlayedScreen = () => {
         size={24} 
         color={colors.primary} 
       />
-    </TouchableOpacity>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={() => removeRecentItem(item._id)}
+      >
+        <MaterialDesignIcons 
+          name="close" 
+          size={20} 
+          color={colors.onSurface} 
+        />
+      </TouchableOpacity>
+    </View>
   );
 
   const renderGridItem = ({ item }: { item: any }) => (
@@ -128,20 +176,29 @@ const RecentlyPlayedScreen = () => {
       onPress={() => handleItemPress(item)}
     >
       <View style={styles.gridImageContainer}>
-        {(item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage) ? (
-          <CustomFastImage 
-            style={styles.gridImage} 
-            imageUrl={processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.coverImage) || processAzureUrl(item.headerImage) || processAzureUrl(item.mainImage)} 
-          />
-        ) : (
-          <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
-            <MaterialDesignIcons 
-              name={getPlaceholderIcon(item)} 
-              size={32} 
-              color={colors.onSurfaceVariant} 
+        {(() => {
+          const imageUrl = processAzureUrl(item.thumbnailUrl) || 
+                          processAzureUrl(item.imageUrl) || 
+                          processAzureUrl(item.coverImage) || 
+                          processAzureUrl(item.headerImage) || 
+                          processAzureUrl(item.mainImage) || 
+                          processAzureUrl(item.streamingUrl);
+          
+          return imageUrl ? (
+            <CustomFastImage 
+              style={styles.gridImage} 
+              imageUrl={imageUrl} 
             />
-          </View>
-        )}
+          ) : (
+            <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+              <MaterialDesignIcons 
+                name={getPlaceholderIcon(item)} 
+                size={32} 
+                color={colors.onSurfaceVariant} 
+              />
+            </View>
+          );
+        })()}
         <View style={styles.gridTimeOverlay}>
           <Text style={styles.gridTimeText}>
             {formatPlayedTime(item.playedAt)}
@@ -154,7 +211,7 @@ const RecentlyPlayedScreen = () => {
           {item.title}
         </Text>
         <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || t('common.unknown')}
+          {item.artist || item.author || translateContent('Unknown')}
         </Text>
       </View>
     </TouchableOpacity>
@@ -168,36 +225,25 @@ const RecentlyPlayedScreen = () => {
             <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.title')}</Text>
-            <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.recentlyPlayed.underDevelopment')}</Text>
+            <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{translateContent('Recently Played')}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.viewToggle}
-            onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-          >
-            <MaterialDesignIcons 
-              name={viewMode === 'grid' ? 'view-list' : 'view-grid'} 
-              size={24} 
-              color={colors.onBackground} 
-            />
-          </TouchableOpacity>
         </View>
         
         <View style={styles.emptyContent}>
           <View style={[styles.emptyIconContainer, { backgroundColor: colors.surface }]}>
-            <MaterialDesignIcons name="history" size={64} color="#F8803B" />
+            <MaterialDesignIcons name="history" size={64} color={colors.primary} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.noRecentActivity')}</Text>
+          <Text style={[styles.emptyTitle, { color: colors.onBackground }]}>{translateContent('No Recent Activity')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.onSurfaceVariant }]}>
-            {t('screens.recentlyPlayed.noRecentDesc')}
+            {translateContent('Start playing content to see your recent activity here')}
           </Text>
           <View style={styles.emptyActions}>
             <TouchableOpacity 
-              style={[styles.exploreButton, { backgroundColor: '#F8803B' }]}
-              onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
+              style={[styles.exploreButton, { backgroundColor: colors.primary }]}
+              onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Home' })}
             >
-              <MaterialDesignIcons name="play-circle-outline" size={20} color="#fff" />
-              <Text style={styles.exploreButtonText}>{t('screens.recentlyPlayed.startExploring')}</Text>
+              <MaterialDesignIcons name="play-circle-outline" size={20} color={colors.onPrimary} />
+              <Text style={[styles.exploreButtonText, { color: colors.onPrimary }]}>{translateContent('Start Exploring')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -212,8 +258,7 @@ const RecentlyPlayedScreen = () => {
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.recentlyPlayed.title')}</Text>
-          <Text style={[styles.devTag, { color: colors.onSurfaceVariant }]}>{t('screens.recentlyPlayed.underDevelopment')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{translateContent('Recently Played')}</Text>
         </View>
         <TouchableOpacity 
           style={styles.viewToggle}
@@ -229,7 +274,7 @@ const RecentlyPlayedScreen = () => {
       
       <FlatList
         data={recentItems}
-        keyExtractor={(item) => `${item._id}-${item.playedAt}`}
+        keyExtractor={(item) => item._id}
         renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
         numColumns={viewMode === 'grid' ? 2 : 1}
         key={viewMode}
@@ -282,7 +327,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exploreButtonText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -392,6 +436,15 @@ const styles = StyleSheet.create({
   playedTime: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  itemTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  removeButton: {
+    padding: 8,
+    marginLeft: 8,
   },
 });
 

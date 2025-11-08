@@ -46,6 +46,13 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
   const renderGalleryItem = ({ item, index }: { item: GalleryItem; index: number }) => {
     const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
     
+    console.log('DailyGyanGallery - Item:', item.title, 'URLs:', {
+      streamingUrl: item.streamingUrl,
+      imageUrl: item.imageUrl,
+      thumbnailUrl: item.thumbnailUrl,
+      processedUrl: imageUrl
+    });
+    
     return (
       <TouchableOpacity
         style={[styles.galleryItem, { backgroundColor: colors.surface }]}

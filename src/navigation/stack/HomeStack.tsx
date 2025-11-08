@@ -15,6 +15,7 @@ import AudioCategoryScreen from '../../screens/home/AudioCategoryScreen';
 import SearchScreen from '../../screens/SearchScreen';
 import GalleryListScreen from '../../screens/GalleryListScreen';
 import PdfViewer from '../../components/PdfViewer';
+import RecentlyPlayedScreen from '../../screens/RecentlyPlayedScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -34,6 +35,7 @@ const HomeStack = () => (
     <Stack.Screen name="EnhancedAllVideos" component={EnhancedAllVideos} options={{ headerShown: false }} />
     <Stack.Screen name="GalleryList" component={GalleryListScreen} options={{ headerShown: false }} />
     <Stack.Screen name="PdfViewer" component={PdfViewer} options={{ headerShown: false }} />
+    <Stack.Screen name="RecentlyPlayed" component={RecentlyPlayedScreen} options={{ headerShown: false }} />
   </Stack.Navigator>
 );
 

@@ -53,13 +53,20 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => item._id || item.id || index.toString()}
-        renderItem={({ item }) => (
-          <UnifiedMediaCard
-            item={item}
-            type={type}
-            onPress={onItemPress}
-          />
-        )}
+        renderItem={({ item }) => {
+          // Detect actual item type for mixed content
+          const actualType = item.type === 'image' ? 'audio' : 
+                           item.type === 'video' ? 'video' : 
+                           item.type === 'pdf' ? 'pdf' : type;
+          
+          return (
+            <UnifiedMediaCard
+              item={item}
+              type={actualType}
+              onPress={onItemPress}
+            />
+          );
+        }}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />

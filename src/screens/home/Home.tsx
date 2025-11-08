@@ -17,6 +17,8 @@ import { useGetDashboardQuery } from '../../data/redux/services/mediaApi';
 import { testAudioData, testVideoData, testPDFData } from '../../data/testMediaData';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { processAzureUrl } from '../../utils/azureUrlHelper';
+import { useRecentlyPlayed } from '../../context/RecentlyPlayedContext';
+import { translateContent } from '../../utils/contentTranslator';
 
 type HomeNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'HomeMain'>;
 
@@ -26,6 +28,10 @@ const Home: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const navigation = useNavigation<HomeNavigationProp>();
   const { requireAuth } = useRequireAuth();
+  const { recentItems, addRecentItem } = useRecentlyPlayed();
+
+  // Debug recent items
+  console.log('Home - Recent items:', recentItems?.length || 0, recentItems);
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
 
@@ -67,16 +73,19 @@ const Home: React.FC = () => {
       }
 
       try {
+        const videoItem = {
+          ...item,
+          _id: item._id || 'video-' + Date.now(),
+          videoUri: item.videoUrl || item.videoUri || item.streamingUrl || '',
+          videoUrl: item.videoUrl || item.streamingUrl || '',
+          streamingUrl: item.streamingUrl || '',
+          title: item.title || 'Video',
+          thumbnailUrl: item.thumbnailUrl || item.imageUrl || '',
+          type: 'video'
+        };
+        addRecentItem(videoItem);
         navigation.navigate('EnhancedVideoPlayer', {
-          item: {
-            ...item,
-            _id: item._id || 'video-' + Date.now(),
-            videoUri: item.videoUrl || item.videoUri || item.streamingUrl || '',
-            videoUrl: item.videoUrl || item.streamingUrl || '',
-            streamingUrl: item.streamingUrl || '',
-            title: item.title || 'Video',
-            thumbnailUrl: item.thumbnailUrl || item.imageUrl || '',
-          },
+          item: videoItem,
           playlist: playlist || [],
         });
       } catch (error) {
@@ -101,23 +110,50 @@ const Home: React.FC = () => {
       });
 
       try {
+        const audioItem = {
+          _id: item._id || 'audio-' + Date.now(),
+          title: item.title || 'Audio',
+          artist: item.artist || item.description || 'Unknown Artist',
+          imageUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage || '',
+          thumbnailUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || '',
+          audioUrl: item.streamingUrl || item.audioUrl || '',
+          streamingUrl: item.streamingUrl || item.audioUrl || '',
+          type: 'audio',
+          ...item
+        };
+        addRecentItem(audioItem);
         navigation.navigate('EnhancedAudioPlayer', {
-          item: {
-            _id: item._id || 'audio-' + Date.now(),
-            title: item.title || 'Audio',
-            artist: item.artist || item.description || 'Unknown Artist',
-            imageUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage || '',
-            thumbnailUrl: item.thumbnailUrl || item.imageUrl || item.coverImage || '',
-            audioUrl: item.streamingUrl || item.audioUrl || '',
-            streamingUrl: item.streamingUrl || item.audioUrl || '',
-            ...item
-          },
+          item: audioItem,
           playlist: playlist || [],
         });
       } catch (error) {
         console.error('Home - Error navigating to audio player:', error);
       }
     });
+  };
+
+  const handleRecentItemPress = (item: any) => {
+    if (item.type === 'image') {
+      const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
+      (navigation as any).navigate('ImageViewer', {
+        images: [imageUrl].filter(url => url),
+        initialIndex: 0,
+        title: item.title || 'Image'
+      });
+    } else if (item.type === 'video' || item.videoUrl || item.videoUri) {
+      handleVideoPress(item, []);
+    } else if (item.type === 'pdf' || item.pdfUrl || item.downloadUrl) {
+      requireAuth(() => {
+        (navigation as any).navigate('PdfViewer', {
+          uri: item.streamingUrl || item.pdfUrl || item.downloadUrl,
+          title: item.title,
+          description: item.description,
+          item: item
+        });
+      });
+    } else {
+      handleAudioPress(item, []);
+    }
   };
 
   return (
@@ -135,6 +171,14 @@ const Home: React.FC = () => {
         <DailyGyanGallery
           onItemPress={(item, index, allImages) => {
             requireAuth(() => {
+              const imageItem = { 
+                ...item, 
+                type: 'image',
+                imageUrl: item.streamingUrl || item.imageUrl || item.thumbnailUrl || item.mainImage || item.headerImage,
+                thumbnailUrl: item.streamingUrl || item.imageUrl || item.thumbnailUrl || item.mainImage || item.headerImage
+              };
+              console.log('Home - Adding image to recent items:', imageItem);
+              addRecentItem(imageItem);
               const imageItems = allImages.filter(img => img.type === 'image');
               const imageUrls = imageItems.map(img => 
                 processAzureUrl(img.streamingUrl) || 
@@ -158,6 +202,17 @@ const Home: React.FC = () => {
             navigation.navigate('GalleryList', {});
           }}
         />
+
+        {/* Recently Played */}
+        {isAuthenticated && recentItems && recentItems.length > 0 && (
+          <MediaHorizontalList
+            title={translateContent('Recently Played')}
+            data={recentItems.slice(0, 10)}
+            type="audio"
+            onItemPress={handleRecentItemPress}
+            onSeeAll={() => navigation.navigate('RecentlyPlayed')}
+          />
+        )}
 
         {displayTopAudios && Array.isArray(displayTopAudios) && displayTopAudios.length > 0 && (
           <MediaHorizontalList
@@ -187,6 +242,8 @@ const Home: React.FC = () => {
             onItemPress={(item) => {
               requireAuth(() => {
                 console.log('Home - PDF item pressed:', item);
+                const pdfItem = { ...item, type: 'pdf' };
+                addRecentItem(pdfItem);
                 (navigation as any).navigate('PdfViewer', {
                   uri: item.streamingUrl || item.pdfUrl,
                   title: item.title,

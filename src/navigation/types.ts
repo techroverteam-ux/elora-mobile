@@ -31,6 +31,7 @@ export type HomeStackParamList = {
   SearchScreen: undefined;
   GalleryList: { initialIndex?: number };
   PdfViewer: { item?: any };
+  RecentlyPlayed: undefined;
 };
 
 export type CategoriesStackParamList = {
@@ -66,6 +67,7 @@ export type AccountStackParamList = {
   ReportIssue: undefined;
   FeatureRequest: undefined;
   GalleryList: { initialIndex?: number };
+  RecentlyPlayed: undefined;
 };
 
 export type AuthStackParamList = {
