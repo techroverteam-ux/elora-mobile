@@ -114,17 +114,19 @@ const RecentlyPlayedScreen = () => {
       >
       <View style={styles.itemImage}>
         {(() => {
-          const imageUrl = processAzureUrl(item.thumbnailUrl) || 
-                          processAzureUrl(item.imageUrl) || 
-                          processAzureUrl(item.coverImage) || 
-                          processAzureUrl(item.headerImage) || 
-                          processAzureUrl(item.mainImage) || 
-                          processAzureUrl(item.streamingUrl);
+          const imageUrl = item.thumbnailUrl || 
+                          item.imageUrl || 
+                          item.coverImage || 
+                          item.headerImage || 
+                          item.mainImage || 
+                          (item.type === 'image' ? item.streamingUrl : null);
           
-          return imageUrl ? (
+          const processedUrl = imageUrl ? processAzureUrl(imageUrl) : null;
+          
+          return processedUrl ? (
             <CustomFastImage 
               style={styles.thumbnail} 
-              imageUrl={imageUrl} 
+              imageUrl={processedUrl} 
             />
           ) : (
             <View style={[styles.placeholder, { backgroundColor: colors.surfaceVariant }]}>
@@ -177,17 +179,19 @@ const RecentlyPlayedScreen = () => {
     >
       <View style={styles.gridImageContainer}>
         {(() => {
-          const imageUrl = processAzureUrl(item.thumbnailUrl) || 
-                          processAzureUrl(item.imageUrl) || 
-                          processAzureUrl(item.coverImage) || 
-                          processAzureUrl(item.headerImage) || 
-                          processAzureUrl(item.mainImage) || 
-                          processAzureUrl(item.streamingUrl);
+          const imageUrl = item.thumbnailUrl || 
+                          item.imageUrl || 
+                          item.coverImage || 
+                          item.headerImage || 
+                          item.mainImage || 
+                          (item.type === 'image' ? item.streamingUrl : null);
           
-          return imageUrl ? (
+          const processedUrl = imageUrl ? processAzureUrl(imageUrl) : null;
+          
+          return processedUrl ? (
             <CustomFastImage 
               style={styles.gridImage} 
-              imageUrl={imageUrl} 
+              imageUrl={processedUrl} 
             />
           ) : (
             <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
@@ -396,15 +400,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   gridContent: {
-    padding: 8,
+    padding: 6,
+    minHeight: 50,
   },
   gridTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
+    lineHeight: 16,
   },
   gridSubtitle: {
     fontSize: 12,
+    lineHeight: 14,
   },
   itemImage: {
     marginRight: 12,

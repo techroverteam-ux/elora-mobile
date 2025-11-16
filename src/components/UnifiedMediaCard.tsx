@@ -131,21 +131,21 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     );
   }
 
-  // Grid View Layout (Netflix-style)
+  // Grid View Layout (Clean card with description below)
   return (
     <TouchableOpacity
-      style={styles.netflixCard}
+      style={[styles.cleanCard, { backgroundColor: colors.surface }]}
       onPress={() => onPress(item)}
       activeOpacity={0.8}
     >
-      <View style={styles.netflixImageContainer}>
+      <View style={styles.cleanImageContainer}>
         {getImageUrl() ? (
           <CustomFastImage
-            style={styles.netflixImage}
+            style={styles.cleanImage}
             imageUrl={getImageUrl()}
           />
         ) : (
-          <View style={[styles.netflixPlaceholderImage, { backgroundColor: colors.surfaceVariant }]}>
+          <View style={[styles.cleanPlaceholderImage, { backgroundColor: colors.surfaceVariant }]}>
             <MaterialDesignIcons
               name={getIcon()}
               size={40}
@@ -154,38 +154,35 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
           </View>
         )}
         
-        {/* Netflix-style gradient overlay */}
-        <View style={styles.gradientOverlay} />
-        
-        {/* Text overlay on image */}
-        <View style={styles.textOverlay}>
-          <Text
-            style={styles.overlayTitle}
-            numberOfLines={2}
-          >
-            {item.title || t('common.untitled')}
-          </Text>
-          <Text
-            style={styles.overlaySubtitle}
-            numberOfLines={1}
-          >
-            {item.artist || item.description || item.subtitle || t('common.unknown')}
-          </Text>
-          {item.duration && (
-            <Text style={styles.overlayDuration}>
-              {formatDuration(item.duration)}
-            </Text>
-          )}
-        </View>
-        
         {/* Play button overlay */}
-        <View style={styles.playOverlay}>
+        <View style={styles.cleanPlayOverlay}>
           <MaterialDesignIcons
             name="play"
             size={16}
             color="#fff"
           />
         </View>
+      </View>
+      
+      {/* Description below image */}
+      <View style={styles.cleanContent}>
+        <Text
+          style={[styles.cleanTitle, { color: colors.onSurface }]}
+          numberOfLines={2}
+        >
+          {item.title || t('common.untitled')}
+        </Text>
+        <Text
+          style={[styles.cleanSubtitle, { color: colors.onSurfaceVariant }]}
+          numberOfLines={2}
+        >
+          {item.artist || item.description || item.subtitle || t('common.unknown')}
+        </Text>
+        {item.duration && (
+          <Text style={[styles.cleanDuration, { color: colors.primary }]}>
+            {formatDuration(item.duration)}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -198,33 +195,66 @@ const formatDuration = (seconds: number): string => {
 };
 
 const styles = StyleSheet.create({
-  // Netflix-style card
-  netflixCard: {
+  // Clean card with description below
+  cleanCard: {
     width: CARD_WIDTH,
     marginBottom: 16,
     marginHorizontal: 8,
     borderRadius: 12,
-    elevation: 4,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-  },
-  netflixImageContainer: {
-    position: 'relative',
-    borderRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     overflow: 'hidden',
-    height: CARD_WIDTH * 1.2, // Taller for better text space
   },
-  netflixImage: {
+  cleanImageContainer: {
+    position: 'relative',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    overflow: 'hidden',
+    height: CARD_WIDTH * 0.75,
+  },
+  cleanImage: {
     width: '100%',
     height: '100%',
   },
-  netflixPlaceholderImage: {
+  cleanPlaceholderImage: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  cleanPlayOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  cleanContent: {
+    padding: 8,
+    minHeight: 60,
+  },
+  cleanTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+    lineHeight: 16,
+  },
+  cleanSubtitle: {
+    fontSize: 12,
+    marginBottom: 2,
+    lineHeight: 14,
+  },
+  cleanDuration: {
+    fontSize: 11,
+    fontWeight: '500',
   },
   gradientOverlay: {
     position: 'absolute',

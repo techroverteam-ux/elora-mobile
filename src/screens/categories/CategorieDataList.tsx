@@ -65,7 +65,6 @@ const CategorieDataList = () => {
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <Text style={styles.debugText}>Data count: {translatedCategories?.length || 0}</Text>
           <CustomVerticalFlatlist
             data={translatedCategories}
             onItemPress={(item) => {

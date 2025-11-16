@@ -12,7 +12,7 @@ import { translateContent } from '../utils/contentTranslator';
 // Import stack navigators
 import HomeStack from './stack/HomeStack';
 import CategoriesStack from './stack/CategoriesStack';
-import DownloadsStack from './stack/DownloadsStack';
+
 import AccountStack from './stack/AccountStack';
 import CustomDrawer from '../components/CustomDrawer';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -88,8 +88,16 @@ function MyTabBar({ state, descriptors, navigation }: any) {
             canPreventDefault: true,
           });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+          if (!event.defaultPrevented) {
+            if (route.name === 'Categories') {
+              // Always reset Categories stack to main screen
+              navigation.navigate('Categories', {
+                screen: 'CategoriesMain',
+                params: undefined
+              });
+            } else if (!isFocused) {
+              navigation.navigate(route.name, route.params);
+            }
           }
         };
 
@@ -195,7 +203,6 @@ const DashboardNavigator = () => {
       }}
     >
       <Drawer.Screen name="MainTabs" component={TabNavigator} />
-      <Drawer.Screen name="Downloads" component={DownloadsStack} />
       <Drawer.Screen name="BookmarksScreen" component={BookmarksScreen} />
       <Drawer.Screen name="RecentlyPlayedScreen" component={RecentlyPlayedScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
