@@ -76,22 +76,22 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 15,
+    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     marginLeft: 8,
   },
   seeAllButton: {
@@ -99,15 +99,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   seeAll: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     marginRight: 4,
   },
   listContent: {
     paddingHorizontal: 16,
   },
   separator: {
-    width: 12,
+    width: 10,
   },
 });
 

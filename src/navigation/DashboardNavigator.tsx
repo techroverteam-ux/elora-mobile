@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { translateContent } from '../utils/contentTranslator';
+import { getResponsiveFontSize, isOldPhone } from '../utils/responsive';
 
 // Import stack navigators
 import HomeStack from './stack/HomeStack';
@@ -47,11 +48,24 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   // Calculate dynamic bottom padding based on device
   const getBottomPadding = () => {
     if (Platform.OS === 'ios') {
-      return Math.max(insets.bottom, 10);
+      return Math.max(insets.bottom, 12);
     }
     // For Android, check if device has gesture navigation
     const hasGestureNav = screenHeight > 800 && insets.bottom > 0;
-    return hasGestureNav ? Math.max(insets.bottom + 5, 15) : 10;
+    return hasGestureNav ? Math.max(insets.bottom + 8, 18) : 12;
+  };
+
+  // Calculate dynamic tab height based on screen size
+  const getTabHeight = () => {
+    if (isOldPhone()) return 70; // Old phones need more height
+    if (screenHeight < 600) return 65; // Small screens
+    if (screenHeight < 800) return 70; // Medium screens
+    return 75; // Large screens
+  };
+
+  // Get responsive font size for tab labels
+  const getTabLabelSize = () => {
+    return getResponsiveFontSize(11);
   };
 
   // Hide tab bar only on specific screens like audio/video players
@@ -65,6 +79,7 @@ function MyTabBar({ state, descriptors, navigation }: any) {
       { 
         backgroundColor: colors.card,
         paddingBottom: getBottomPadding(),
+        minHeight: getTabHeight(),
       }
     ]}>
       {state.routes.map((route: any, index: number) => {
@@ -124,7 +139,11 @@ function MyTabBar({ state, descriptors, navigation }: any) {
               size={24}
               color={isFocused ? colors.primary : colors.text}
             />
-            <Text style={[styles.tabLabel, { color: isFocused ? colors.primary : colors.text }]}>
+            <Text 
+              style={[styles.tabLabel, { color: isFocused ? colors.primary : colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {label}
             </Text>
           </PlatformPressable>
@@ -241,10 +260,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
   },
   tabLabel: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 10,
+    marginTop: 3,
+    textAlign: 'center',
+    fontWeight: '500',
+    minHeight: 14,
   },
 });

@@ -141,22 +141,22 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 15,
+    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   title: {
-    fontSize: normalize(18),
-    fontWeight: 'bold',
+    fontSize: normalize(16),
+    fontWeight: '600',
     marginLeft: wp(2),
   },
   seeAllButton: {
@@ -164,28 +164,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   seeAllText: {
-    fontSize: normalize(14),
-    fontWeight: '600',
+    fontSize: normalize(13),
+    fontWeight: '500',
   },
   galleryList: {
     paddingHorizontal: 16,
   },
   galleryItem: {
-    width: getResponsiveSize(wp(32), wp(34), wp(30)),
-    height: getResponsiveSize(wp(40), wp(42), wp(38)),
-    marginRight: wp(3),
-    borderRadius: normalize(16),
+    width: getResponsiveSize(wp(30), wp(32), wp(28)),
+    height: getResponsiveSize(wp(36), wp(38), wp(34)),
+    marginRight: wp(2.5),
+    borderRadius: normalize(14),
     overflow: 'hidden',
     position: 'relative',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
     }),
   },

@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   pagerView: {
-    height: 240,
-    marginBottom: 8,
+    height: 200,
+    marginBottom: 6,
   },
   cardContainer: {
     marginHorizontal: 10,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 240,
+    height: 200,
   },
   placeholderImage: {
     backgroundColor: '#e6e6e6',
@@ -229,9 +229,9 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 0.4,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.3,
     textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
@@ -288,8 +288,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 15,
+    marginTop: 6,
+    marginBottom: 10,
   },
   dot: {
     width: 8,

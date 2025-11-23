@@ -27,7 +27,7 @@ import SafeBottomArea from './SafeBottomArea';
 import { useAzureAssets } from '../hooks/useAzureAssets';
 import { getStreamingUrl, getImageUrl, processAzureUrl, createAzureProxyUrl, needsAzureProxy } from '../utils/azureUrlHelper';
 import { debugAudioUrls, testAudioUrl } from '../utils/audioDebugHelper';
-import { wp, hp, normalize } from '../utils/responsive';
+import { wp, hp, normalize, isSmallScreen, getResponsiveSize } from '../utils/responsive';
 import { useMediaPlayerManager } from '../context/MediaPlayerManager';
 import { useGetFeaturedQuery } from '../data/redux/services/mediaApi';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -396,7 +396,7 @@ const EnhancedAudioPlayer = () => {
           onPress={() => seekBy(-10)} 
           style={styles.actionButton}
         >
-          <MaterialDesignIcons name="rewind-10" size={28} color={colors.onBackground} />
+          <MaterialDesignIcons name="rewind-10" size={28} color={"#F8803B"} />
         </TouchableOpacity>
 
         <View style={styles.mainControls}>
@@ -405,7 +405,7 @@ const EnhancedAudioPlayer = () => {
             style={[styles.controlButton, { opacity: hasPrevious ? 1 : 0.5 }]}
             disabled={!hasPrevious}
           >
-            <MaterialDesignIcons name="skip-previous" size={32} color={colors.onBackground} />
+            <MaterialDesignIcons name="skip-previous" size={32} color={"#F8803B"} />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -429,7 +429,7 @@ const EnhancedAudioPlayer = () => {
             style={[styles.controlButton, { opacity: hasNext ? 1 : 0.5 }]}
             disabled={!hasNext}
           >
-            <MaterialDesignIcons name="skip-next" size={32} color={colors.onBackground} />
+            <MaterialDesignIcons name="skip-next" size={32} color={"#F8803B"} />
           </TouchableOpacity>
         </View>
 
@@ -437,7 +437,7 @@ const EnhancedAudioPlayer = () => {
           onPress={() => seekBy(10)} 
           style={styles.actionButton}
         >
-          <MaterialDesignIcons name="fast-forward-10" size={28} color={colors.onBackground} />
+          <MaterialDesignIcons name="fast-forward-10" size={28} color={"#F8803B"} />
         </TouchableOpacity>
       </View>
 
@@ -494,8 +494,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: wp(5),
-    paddingVertical: hp(2),
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(1.5),
   },
   headerButton: {
     padding: 8,
@@ -504,20 +504,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: normalize(16),
     fontWeight: '600',
+    textAlign: 'center',
+    marginHorizontal: wp(2),
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   albumContainer: {
-    flex: 1,
+    flex: 0.6,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: wp(10),
+    paddingHorizontal: wp(6),
+    paddingVertical: hp(1),
   },
   albumArtWrapper: {
-    width: width - 80,
-    height: width - 80,
+    width: getResponsiveSize(width - 100, width - 80, width - 60),
+    height: getResponsiveSize(width - 100, width - 80, width - 60),
     borderRadius: 20,
     elevation: 20,
     shadowColor: '#000',
@@ -538,23 +541,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   songInfo: {
-    paddingHorizontal: wp(8),
-    paddingVertical: hp(2.5),
+    paddingHorizontal: wp(6),
+    paddingVertical: hp(1),
+    paddingTop: hp(2),
     alignItems: 'center',
   },
   songTitle: {
-    fontSize: normalize(24),
+    fontSize: normalize(isSmallScreen() ? 20 : 24),
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: hp(1),
+    marginBottom: hp(0.5),
+    paddingHorizontal: wp(2),
   },
   artistName: {
-    fontSize: normalize(16),
+    fontSize: normalize(isSmallScreen() ? 14 : 16),
     fontWeight: '500',
+    textAlign: 'center',
+    paddingHorizontal: wp(2),
   },
   progressContainer: {
-    paddingHorizontal: wp(8),
-    marginBottom: hp(2.5),
+    paddingHorizontal: wp(6),
+    marginTop: hp(1.5),
+    marginBottom: hp(1),
   },
   slider: {
     width: '100%',
@@ -577,24 +585,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    marginBottom: 30,
+    paddingHorizontal: wp(6),
+    marginBottom: hp(3),
   },
   actionButton: {
-    padding: 12,
+    padding: wp(2),
   },
   mainControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 30,
+    justifyContent: 'center',
+    flex: 1,
+    paddingHorizontal: wp(4),
   },
   controlButton: {
-    padding: 12,
+    padding: wp(3),
+    marginHorizontal: wp(4),
   },
   playButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: getResponsiveSize(70, 80, 90),
+    height: getResponsiveSize(70, 80, 90),
+    borderRadius: getResponsiveSize(35, 40, 45),
     backgroundColor: '#F8803B',
     justifyContent: 'center',
     alignItems: 'center',
@@ -603,6 +614,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+    marginHorizontal: wp(6),
   },
 
   playlistOverlay: {

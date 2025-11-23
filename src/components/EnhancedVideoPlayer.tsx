@@ -298,6 +298,9 @@ const EnhancedVideoPlayer = () => {
               color={isLiked ? "#F8803B" : colors.onSurface} 
             />
           </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+            <MaterialDesignIcons name="share-variant" size={24} color={colors.onSurface} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -375,67 +378,49 @@ const EnhancedVideoPlayer = () => {
                 </TouchableOpacity>
               )}
               <View style={styles.spacer} />
-              <TouchableOpacity onPress={changePlaybackRate} style={styles.overlayButton}>
-                <Text style={styles.speedText}>{playbackRate}x</Text>
-              </TouchableOpacity>
+              {fullScreen && (
+                <View style={styles.fullscreenTimeDisplay}>
+                  <Text style={styles.overlayTimeText}>{formatTime(currentTime)} / {formatTime(duration)}</Text>
+                </View>
+              )}
             </View>
 
             {/* Center Controls */}
             <View style={styles.centerControls}>
-              <TouchableOpacity 
-                onPress={() => seekBy(-10)} 
-                style={styles.seekButton}
-              >
-                <MaterialDesignIcons name="rewind-10" size={32} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
-                <MaterialDesignIcons
-                  name={paused ? 'play' : 'pause'}
-                  size={48}
-                  color="#fff"
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                onPress={() => seekBy(10)} 
-                style={styles.seekButton}
-              >
-                <MaterialDesignIcons name="fast-forward-10" size={32} color="#fff" />
-              </TouchableOpacity>
+              {fullScreen && (
+                <>
+                  <TouchableOpacity onPress={() => seekBy(-10)} style={styles.seekButton}>
+                    <MaterialDesignIcons name="rewind-10" size={32} color="#fff" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={toggleMute} style={styles.seekButton}>
+                    <MaterialDesignIcons
+                      name={muted ? 'volume-off' : 'volume-high'}
+                      size={28}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
+                    <MaterialDesignIcons
+                      name={paused ? 'play' : 'pause'}
+                      size={48}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={changePlaybackRate} style={styles.seekButton}>
+                    <Text style={styles.speedText}>{playbackRate}x</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={() => seekBy(10)} style={styles.seekButton}>
+                    <MaterialDesignIcons name="fast-forward-10" size={32} color="#fff" />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
-            {/* Bottom Controls */}
-            <View style={styles.bottomControls}>
-              <View style={styles.progressContainer}>
-                <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-                <Slider
-                  style={styles.progressSlider}
-                  value={duration ? currentTime / duration : 0}
-                  minimumValue={0}
-                  maximumValue={1}
-                  onSlidingComplete={handleSeek}
-                  minimumTrackTintColor="#F8803B"
-                  maximumTrackTintColor="rgba(255,255,255,0.3)"
-                  thumbTintColor="#F8803B"
-                />
-                <Text style={styles.timeText}>{formatTime(duration)}</Text>
-                <TouchableOpacity onPress={toggleMute} style={styles.muteButton}>
-                  <MaterialDesignIcons
-                    name={muted ? 'volume-off' : 'volume-high'}
-                    size={20}
-                    color="#fff"
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={toggleFullScreen} style={styles.fullscreenButton}>
-                  <MaterialDesignIcons
-                    name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
-                    size={24}
-                    color="#fff"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+
           </View>
         )}
       </TouchableOpacity>
@@ -445,11 +430,6 @@ const EnhancedVideoPlayer = () => {
         <View style={[styles.videoInfo, { backgroundColor: colors.surface }]}>
           {/* Enhanced Action Row */}
           <View style={styles.enhancedActionRow}>
-            <TouchableOpacity style={styles.enhancedActionButton}>
-              <MaterialDesignIcons name="subtitles" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.subtitle')}</Text>
-            </TouchableOpacity>
-            
             <TouchableOpacity style={styles.enhancedActionButton} onPress={changePlaybackRate}>
               <MaterialDesignIcons name="speedometer" size={20} color={colors.onSurfaceVariant} />
               <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.speed')} ({playbackRate}x)</Text>
@@ -464,20 +444,54 @@ const EnhancedVideoPlayer = () => {
           <Text style={[styles.videoTitle, { color: colors.onSurface }]} numberOfLines={2}>{videoTitle}</Text>
           <Text style={[styles.videoSubtitle, { color: colors.onSurfaceVariant }]}>{currentVideo?.subtitle || currentVideo?.artist || 'Video Content'}</Text>
           
+          {/* Progress Bar and Controls */}
+          <View style={styles.bottomProgressContainer}>
+            <Slider
+              style={styles.bottomProgressSlider}
+              value={duration ? currentTime / duration : 0}
+              minimumValue={0}
+              maximumValue={1}
+              onSlidingComplete={handleSeek}
+              minimumTrackTintColor="#F8803B"
+              maximumTrackTintColor={colors.outline}
+              thumbTintColor="#F8803B"
+            />
+            <View style={styles.timeRow}>
+              <Text style={[styles.bottomTimeText, { color: colors.onSurfaceVariant }]}>{formatTime(currentTime)}</Text>
+              <Text style={[styles.bottomTimeText, { color: colors.onSurfaceVariant }]}>{formatTime(duration)}</Text>
+            </View>
+          </View>
+          
           {/* Enhanced Control Buttons */}
           <View style={styles.enhancedControls}>
             <TouchableOpacity 
               style={styles.controlIcon}
               onPress={() => seekBy(-10)}
             >
-              <MaterialDesignIcons name="rewind-10" size={28} color={"#F8803B"} />
+              <MaterialDesignIcons name="rewind-10" size={32} color={"#F8803B"} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={toggleMute} style={styles.controlIcon}>
+              <MaterialDesignIcons
+                name={muted ? 'volume-off' : 'volume-high'}
+                size={28}
+                color={colors.onSurfaceVariant}
+              />
             </TouchableOpacity>
             
             <TouchableOpacity onPress={togglePlayPause} style={[styles.enhancedPlayButton, { backgroundColor: "#F8803B" }]}>
               <MaterialDesignIcons
                 name={paused ? 'play' : 'pause'}
-                size={40}
+                size={44}
                 color="#fff"
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={toggleFullScreen} style={styles.controlIcon}>
+              <MaterialDesignIcons
+                name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
+                size={28}
+                color={colors.onSurfaceVariant}
               />
             </TouchableOpacity>
             
@@ -485,33 +499,11 @@ const EnhancedVideoPlayer = () => {
               style={styles.controlIcon}
               onPress={() => seekBy(10)}
             >
-              <MaterialDesignIcons name="fast-forward-10" size={28} color={"#F8803B"} />
+              <MaterialDesignIcons name="fast-forward-10" size={32} color={"#F8803B"} />
             </TouchableOpacity>
           </View>
           
-          {/* Action Buttons */}
-          <SafeBottomArea backgroundColor={colors.surface}>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={toggleMute}
-              >
-                <MaterialDesignIcons 
-                  name={muted ? "volume-off" : "volume-high"} 
-                  size={24} 
-                  color={"#F8803B"} 
-                />
-                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>
-                  {muted ? t('screens.videoPlayer.unmute') : t('screens.videoPlayer.mute')}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
-                <MaterialDesignIcons name="share-variant" size={24} color={"#F8803B"} />
-                <Text style={[styles.actionText, { color: colors.onSurfaceVariant }]}>{t('common.share')}</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeBottomArea>
+          <SafeBottomArea backgroundColor={colors.surface} />
         </View>
       )}
     </View>
@@ -594,11 +586,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  fullscreenTimeDisplay: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  overlayTimeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   centerControls: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 40,
+    gap: 30,
   },
   seekButton: {
     padding: 12,
@@ -629,29 +632,39 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
   },
-  muteButton: {
-    padding: 8,
-    marginRight: 8,
+  bottomProgressContainer: {
+    marginVertical: hp(1),
   },
-  fullscreenButton: {
-    padding: 8,
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: hp(0.2),
+  },
+  bottomTimeText: {
+    fontSize: normalize(10),
+    fontWeight: '500',
+  },
+  bottomProgressSlider: {
+    width: '100%',
+    height: hp(3.5),
+    marginVertical: 0,
   },
   videoInfo: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: wp(4),
+    paddingTop: hp(1.5),
   },
   videoTitle: {
-    fontSize: normalize(18),
+    fontSize: normalize(16),
     fontWeight: '700',
-    marginBottom: hp(0.5),
+    marginBottom: hp(0.3),
   },
   videoSubtitle: {
-    fontSize: normalize(14),
-    marginBottom: hp(2.5),
+    fontSize: normalize(12),
+    marginBottom: hp(1),
   },
   actionButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingTop: 10,
   },
   actionButton: {
@@ -664,9 +677,9 @@ const styles = StyleSheet.create({
   },
   enhancedActionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    justifyContent: 'space-around',
+    marginBottom: hp(1),
+    paddingHorizontal: wp(2),
   },
   enhancedActionButton: {
     flexDirection: 'row',
@@ -683,16 +696,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: 20,
-    paddingHorizontal: 16,
+    marginVertical: hp(1.5),
+    paddingHorizontal: wp(4),
   },
   controlIcon: {
-    padding: 8,
+    padding: wp(2),
   },
   enhancedPlayButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: wp(14),
+    height: wp(14),
+    borderRadius: wp(7),
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,

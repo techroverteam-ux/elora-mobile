@@ -35,17 +35,23 @@ const Home: React.FC = () => {
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
 
-  if (isLoading) return <LoadingState colors={colors} t={t} />;
   if (isError) return <ErrorState colors={colors} onRetry={refetch} t={t} />;
 
   const dashboardData = data?.data || {};
   const { recentUploads = [], topVideos = [], topAudios = [], topBooks = [] } = dashboardData;
 
-  // Use only real API data from Azure
-  const displayTopAudios = topAudios;
-  const displayTopVideos = topVideos;
-  const displayTopBooks = topBooks;
-  const displayRecentUploads = recentUploads;
+  // Use skeleton data while loading, real data when loaded
+  const displayTopAudios = isLoading ? [] : topAudios;
+  const displayTopVideos = isLoading ? [] : topVideos;
+  const displayTopBooks = isLoading ? [] : topBooks;
+  const displayRecentUploads = isLoading ? [] : recentUploads;
+  
+  // Skeleton data for loading state
+  const skeletonData = Array(6).fill(null).map((_, index) => ({
+    _id: `skeleton-${index}`,
+    title: '',
+    isLoading: true
+  }));
 
   // console.log('Home - Dashboard data:', {
   //   topAudios: topAudios.length,
@@ -164,6 +170,8 @@ const Home: React.FC = () => {
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
+        bounces={false}
+        overScrollMode="never"
       >
         <CardCarousel />
 
@@ -214,71 +222,90 @@ const Home: React.FC = () => {
           />
         )}
 
-        {displayTopAudios && Array.isArray(displayTopAudios) && displayTopAudios.length > 0 && (
-          <MediaHorizontalList
-            title={t('mediaTypes.audio')}
-            data={displayTopAudios.filter(item => item && item._id)}
-            type="audio"
-            onItemPress={(item) => handleAudioPress(item, displayTopAudios)}
-            onSeeAll={() => navigation.navigate('AllAudios')}
-          />
-        )}
+        <MediaHorizontalList
+          title={t('mediaTypes.audio')}
+          data={isLoading ? skeletonData : displayTopAudios.filter(item => item && item._id)}
+          type="audio"
+          onItemPress={(item) => !item.isLoading && handleAudioPress(item, displayTopAudios)}
+          onSeeAll={() => !isLoading && navigation.navigate('AllAudios')}
+        />
 
-        {displayTopVideos && Array.isArray(displayTopVideos) && displayTopVideos.length > 0 && (
-          <MediaHorizontalList
-            title={t('mediaTypes.video')}
-            data={displayTopVideos.filter(item => item && item._id)}
-            type="video"
-            onItemPress={(item) => handleVideoPress(item, displayTopVideos)}
-            onSeeAll={() => navigation.navigate('AllVideos', { item: displayTopVideos })}
-          />
-        )}
+        <MediaHorizontalList
+          title={t('mediaTypes.video')}
+          data={isLoading ? skeletonData : displayTopVideos.filter(item => item && item._id)}
+          type="video"
+          onItemPress={(item) => !item.isLoading && handleVideoPress(item, displayTopVideos)}
+          onSeeAll={() => !isLoading && navigation.navigate('AllVideos', { item: displayTopVideos })}
+        />
 
-        {displayTopBooks && displayTopBooks.length > 0 && (
-          <MediaHorizontalList
-            title={t('mediaTypes.book')}
-            data={displayTopBooks}
-            type="pdf"
-            onItemPress={(item) => {
+        {/* Books Section - Always show with fallback data */}
+        <MediaHorizontalList
+          title={t('mediaTypes.book') + 's'}
+          data={displayTopBooks && displayTopBooks.length > 0 ? displayTopBooks : [
+            {
+              _id: 'book-1',
+              title: 'Bhagavad Gita – As It Is',
+              subtitle: 'Geeta Press, Gorakhpur',
+              thumbnailUrl: '',
+              streamingUrl: '',
+              type: 'pdf'
+            },
+            {
+              _id: 'book-2', 
+              title: 'Ramcharitmanas',
+              subtitle: 'Geeta Press, Gorakhpur',
+              thumbnailUrl: '',
+              streamingUrl: '',
+              type: 'pdf'
+            },
+            {
+              _id: 'book-3',
+              title: 'Shri Krishna Leela', 
+              subtitle: 'Chaukhamba Sanskrit Sansthan',
+              thumbnailUrl: '',
+              streamingUrl: '',
+              type: 'pdf'
+            }
+          ]}
+          type="pdf"
+          onItemPress={(item) => {
+            requireAuth(() => {
+              console.log('Home - PDF item pressed:', item);
+              const pdfItem = { ...item, type: 'pdf' };
+              addRecentItem(pdfItem);
+              (navigation as any).navigate('PdfViewer', {
+                uri: item.streamingUrl || item.pdfUrl,
+                title: item.title,
+                description: item.description,
+                item: item
+              });
+            });
+          }}
+          onSeeAll={() => navigation.navigate('AllPDFs')}
+        />
+
+        <MediaHorizontalList
+          title={t('screens.home.recentUploads')}
+          data={isLoading ? skeletonData : displayRecentUploads}
+          type="audio"
+          onItemPress={(item) => {
+            if (item.isLoading) return;
+            if (item.type === 'video') {
+              handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
+            } else if (item.type === 'pdf') {
               requireAuth(() => {
-                console.log('Home - PDF item pressed:', item);
-                const pdfItem = { ...item, type: 'pdf' };
-                addRecentItem(pdfItem);
                 (navigation as any).navigate('PdfViewer', {
-                  uri: item.streamingUrl || item.pdfUrl,
-                  title: item.title,
-                  description: item.description,
-                  item: item
+                  item: {
+                    ...item,
+                    pdfUrl: item.streamingUrl || item.pdfUrl,
+                  }
                 });
               });
-            }}
-            onSeeAll={() => navigation.navigate('AllPDFs')}
-          />
-        )}
-
-        {displayRecentUploads && displayRecentUploads.length > 0 && (
-          <MediaHorizontalList
-            title={t('screens.home.recentUploads')}
-            data={displayRecentUploads}
-            type="audio"
-            onItemPress={(item) => {
-              if (item.type === 'video') {
-                handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
-              } else if (item.type === 'pdf') {
-                requireAuth(() => {
-                  (navigation as any).navigate('PdfViewer', {
-                    item: {
-                      ...item,
-                      pdfUrl: item.streamingUrl || item.pdfUrl,
-                    }
-                  });
-                });
-              } else {
-                handleAudioPress(item, displayRecentUploads.filter(i => i.type !== 'video' && i.type !== 'pdf'));
-              }
-            }}
-          />
-        )}
+            } else {
+              handleAudioPress(item, displayRecentUploads.filter(i => i.type !== 'video' && i.type !== 'pdf'));
+            }
+          }}
+        />
       </ScrollView>
     </View>
   );
@@ -324,7 +351,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 20,
+    paddingBottom: 5,
   },
   centered: {
     flex: 1,

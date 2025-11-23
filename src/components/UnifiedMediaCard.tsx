@@ -21,6 +21,19 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { resourceUrls } = useAzureAssets(item || {});
+  
+  // Show skeleton loading state
+  if (item?.isLoading) {
+    return (
+      <View style={[styles.cleanCard, { backgroundColor: colors.surface }]}>
+        <View style={[styles.skeletonImage, { backgroundColor: colors.surfaceVariant }]} />
+        <View style={styles.cleanContent}>
+          <View style={[styles.skeletonText, styles.skeletonTitle, { backgroundColor: colors.surfaceVariant }]} />
+          <View style={[styles.skeletonText, styles.skeletonSubtitle, { backgroundColor: colors.surfaceVariant }]} />
+        </View>
+      </View>
+    );
+  }
 
   const getIcon = () => {
     // Check actual item type first, then fallback to prop type
@@ -54,6 +67,17 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
       item?.streamingUrl
     ];
 
+    console.log('UnifiedMediaCard - FULL ITEM DATA:', {
+      title: item?.title,
+      type: item?.type || type,
+      thumbnailUrl: item?.thumbnailUrl,
+      imageUrl: item?.imageUrl,
+      coverImage: item?.coverImage,
+      headerImage: item?.headerImage,
+      mainImage: item?.mainImage,
+      streamingUrl: item?.streamingUrl,
+      resourceUrls: resourceUrls
+    });
     console.log('UnifiedMediaCard - Processing URLs for item:', item?.title, 'type:', item?.type);
     console.log('UnifiedMediaCard - Available URLs:', urls.filter(url => url));
 
@@ -255,6 +279,25 @@ const styles = StyleSheet.create({
   cleanDuration: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  // Skeleton loading styles
+  skeletonImage: {
+    width: '100%',
+    height: CARD_WIDTH * 0.75,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  skeletonText: {
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  skeletonTitle: {
+    height: 16,
+    width: '80%',
+  },
+  skeletonSubtitle: {
+    height: 14,
+    width: '60%',
   },
   gradientOverlay: {
     position: 'absolute',

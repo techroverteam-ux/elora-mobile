@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ActivityIndicator, Dimensions, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Dimensions, ScrollView, TouchableOpacity, Linking, Alert, TextInput } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import Pdf from 'react-native-pdf';
 import { useTheme } from 'react-native-paper';
@@ -27,6 +27,8 @@ const PdfViewer = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.0);
   const [pdfSections, setPdfSections] = useState<any[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   
   const [getSectionsRequest, { data: sectionsData, isLoading: sectionsLoading }] = useGetSectionsMutation();
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
@@ -178,6 +180,16 @@ const PdfViewer = () => {
             />
           </TouchableOpacity>
           <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => setShowSearch(!showSearch)}
+          >
+            <MaterialDesignIcons 
+              name="magnify" 
+              size={20} 
+              color={colors.primary} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={styles.sectionsButton} 
             onPress={() => setShowSections(!showSections)}
           >
@@ -189,6 +201,23 @@ const PdfViewer = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {showSearch && (
+        <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
+          <MaterialDesignIcons name="magnify" size={20} color={colors.onSurfaceVariant} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.onSurface }]}
+            placeholder={t('screens.pdfViewer.searchInPdf')}
+            placeholderTextColor={colors.onSurfaceVariant}
+            value={searchText}
+            onChangeText={setSearchText}
+            autoFocus
+          />
+          <TouchableOpacity onPress={() => setShowSearch(false)}>
+            <MaterialDesignIcons name="close" size={20} color={colors.onSurfaceVariant} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.container}>
         {showSections && (
@@ -263,34 +292,33 @@ const PdfViewer = () => {
               }}
               page={currentPage}
               onLoadComplete={(numberOfPages) => {
-                console.log(`PDF loaded: ${numberOfPages} pages`);
                 setTotalPages(numberOfPages);
                 setLoading(false);
               }}
-              onPageChanged={(page, numberOfPages) => {
+              onPageChanged={(page) => {
                 setCurrentPage(page);
-                setTotalPages(numberOfPages);
-                console.log(`Page ${page} of ${numberOfPages}`);
               }}
               onError={(error) => {
                 console.error('PDF Error:', error);
                 setLoading(false);
               }}
               style={styles.pdf}
-              enablePaging={true}
+              enablePaging={false}
               horizontal={false}
-              spacing={0}
+              spacing={10}
               scale={scale}
               minScale={0.5}
               maxScale={3.0}
               enableAntialiasing={true}
-              enableAnnotationRendering={true}
+              enableAnnotationRendering={false}
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={true}
+              singlePage={false}
+              fitPolicy={0}
               renderActivityIndicator={() => (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('screens.pdfViewer.loadingBooks')}</Text>
+                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading PDF...</Text>
                 </View>
               )}
             />
@@ -341,6 +369,19 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    marginHorizontal: 12,
+    fontSize: 16,
+    paddingVertical: 8,
   },
   actionButton: {
     padding: 6,
@@ -430,7 +471,7 @@ const styles = StyleSheet.create({
   pdf: {
     flex: 1,
     width: width,
-    height: height,
+    backgroundColor: '#f5f5f5',
   },
   pageCounter: {
     position: 'absolute',
@@ -454,7 +495,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     marginTop: 10,
