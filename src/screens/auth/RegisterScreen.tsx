@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   StyleSheet,
@@ -25,14 +25,25 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import LinearGradient from 'react-native-linear-gradient';
 import { wp, hp, normalize } from '../../utils/responsive';
 
-const { width, height } = Dimensions.get('window');
-
 type AuthNav = NativeStackNavigationProp<AuthStackParamList>;
 
 const RegisterScreen = () => {
   const navigation = useNavigation<AuthNav>();
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const width = dimensions.width;
+  const height = dimensions.height;
+  const is7Inch = width >= 600 && width < 800;
+  const is10Inch = width >= 800;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -165,7 +176,7 @@ const RegisterScreen = () => {
             <Text style={styles.subtitle}>{t('auth.register.subtitle')}</Text>
           </View>
 
-          <View style={styles.formContainer}>
+          <View style={[styles.formContainer, (is7Inch || is10Inch) && { maxWidth: is10Inch ? 600 : 500, alignSelf: 'center', width: '90%' }]}>
         {generalError ? (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>{generalError}</Text>
@@ -258,63 +269,62 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    minHeight: height,
   },
   header: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp(8),
-    paddingBottom: hp(4),
+    paddingTop: hp(6),
+    paddingBottom: hp(3),
     position: 'relative',
   },
   backButton: {
     position: 'absolute',
-    top: hp(8),
+    top: hp(6),
     left: wp(5),
     padding: wp(2.5),
   },
   logoContainer: {
-    width: wp(25),
-    height: wp(25),
-    borderRadius: wp(12.5),
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: hp(2.5),
+    marginBottom: hp(2),
   },
   logoImage: {
-    width: wp(20),
-    height: wp(20),
+    width: 80,
+    height: 80,
   },
   title: {
-    fontSize: normalize(32),
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: hp(1),
   },
   subtitle: {
-    fontSize: normalize(16),
+    fontSize: 15,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     paddingHorizontal: wp(10),
   },
   formContainer: {
+    flex: 1,
     backgroundColor: '#fff',
-    borderTopLeftRadius: normalize(30),
-    borderTopRightRadius: normalize(30),
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     paddingHorizontal: wp(8),
-    paddingTop: hp(5),
-    paddingBottom: hp(5),
-    minHeight: height * 0.6,
+    paddingTop: hp(4),
+    paddingBottom: hp(3),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderRadius: normalize(15),
-    marginBottom: hp(2.5),
+    borderRadius: 15,
+    marginBottom: hp(2),
     paddingHorizontal: wp(4),
-    height: hp(7),
+    height: 56,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     shadowColor: '#000',
@@ -328,17 +338,17 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: normalize(16),
+    fontSize: 16,
     color: '#333',
-    paddingVertical: hp(1),
+    paddingVertical: 0,
   },
   registerButton: {
     backgroundColor: '#F8803B',
-    borderRadius: normalize(15),
-    height: hp(7),
+    borderRadius: 15,
+    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: hp(1.5),
+    marginTop: hp(2),
     ...Platform.select({
       ios: {
         shadowColor: '#F8803B',
@@ -353,15 +363,15 @@ const styles = StyleSheet.create({
   },
   registerButtonText: {
     color: '#fff',
-    fontSize: normalize(18),
+    fontSize: 18,
     fontWeight: 'bold',
   },
   loginLink: {
     alignItems: 'center',
-    marginTop: hp(4),
+    marginTop: hp(3),
   },
   loginText: {
-    fontSize: normalize(16),
+    fontSize: 15,
     color: '#666',
   },
   loginTextBold: {
@@ -370,21 +380,21 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     backgroundColor: '#ffebee',
-    borderRadius: normalize(8),
-    padding: wp(3),
+    borderRadius: 8,
+    padding: 12,
     marginBottom: hp(2),
     borderLeftWidth: 4,
     borderLeftColor: '#f44336',
   },
   errorText: {
     color: '#c62828',
-    fontSize: normalize(14),
+    fontSize: 14,
     textAlign: 'center',
   },
   fieldError: {
     color: '#f44336',
-    fontSize: normalize(12),
-    marginTop: -hp(2),
+    fontSize: 12,
+    marginTop: -hp(1.5),
     marginBottom: hp(1),
     marginLeft: wp(4),
   },

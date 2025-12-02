@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Dimensions } from 'react-native'
 import PagerView from 'react-native-pager-view'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 import CustomFastImage from './CustomFastImage'
@@ -79,6 +79,18 @@ const CardCarousel: React.FC = () => {
   const navigation = useNavigation()
   const [currentPage, setCurrentPage] = useState(0)
   const { requireAuth } = useRequireAuth()
+  const [width, setWidth] = useState(Dimensions.get('window').width)
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWidth(window.width)
+    })
+    return () => subscription?.remove()
+  }, [])
+  
+  const is7Inch = width >= 600 && width < 800
+  const is10Inch = width >= 800
+  const carouselHeight = is10Inch ? 280 : is7Inch ? 240 : 200
 
   // Fetch top 6 recently added categories
   const { data: categories = [], isLoading, error } = useGetRecentCategoriesQuery({ limit: 6 })
@@ -119,16 +131,20 @@ const CardCarousel: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Loading categories...</Text>
+      <View>
+        <View style={{ height: carouselHeight, marginBottom: 6, marginHorizontal: 10, borderRadius: 20, backgroundColor: colors.surfaceVariant }} />
+        <View style={styles.dotsContainer}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ width: is10Inch ? 10 : 8, height: is10Inch ? 10 : 8, borderRadius: is10Inch ? 5 : 4, marginHorizontal: 5, backgroundColor: colors.outlineVariant }} />
+          ))}
+        </View>
       </View>
     )
   }
 
   if (error) {
     return (
-      <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={{ height: carouselHeight, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
         <MaterialDesignIcons name="alert-circle" size={40} color={colors.error} />
         <Text style={[styles.errorText, { color: colors.error }]}>Failed to load categories</Text>
         <Text style={[styles.errorSubtext, { color: colors.onSurfaceVariant }]}>Please check your connection</Text>
@@ -138,7 +154,7 @@ const CardCarousel: React.FC = () => {
 
   if (categories.length === 0) {
     return (
-      <View style={[styles.pagerView, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={{ height: carouselHeight, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
         <MaterialDesignIcons name="folder-outline" size={40} color={colors.onSurfaceVariant} />
         <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>No categories available</Text>
       </View>
@@ -150,7 +166,7 @@ const CardCarousel: React.FC = () => {
 
 
       <PagerView
-        style={styles.pagerView}
+        style={{ height: carouselHeight, marginBottom: 6 }}
         initialPage={0}
         onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
       >
@@ -164,10 +180,13 @@ const CardCarousel: React.FC = () => {
         {categories.map((_, index) => (
           <View
             key={index}
-            style={[
-              styles.dot,
-              { backgroundColor: index === currentPage ? colors.primary : colors.outlineVariant },
-            ]}
+            style={{
+              width: is10Inch ? 10 : 8,
+              height: is10Inch ? 10 : 8,
+              borderRadius: is10Inch ? 5 : 4,
+              marginHorizontal: 5,
+              backgroundColor: index === currentPage ? colors.primary : colors.outlineVariant,
+            }}
           />
         ))}
       </View>
@@ -196,10 +215,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     fontStyle: 'italic',
   },
-  pagerView: {
-    height: 200,
-    marginBottom: 6,
-  },
+
   cardContainer: {
     marginHorizontal: 10,
     borderRadius: 20,
@@ -213,7 +229,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 200,
+    height: '100%',
   },
   placeholderImage: {
     backgroundColor: '#e6e6e6',
@@ -291,10 +307,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 10,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 5,
-  },
+
 })

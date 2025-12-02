@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,18 @@ const AllPDFs = () => {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [isGridView, setIsGridView] = useState(true);
+  const [width, setWidth] = useState(Dimensions.get('window').width)
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWidth(window.width)
+    })
+    return () => subscription?.remove()
+  }, [])
+  
+  const is7Inch = width >= 600 && width < 800
+  const is10Inch = width >= 800
+  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
 
   const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'pdf' });
   const pdfData = featuredData?.data?.pdfs || [];
@@ -37,10 +49,17 @@ const AllPDFs = () => {
       <AppBarHeader title={t('mediaTypes.book')} />
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.onBackground }]}>{t('common.loading')}</Text>
-        </View>
+        <FlatList
+          data={Array(8).fill(0)}
+          numColumns={numColumns}
+          key={`skeleton-${numColumns}`}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          renderItem={() => (
+            <View style={{ flex: 1, aspectRatio: 0.75, margin: 8, borderRadius: 12, backgroundColor: colors.surfaceVariant }} />
+          )}
+          contentContainerStyle={styles.gridContent}
+          showsVerticalScrollIndicator={false}
+        />
       ) : pdfData.length > 0 ? (
         <>
           <View style={styles.header}>
@@ -50,8 +69,8 @@ const AllPDFs = () => {
           
           <FlatList
             data={pdfData}
-            numColumns={isGridView ? 2 : 1}
-            key={isGridView ? 'grid' : 'list'}
+            numColumns={isGridView ? numColumns : 1}
+            key={isGridView ? `grid-${numColumns}` : 'list'}
             keyExtractor={(item, index) => item._id || index.toString()}
             renderItem={({ item }) => 
               isGridView ? (
@@ -96,7 +115,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   gridContent: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
     paddingVertical: 16,
   },
   row: {

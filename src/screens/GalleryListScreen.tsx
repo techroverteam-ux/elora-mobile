@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,8 +20,7 @@ import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
 import { useBookmarks } from '../context/BookmarkContext';
 
-const { width } = Dimensions.get('window');
-const itemSize = isTablet() ? (width - wp(12)) / 3 : (width - wp(12)) / 2;
+
 
 interface GalleryItem {
   _id: string;
@@ -42,6 +41,19 @@ const GalleryListScreen: React.FC = () => {
   const route = useRoute();
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarks();
   const { initialIndex: routeInitialIndex = 0 } = (route.params as any) || {};
+  const [width, setWidth] = useState(Dimensions.get('window').width)
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWidth(window.width)
+    })
+    return () => subscription?.remove()
+  }, [])
+  
+  const is7Inch = width >= 600 && width < 800
+  const is10Inch = width >= 800
+  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
+  const itemSize = is10Inch ? (width - 80) / 4 : is7Inch ? (width - 64) / 3 : (width - wp(12)) / 2
   
   // Fetch trending images from API - same as DailyGyanGallery
   const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
@@ -177,9 +189,17 @@ const GalleryListScreen: React.FC = () => {
 
       {/* Gallery List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.loadingImages')}</Text>
-        </View>
+        <FlatList
+          data={Array(12).fill(0)}
+          numColumns={numColumns}
+          key={`skeleton-${numColumns}`}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          renderItem={() => (
+            <View style={[styles.gridItem, { backgroundColor: colors.surfaceVariant }]} />
+          )}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
       ) : images.length === 0 ? (
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.noImages')}</Text>
@@ -189,8 +209,8 @@ const GalleryListScreen: React.FC = () => {
           data={images}
           renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
           keyExtractor={(item) => item._id}
-          numColumns={viewMode === 'grid' ? 2 : 1}
-          key={viewMode}
+          numColumns={viewMode === 'grid' ? numColumns : 1}
+          key={viewMode === 'grid' ? `grid-${numColumns}` : 'list'}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
         />
@@ -216,8 +236,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: wp(4),
-    paddingVertical: hp(1.5),
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -235,20 +255,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
-    fontSize: normalize(18),
+    fontSize: 18,
     fontWeight: 'bold',
-    marginHorizontal: wp(4),
+    marginHorizontal: 16,
   },
   listContainer: {
-    padding: wp(4),
+    padding: 16,
   },
   // Grid styles
   gridItem: {
-    width: itemSize,
-    height: itemSize,
-    marginRight: wp(4),
-    marginBottom: hp(2),
-    borderRadius: normalize(12),
+    flex: 1,
+    aspectRatio: 1,
+    margin: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -262,35 +281,35 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: wp(2),
+    padding: 8,
   },
   gridTitle: {
     color: '#fff',
-    fontSize: normalize(12),
+    fontSize: 12,
     fontWeight: '600',
   },
   gridBookmarkButton: {
     position: 'absolute',
-    top: wp(2),
-    right: wp(2),
+    top: 8,
+    right: 8,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: normalize(12),
-    width: wp(7),
-    height: wp(7),
+    borderRadius: 12,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
   },
   listBookmarkButton: {
-    padding: wp(2),
+    padding: 8,
   },
   // List styles
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: wp(3),
-    marginBottom: hp(1.5),
-    borderRadius: normalize(12),
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 12,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -304,35 +323,35 @@ const styles = StyleSheet.create({
     }),
   },
   listImage: {
-    width: wp(15),
-    height: wp(15),
-    borderRadius: normalize(8),
+    width: 60,
+    height: 60,
+    borderRadius: 8,
   },
   listContent: {
     flex: 1,
-    marginLeft: wp(3),
+    marginLeft: 12,
   },
   listTitle: {
-    fontSize: normalize(16),
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: hp(0.5),
+    marginBottom: 4,
   },
   listMeta: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   listMetaText: {
-    fontSize: normalize(12),
-    marginLeft: wp(1),
+    fontSize: 12,
+    marginLeft: 4,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: wp(10),
+    padding: 40,
   },
   loadingText: {
-    fontSize: normalize(16),
+    fontSize: 16,
   },
 });
 

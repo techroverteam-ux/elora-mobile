@@ -48,7 +48,18 @@ export const getResponsiveSize = (small: number, medium: number, large: number) 
 export const getResponsiveFontSize = (baseSize: number) => {
   if (SCREEN_WIDTH < 320) return baseSize * 0.85;
   if (SCREEN_WIDTH < 375) return baseSize * 0.9;
+  if (SCREEN_WIDTH >= 768) return baseSize * 1.2;
   return baseSize;
+};
+
+export const getTabletColumns = () => {
+  if (SCREEN_WIDTH >= 1024) return 4;
+  if (SCREEN_WIDTH >= 768) return 3;
+  return 2;
+};
+
+export const getTabletCardWidth = (columns: number, padding: number = 20, spacing: number = 15) => {
+  return (SCREEN_WIDTH - padding * 2 - spacing * (columns - 1)) / columns;
 };
 
 export const SCREEN_DIMENSIONS = {

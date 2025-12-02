@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
@@ -22,6 +22,19 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
 }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const width = dimensions.width;
+  const isTablet = width >= 768;
+  const is7InchTablet = width >= 600 && width < 800;
+  const is10InchTablet = width >= 800;
 
   const getIcon = () => {
     switch (type) {
@@ -35,15 +48,15 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, isTablet && { paddingHorizontal: 0, marginBottom: is10InchTablet ? 16 : 12 }]}>
         <View style={styles.titleContainer}>
-          <MaterialDesignIcons name={getIcon()} size={24} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.onBackground }]}>{title}</Text>
+          <MaterialDesignIcons name={getIcon()} size={is10InchTablet ? 32 : is7InchTablet ? 26 : 24} color={colors.primary} />
+          <Text style={[styles.title, { color: colors.onBackground, fontSize: is10InchTablet ? 24 : is7InchTablet ? 20 : 18 }]}>{title}</Text>
         </View>
         {onSeeAll && (
           <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={[styles.seeAll, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
-            <MaterialDesignIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+            <Text style={[styles.seeAll, { color: colors.primary, fontSize: is10InchTablet ? 15 : 13 }]}>{t('screens.home.seeAll')}</Text>
+            <MaterialDesignIcons name="chevron-right" size={is10InchTablet ? 24 : 20} color={colors.onSurfaceVariant} />
           </TouchableOpacity>
         )}
       </View>
@@ -67,8 +80,8 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
             />
           );
         }}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        contentContainerStyle={[styles.listContent, isTablet && { paddingHorizontal: 0 }]}
+        ItemSeparatorComponent={() => <View style={[styles.separator, is10InchTablet && { width: 20 }, is7InchTablet && { width: 14 }]} />}
       />
     </View>
   );

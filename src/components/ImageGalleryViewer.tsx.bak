@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { processAzureUrl } from '../utils/azureUrlHelper';
 import { wp, hp, normalize } from '../utils/responsive';
 import { useBookmarks } from '../context/BookmarkContext';
 
-
+const { width, height } = Dimensions.get('window');
 
 interface GalleryItem {
   _id: string;
@@ -49,17 +49,6 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [showControls, setShowControls] = useState(true);
   const [rotation, setRotation] = useState(0);
-  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
-  
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-    return () => subscription?.remove();
-  }, []);
-  
-  const width = dimensions.width;
-  const height = dimensions.height;
   
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -267,8 +256,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   imageContent: {
-    width: Dimensions.get('window').width,
-    minHeight: Dimensions.get('window').height * 0.7,
+    width: width,
+    minHeight: height * 0.7,
     justifyContent: 'center',
     alignItems: 'center',
   },

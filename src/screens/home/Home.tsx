@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
@@ -29,6 +29,19 @@ const Home: React.FC = () => {
   const navigation = useNavigation<HomeNavigationProp>();
   const { requireAuth } = useRequireAuth();
   const { recentItems, addRecentItem } = useRecentlyPlayed();
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const width = dimensions.width;
+  const isTablet = width >= 768;
+  const is7InchTablet = width >= 600 && width < 800;
+  const is10InchTablet = width >= 800;
 
   // Debug recent items
   console.log('Home - Recent items:', recentItems?.length || 0, recentItems);
@@ -166,7 +179,7 @@ const Home: React.FC = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <MainAppHeader username={isAuthenticated && user?.name ? user.name : ''} />
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={[styles.scrollContainer, is10InchTablet && { paddingHorizontal: 48 }, is7InchTablet && { paddingHorizontal: 32 }]}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
@@ -223,19 +236,19 @@ const Home: React.FC = () => {
         )}
 
         <MediaHorizontalList
-          title={t('mediaTypes.audio')}
-          data={isLoading ? skeletonData : displayTopAudios.filter(item => item && item._id)}
-          type="audio"
-          onItemPress={(item) => !item.isLoading && handleAudioPress(item, displayTopAudios)}
-          onSeeAll={() => !isLoading && navigation.navigate('AllAudios')}
-        />
-
-        <MediaHorizontalList
           title={t('mediaTypes.video')}
           data={isLoading ? skeletonData : displayTopVideos.filter(item => item && item._id)}
           type="video"
           onItemPress={(item) => !item.isLoading && handleVideoPress(item, displayTopVideos)}
           onSeeAll={() => !isLoading && navigation.navigate('AllVideos', { item: displayTopVideos })}
+        />
+
+        <MediaHorizontalList
+          title={t('mediaTypes.audio')}
+          data={isLoading ? skeletonData : displayTopAudios.filter(item => item && item._id)}
+          type="audio"
+          onItemPress={(item) => !item.isLoading && handleAudioPress(item, displayTopAudios)}
+          onSeeAll={() => !isLoading && navigation.navigate('AllAudios')}
         />
 
         {/* Books Section - Always show with fallback data */}

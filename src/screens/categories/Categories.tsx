@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, memo, useMemo } from 'react';
+import React, { useCallback, useEffect, memo, useMemo, useState } from 'react';
 import {
   Dimensions,
   FlatList,
@@ -17,8 +17,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { useContentTranslation } from '../../hooks/useContentTranslation';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
-
-const { width } = Dimensions.get('window');
 
 type CategoryItem = {
   _id: string;
@@ -68,6 +66,22 @@ const Categories = () => {
   const { t } = useTranslation();
   const { translateItems } = useContentTranslation();
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const width = dimensions.width;
+  const isTabletDevice = width >= 768;
+  const numColumns = width >= 1024 ? 4 : width >= 768 ? 3 : 2;
+  
+  console.log('Categories - Screen width:', width);
+  console.log('Categories - Is tablet:', isTabletDevice);
+  console.log('Categories - Num columns:', numColumns);
 
   // Translate sections data when language changes
   const translatedSections = useMemo(() => {
@@ -97,10 +111,7 @@ const Categories = () => {
   console.log('Categories - Is error:', isError);
   console.log('Categories - Sections count:', sectionData?.data?.length || 0);
 
-  const renderItem = useCallback(
-    ({ item }: { item: CategoryItem }) => <CategoryCard item={item} />,
-    []
-  );
+
 
   const keyExtractor = useCallback((item: CategoryItem, index: number) => item?._id || index.toString(), []);
 
@@ -138,23 +149,27 @@ const Categories = () => {
     );
   }
 
+  const horizontalPadding = isTabletDevice ? 40 : 20;
+  const columnSpacing = isTabletDevice ? 20 : 15;
+  const cardWidth = (width - horizontalPadding * 2 - columnSpacing * (numColumns - 1)) / numColumns;
+  
   return (
     <View style={styles.container}>
       <FlatList
         data={translatedSections as CategoryItem[]}
-        renderItem={renderItem}
+        renderItem={({ item }) => <CategoryCard item={item} cardWidth={cardWidth} isTablet={isTabletDevice} />}
         keyExtractor={keyExtractor}
-        numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={styles.grid}
+        key={numColumns}
+        numColumns={numColumns}
+        columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 15 }}
+        contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: isTabletDevice ? 20 : 10, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       />
     </View>
   );
 };
 
-// Separate memoized card to prevent unnecessary re-renders
-const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
+const CategoryCard = memo(({ item, cardWidth, isTablet }: { item: CategoryItem; cardWidth: number; isTablet: boolean }) => {
   type CategoriesNavigationProp = NativeStackNavigationProp<
     CategoriesStackParamList,
     'CategoriesMain'
@@ -186,74 +201,52 @@ const CategoryCard = memo(({ item }: { item: CategoryItem }) => {
       accessible
       accessibilityLabel={`Category: ${item.title}`}
       accessibilityRole="button"
-      style={[styles.card, { backgroundColor: item.color || getRandomColor(item._id) }]}
+      style={{
+        width: cardWidth,
+        height: isTablet ? cardWidth * 0.85 : cardWidth * 0.9,
+        borderRadius: isTablet ? 20 : 16,
+        padding: isTablet ? 20 : 15,
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        backgroundColor: item.color || getRandomColor(item._id),
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      }}
       onPress={handlePress}
       activeOpacity={0.8}
     >
-      <View style={styles.iconWrapper}>
+      <View style={{
+        backgroundColor: '#fff',
+        borderRadius: 50,
+        padding: isTablet ? 18 : 14,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+        marginBottom: isTablet ? 14 : 10,
+      }}>
         <MaterialDesignIcons 
           name={(item.icon || getSpiritualIcon(item.title, item._id)) as any} 
-          size={28} 
+          size={isTablet ? 36 : 28} 
           color="#F8803B" 
         />
       </View>
-      <Text style={styles.title}>
+      <Text style={{ fontSize: isTablet ? 18 : 15, fontWeight: '600', color: '#333' }}>
         {item.title}
       </Text>
-      {/* <Text>{item.contentType}</Text> */}
     </TouchableOpacity>
   );
 });
 
 export default Categories;
 
-const horizontalPadding = 20;
-const columnSpacing = 15;
-const CARD_WIDTH = (width - horizontalPadding * 2 - columnSpacing) / 2;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  grid: {
-    paddingHorizontal: horizontalPadding,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  card: {
-    width: CARD_WIDTH,
-    height: CARD_WIDTH * 0.9,
-    borderRadius: 16,
-    padding: 15,
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    backgroundColor: '#eee',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
-  iconWrapper: {
-    backgroundColor: '#fff',
-    borderRadius: 50,
-    padding: 14,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    marginBottom: 10,
-  },
-
-  title: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
   },
   loaderContainer: {
     flex: 1,

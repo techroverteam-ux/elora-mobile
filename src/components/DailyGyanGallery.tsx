@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Platform, ActivityIndicator, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
@@ -29,7 +29,17 @@ interface DailyGyanGalleryProps {
 const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeAll }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
-
+  const [width, setWidth] = useState(Dimensions.get('window').width);
+  
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const is7Inch = width >= 600 && width < 800;
+  const is10Inch = width >= 800;
   
   // Fetch trending images from API
   const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
@@ -45,17 +55,12 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
 
   const renderGalleryItem = ({ item, index }: { item: GalleryItem; index: number }) => {
     const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
-    
-    console.log('DailyGyanGallery - Item:', item.title, 'URLs:', {
-      streamingUrl: item.streamingUrl,
-      imageUrl: item.imageUrl,
-      thumbnailUrl: item.thumbnailUrl,
-      processedUrl: imageUrl
-    });
+    const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
+    const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
     
     return (
       <TouchableOpacity
-        style={[styles.galleryItem, { backgroundColor: colors.surface }]}
+        style={[styles.galleryItem, { backgroundColor: colors.surface, width: itemWidth, height: itemHeight, marginRight: is10Inch ? 20 : is7Inch ? 14 : wp(2.5) }]}
         onPress={() => {
           console.log('Gallery item pressed:', item.title, 'index:', index);
           onItemPress(item, index, data);
@@ -70,24 +75,34 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         />
 
         <View style={styles.imageGradient} />
-        <Text style={styles.imageTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={[styles.imageTitle, { fontSize: is10Inch ? 14 : is7Inch ? 12 : normalize(11) }]} numberOfLines={2}>{item.title}</Text>
       </TouchableOpacity>
     );
   };
 
   if (isLoading) {
+    const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
+    const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
+    const spacing = is10Inch ? 20 : is7Inch ? 14 : wp(2.5);
+    
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.titleContainer}>
-            <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
+            <MaterialDesignIcons name="image-multiple" size={is10Inch ? 32 : is7Inch ? 26 : 24} color={colors.primary} />
+            <Text style={[styles.title, { color: colors.onBackground, fontSize: is10Inch ? 24 : is7Inch ? 20 : normalize(16) }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
           </View>
         </View>
-        <View style={[styles.galleryList, { justifyContent: 'center', alignItems: 'center', height: wp(28) }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[{ color: colors.onBackground, fontSize: normalize(14), marginTop: 10 }]}>{t('screens.gallery.loadingImages')}</Text>
-        </View>
+        <FlatList
+          data={[1, 2, 3, 4]}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.galleryList}
+          renderItem={() => (
+            <View style={{ width: itemWidth, height: itemHeight, marginRight: spacing, borderRadius: normalize(14), backgroundColor: colors.surfaceVariant }} />
+          )}
+          keyExtractor={(item) => `skeleton-${item}`}
+        />
       </View>
     );
   }
@@ -116,12 +131,12 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
+          <MaterialDesignIcons name="image-multiple" size={is10Inch ? 32 : is7Inch ? 26 : 24} color={colors.primary} />
+          <Text style={[styles.title, { color: colors.onBackground, fontSize: is10Inch ? 24 : is7Inch ? 20 : normalize(16) }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
         </View>
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-          <Text style={[styles.seeAllText, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
-          <MaterialDesignIcons name="chevron-right" size={20} color={colors.onSurfaceVariant} />
+          <Text style={[styles.seeAllText, { color: colors.primary, fontSize: is10Inch ? 15 : normalize(13) }]}>{t('screens.home.seeAll')}</Text>
+          <MaterialDesignIcons name="chevron-right" size={is10Inch ? 24 : 20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>
 
@@ -153,11 +168,13 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
   },
   title: {
-    fontSize: normalize(16),
     fontWeight: '600',
     marginLeft: wp(2),
+    flexShrink: 1,
   },
   seeAllButton: {
     flexDirection: 'row',
@@ -171,9 +188,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   galleryItem: {
-    width: getResponsiveSize(wp(30), wp(32), wp(28)),
-    height: getResponsiveSize(wp(36), wp(38), wp(34)),
-    marginRight: wp(2.5),
     borderRadius: normalize(14),
     overflow: 'hidden',
     position: 'relative',
@@ -211,7 +225,6 @@ const styles = StyleSheet.create({
     left: wp(2),
     right: wp(2),
     color: '#fff',
-    fontSize: normalize(11),
     fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
