@@ -9,7 +9,7 @@ import {
 import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
-import { useAzureAssets } from '../hooks/useAzureAssets';
+import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useNavigation } from '@react-navigation/native';
 
 interface CustomVerticalFlatlistProps {
@@ -33,15 +33,36 @@ const VerticalListItem = ({
   const { colors } = useTheme();
   const navigation = useNavigation();
 
-  // get azure assets only if no custom image URL is passed
-  const { resourceUrls } = useAzureAssets(item);
-  const { headerImage: headerImageUrl, thumbnailImage: thumbnailUrl } = resourceUrls;
-
-  // ✅ Prefer custom imageUrl if provided
-  const finalImageUrl =
+  // Get the raw image URL - check contentFields for images if no direct image
+  let rawImageUrl =
     typeof imageUrl === 'function'
       ? imageUrl(item)
-      : imageUrl || headerImageUrl || thumbnailUrl;
+      : imageUrl || item.headerImage || item.mainImage || item.imageUrl || item.thumbnailUrl;
+  
+  // If no direct image found, check first image in contentFields
+  if (!rawImageUrl && item.contentFields && Array.isArray(item.contentFields)) {
+    const firstImageField = item.contentFields
+      .filter(field => field.type === 'image' && field.azureFiles && field.azureFiles.length > 0)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+    
+    if (firstImageField && firstImageField.azureFiles && firstImageField.azureFiles[0]) {
+      rawImageUrl = firstImageField.azureFiles[0];
+    }
+  }
+  
+  console.log('🔍 Category image processing:', {
+    itemTitle: item.title,
+    headerImage: item.headerImage,
+    mainImage: item.mainImage,
+    contentFieldsCount: item.contentFields?.length || 0,
+    firstImageFromContentFields: item.contentFields?.find(f => f.type === 'image')?.azureFiles?.[0],
+    finalRawUrl: rawImageUrl
+  });
+      
+  // Process Azure URL using the same method as Daily Gyan Gallery
+  const finalImageUrl = processAzureUrl(rawImageUrl);
+      
+  console.log('🖼️ Final image URL (processed):', finalImageUrl);
 
   return (
     <View>

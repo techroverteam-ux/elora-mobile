@@ -3,6 +3,7 @@ import {
   Text,
   View,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import React, { useEffect, useMemo } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -14,6 +15,9 @@ import CustomVerticalFlatlist from '../../components/CustomVerticalFlatlist';
 import { CategoriesStackParamList } from '../../navigation/types';
 import { useGetCategoriesMutation } from '../../data/redux/services/sectionsApi';
 import { useContentTranslation } from '../../hooks/useContentTranslation';
+import { CategoryListSkeleton } from '../../components/CategoryListSkeleton';
+import BlogLayoutRenderer from '../../components/BlogLayoutRenderer';
+import BlogLayoutSkeleton from '../../components/BlogLayoutSkeleton';
 
 const CategorieDataList = () => {
   const { t } = useTranslation();
@@ -40,38 +44,80 @@ const CategorieDataList = () => {
 
   useEffect(() => {
     console.log('CategorieDataList - Fetching categories for section ID:', id);
-    getCategoriesRequest(id);
+    if (id) {
+      getCategoriesRequest(id).then((result) => {
+        console.log('CategorieDataList - API Response:', result);
+        if (result.error) {
+          console.error('CategorieDataList - API Error:', result.error);
+        }
+      }).catch((err) => {
+        console.error('CategorieDataList - Request failed:', err);
+      });
+    } else {
+      console.error('CategorieDataList - No section ID provided');
+    }
   }, [getCategoriesRequest, id]);
 
+  // Check content type and layout
+  const categories = data?.data || [];
+  const contentType = data?.contentType;
+  const layout = data?.layout;
+  const isBlogLayout = data?.isBlogLayout || categories.some(cat => cat.isBlogLayout);
+  const isVideoLayout = categories.some(cat => cat.isVideoLayout);
+  const isAudioLayout = categories.some(cat => cat.isAudioLayout);
+  const isGalleryLayout = categories.some(cat => cat.isGalleryLayout);
+  
   // Debug logging
-  console.log('CategorieDataList - Categories data:', data);
-  console.log('CategorieDataList - Is loading:', isLoading);
-  console.log('CategorieDataList - Error:', error);
-  console.log('CategorieDataList - Categories count:', data?.data?.length || 0);
+  console.log('CategorieDataList - Content Type:', contentType);
+  console.log('CategorieDataList - Layout:', layout);
+  console.log('CategorieDataList - Layout Flags:', { isBlogLayout, isVideoLayout, isAudioLayout, isGalleryLayout });
+  console.log('CategorieDataList - Categories count:', categories.length);
 
   return (
     <View style={{ flex: 1 }}>
       <AppBarHeader title={translatedTitle} />
 
       {isLoading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#000" />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
+        <CategoryListSkeleton />
       ) : error ? (
         <View style={styles.loaderContainer}>
           <Text style={styles.errorText}>{t('screens.categories.errorLoading')}</Text>
+          <Text style={styles.errorDetails}>Section ID: {id}</Text>
           <Text style={styles.errorDetails}>{JSON.stringify(error)}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => getCategoriesRequest(id)}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <CustomVerticalFlatlist
-            data={translatedCategories}
-            onItemPress={(item) => {
-              console.log('Item pressed:', item);
-              navigate('BlogPage', { categoryData: item });
-            }}
-          />
+          {translatedCategories.length === 0 ? (
+            <View style={styles.loaderContainer}>
+              <Text style={styles.errorText}>No categories found for this section</Text>
+              <Text style={styles.errorDetails}>Section ID: {id}</Text>
+              <TouchableOpacity 
+                style={styles.retryButton} 
+                onPress={() => getCategoriesRequest(id)}
+              >
+                <Text style={styles.retryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <CustomVerticalFlatlist
+              data={translatedCategories}
+              imageUrl={(item) => {
+                console.log('🖼️ CategorieDataList - Full item data:', JSON.stringify(item, null, 2));
+                console.log('🖼️ CategorieDataList - imageUrl function called for:', item.title, 'headerImage:', item.headerImage);
+                return item.headerImage;
+              }}
+              onItemPress={(item) => {
+                console.log('Item pressed:', item);
+                navigate('BlogPage', { categoryData: item });
+              }}
+            />
+          )}
         </View>
       )}
     </View>
@@ -110,6 +156,18 @@ const styles = StyleSheet.create({
     color: '#333',
     padding: 10,
     textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   noImageContainer: {
     width: '100%',

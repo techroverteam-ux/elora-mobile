@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useRequireAuth } from '../../hooks/useRequireAuth';
 import { useContentTranslation } from '../../hooks/useContentTranslation';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import CategoriesSkeleton from '../../components/CategoriesSkeleton';
 
 type CategoryItem = {
   _id: string;
@@ -116,12 +117,7 @@ const Categories = () => {
   const keyExtractor = useCallback((item: CategoryItem, index: number) => item?._id || index.toString(), []);
 
   if (isLoading) {
-    return (
-      <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#F8803B" />
-        <Text style={styles.loaderText}>{t('screens.categories.loadingCategories')}</Text>
-      </View>
-    );
+    return <CategoriesSkeleton />;
   }
 
   if (isError) {

@@ -16,6 +16,9 @@ import { useGetSubcategoriesMutation } from '../../data/redux/services/sectionsA
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { wp, hp, normalize, isTablet } from '../../utils/responsive';
 import LinearGradient from 'react-native-linear-gradient';
+import EnhancedBlogRenderer from '../../components/EnhancedBlogRenderer';
+import EnhancedBlogSkeleton from '../../components/EnhancedBlogSkeleton';
+import BlogContentManager from '../../utils/blogContentManager';
 
 type BlogItem = {
   _id: string;
@@ -29,6 +32,17 @@ type BlogItem = {
     type: number;
     files: string[];
   };
+  sectionId?: {
+    _id: string;
+    contentType: string;
+    layout?: string;
+  };
+  contentFields?: Array<{
+    id: string;
+    type: 'header' | 'description';
+    content: string;
+  }>;
+  headerImage?: string;
 };
 
 type BlogPageRouteParams = {
@@ -71,6 +85,85 @@ const BlogPage = () => {
     if (!videoUrl) return;
     Linking.openURL(videoUrl).catch((err) => console.error('Failed to open URL', err));
   };
+
+  // Debug logging for section detection
+  console.log('🔍 BlogPage - Section Detection Debug:', {
+    categoryData: categoryData,
+    sectionId: categoryData?.sectionId,
+    contentType: categoryData?.sectionId?.contentType,
+    layout: categoryData?.sectionId?.layout,
+    isSectionIdObject: typeof categoryData?.sectionId === 'object',
+    sectionIdKeys: categoryData?.sectionId ? Object.keys(categoryData.sectionId) : 'No sectionId'
+  });
+
+  // Check if this is a blog section with layout
+  const hasContentFields = !!(categoryData as any)?.contentFields && (categoryData as any).contentFields.length > 0;
+  const isBlogSection = !!(categoryData as any)?.isBlogLayout || hasContentFields || (categoryData as any)?.sectionContentType === 'blog' || categoryData?.sectionId?.contentType === 'blog';
+  const blogLayout = (categoryData as any)?.sectionLayout || categoryData?.sectionId?.layout || 'content-only';
+  
+  console.log('🎯 BlogPage - Enhanced Detection:', {
+    isBlogLayout: (categoryData as any)?.isBlogLayout,
+    hasContentFields,
+    contentFieldsCount: (categoryData as any)?.contentFields?.length || 0,
+    sectionContentType: (categoryData as any)?.sectionContentType,
+    sectionLayout: (categoryData as any)?.sectionLayout,
+    finalIsBlogSection: isBlogSection,
+    finalBlogLayout: blogLayout
+  });
+
+  console.log('🎯 BlogPage - Layout Detection:', {
+    isBlogSection,
+    blogLayout,
+    willShowBlogRenderer: isBlogSection,
+    willShowSkeleton: subcategoriesLoading && isBlogSection
+  });
+
+  // Show skeleton while loading subcategories for blog sections
+  if (subcategoriesLoading && isBlogSection) {
+    console.log('💀 BlogPage - Showing Enhanced Blog Skeleton for layout:', blogLayout);
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <EnhancedBlogSkeleton sectionsCount={8} />
+      </View>
+    );
+  }
+
+  // Render blog layout based on section layout type
+  if (isBlogSection) {
+    console.log('🎨 BlogPage - Rendering Enhanced Blog Layout:', {
+      layout: blogLayout,
+      hasHeaderImage: !!(categoryData.headerImage || mainImageUrl),
+      hasMainImage: !!(categoryData.mainImage || mainImageUrl),
+      hasVideo: !!(categoryData.video || videoUrl),
+      hasContentFields: !!categoryData.contentFields,
+      contentFieldsCount: categoryData.contentFields?.length || 0
+    });
+    
+    // Prepare category data for enhanced renderer
+    const enhancedCategoryData = {
+      ...categoryData,
+      layoutType: 'enhanced-blog' as const,
+      contentFields: categoryData.contentFields || [],
+      // Don't override headerImage/mainImage if they already exist
+      headerImage: categoryData.headerImage || mainImageUrl,
+      mainImage: categoryData.mainImage || mainImageUrl,
+    };
+    
+    // Process and validate the category data
+    const processedCategory = BlogContentManager.prepareCategoryForRender(enhancedCategoryData as any);
+    
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <EnhancedBlogRenderer 
+          category={processedCategory} 
+          onBack={() => navigate('CategoriesMain')}
+        />
+      </View>
+    );
+  }
+
+  console.log('📄 BlogPage - Using Default Layout (not a blog section)');
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

@@ -81,7 +81,7 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
           );
         }}
         contentContainerStyle={[styles.listContent, isTablet && { paddingHorizontal: 0 }]}
-        ItemSeparatorComponent={() => <View style={[styles.separator, is10InchTablet && { width: 20 }, is7InchTablet && { width: 14 }]} />}
+        ItemSeparatorComponent={() => <View style={[styles.separator, is10InchTablet && { width: 8 }, is7InchTablet && { width: 6 }]} />}
       />
     </View>
   );
@@ -89,14 +89,14 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   separator: {
-    width: 10,
+    width: 4,
   },
 });
 

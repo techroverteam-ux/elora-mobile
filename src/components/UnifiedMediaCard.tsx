@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
+import SkeletonLoader from './SkeletonLoader';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { processAzureUrl } from '../utils/azureUrlHelper';
@@ -32,9 +33,9 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   const is10InchTablet = width >= 800;
   
   const getCardWidth = () => {
-    if (is10InchTablet) return 220;
-    if (is7InchTablet) return 180;
-    return (width - 48) / 2;
+    if (is10InchTablet) return (width - 80) / 3; // 3 items with padding
+    if (is7InchTablet) return (width - 64) / 3; // 3 items with padding
+    return (width - 48) / 3; // 3 items with padding
   };
   
   const CARD_WIDTH = getCardWidth();
@@ -42,10 +43,10 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   if (item?.isLoading) {
     return (
       <View style={{ width: CARD_WIDTH, marginBottom: 16, marginHorizontal: 8, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.surface }}>
-        <View style={{ width: '100%', height: CARD_WIDTH * 0.75, backgroundColor: colors.surfaceVariant }} />
+        <SkeletonLoader width={CARD_WIDTH} height={CARD_WIDTH * 0.75} borderRadius={0} />
         <View style={{ padding: 8, minHeight: 60 }}>
-          <View style={{ height: 16, width: '80%', borderRadius: 4, marginBottom: 4, backgroundColor: colors.surfaceVariant }} />
-          <View style={{ height: 14, width: '60%', borderRadius: 4, backgroundColor: colors.surfaceVariant }} />
+          <SkeletonLoader width={CARD_WIDTH * 0.8} height={16} borderRadius={4} style={{ marginBottom: 4 }} />
+          <SkeletonLoader width={CARD_WIDTH * 0.6} height={14} borderRadius={4} />
         </View>
       </View>
     );
@@ -62,6 +63,12 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   };
 
   const getImageUrl = () => {
+    // For audio and pdf types, always show icons instead of thumbnails
+    const actualType = item?.type || type;
+    if (actualType === 'audio' || actualType === 'pdf') {
+      return '';
+    }
+
     const urls = item?.type === 'image' ? [
       item?.streamingUrl,
       item?.imageUrl,
@@ -95,6 +102,33 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     return '';
   };
 
+  const getBackgroundStyle = () => {
+    const actualType = item?.type || type;
+    switch (actualType) {
+      case 'audio': return {
+        backgroundColor: '#FF6B6B15',
+        borderColor: '#FF6B6B30'
+      };
+      case 'pdf': return {
+        backgroundColor: '#4ECDC415', 
+        borderColor: '#4ECDC430'
+      };
+      default: return {
+        backgroundColor: colors.surface,
+        borderColor: colors.outline
+      };
+    }
+  };
+
+  const getIconColor = () => {
+    const actualType = item?.type || type;
+    switch (actualType) {
+      case 'audio': return '#FF6B6B';
+      case 'pdf': return '#4ECDC4';
+      default: return colors.primary;
+    }
+  };
+
   if (!isGridView) {
     return (
       <TouchableOpacity
@@ -109,23 +143,15 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
               imageUrl={getImageUrl()}
             />
           ) : (
-            <View style={[styles.listPlaceholderImage, { backgroundColor: colors.surfaceVariant }]}>
+            <View style={[styles.listPlaceholderImage, getBackgroundStyle()]}>
               <MaterialDesignIcons
                 name={getIcon()}
                 size={24}
-                color={colors.primary}
+                color={getIconColor()}
               />
             </View>
           )}
-          {type === 'video' && (
-            <View style={styles.listPlayOverlay}>
-              <MaterialDesignIcons
-                name="play"
-                size={12}
-                color="#fff"
-              />
-            </View>
-          )}
+
         </View>
 
         <View style={styles.listContent}>
@@ -156,8 +182,8 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     <TouchableOpacity
       style={{
         width: CARD_WIDTH,
-        marginBottom: 16,
-        marginHorizontal: 8,
+        marginBottom: 12,
+        marginHorizontal: 2,
         borderRadius: 12,
         elevation: 3,
         shadowColor: '#000',
@@ -177,22 +203,22 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
             imageUrl={getImageUrl()}
           />
         ) : (
-          <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surfaceVariant }}>
+          <View style={{ 
+            width: '100%', 
+            height: '100%', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            ...getBackgroundStyle(),
+            borderWidth: 1
+          }}>
             <MaterialDesignIcons
               name={getIcon()}
               size={is10InchTablet ? 56 : is7InchTablet ? 48 : 40}
-              color={colors.primary}
+              color={getIconColor()}
             />
           </View>
         )}
-        
-        <View style={styles.cleanPlayOverlay}>
-          <MaterialDesignIcons
-            name="play"
-            size={16}
-            color="#fff"
-          />
-        </View>
+
       </View>
       
       <View style={{ padding: is10InchTablet ? 14 : is7InchTablet ? 10 : 8, minHeight: is10InchTablet ? 90 : is7InchTablet ? 75 : 60 }}>
