@@ -7,6 +7,7 @@ import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
 import { wp, hp, normalize, getResponsiveSize } from '../utils/responsive';
+import { GallerySkeleton } from './SkeletonLoader';
 
 
 interface GalleryItem {
@@ -30,6 +31,7 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
   const { colors } = useTheme();
   const { t } = useTranslation();
   const [width, setWidth] = useState(Dimensions.get('window').width);
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -57,16 +59,33 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
     const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
     const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
     const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
+    const isLoading = loadingItems.has(item._id);
+    
+    const handlePress = () => {
+      setLoadingItems(prev => new Set(prev).add(item._id));
+      onItemPress(item, index, data);
+      setTimeout(() => {
+        setLoadingItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(item._id);
+          return newSet;
+        });
+      }, 1500);
+    };
     
     return (
       <TouchableOpacity
-        style={[styles.galleryItem, { backgroundColor: colors.surface, width: itemWidth, height: itemHeight, marginRight: is10Inch ? 20 : is7Inch ? 14 : wp(2.5) }]}
-        onPress={() => {
-          console.log('Gallery item pressed:', item.title, 'index:', index);
-          onItemPress(item, index, data);
-        }}
+        style={[styles.galleryItem, { 
+          backgroundColor: colors.surface, 
+          width: itemWidth, 
+          height: itemHeight, 
+          marginRight: is10Inch ? 20 : is7Inch ? 14 : wp(2.5),
+          opacity: isLoading ? 0.7 : 1
+        }]}
+        onPress={handlePress}
         activeOpacity={0.7}
         delayPressIn={0}
+        disabled={isLoading}
       >
         <CustomFastImage
           imageUrl={imageUrl}
@@ -75,36 +94,18 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         />
 
         <View style={styles.imageGradient} />
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="small" color="#fff" />
+          </View>
+        )}
         <Text style={[styles.imageTitle, { fontSize: is10Inch ? 14 : is7Inch ? 12 : normalize(11) }]} numberOfLines={2}>{item.title}</Text>
       </TouchableOpacity>
     );
   };
 
   if (isLoading) {
-    const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
-    const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
-    const spacing = is10Inch ? 20 : is7Inch ? 14 : wp(2.5);
-    
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.titleContainer}>
-            <MaterialDesignIcons name="image-multiple" size={is10Inch ? 32 : is7Inch ? 26 : 24} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.onBackground, fontSize: is10Inch ? 24 : is7Inch ? 20 : normalize(16) }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
-          </View>
-        </View>
-        <FlatList
-          data={[1, 2, 3, 4]}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.galleryList}
-          renderItem={() => (
-            <View style={{ width: itemWidth, height: itemHeight, marginRight: spacing, borderRadius: normalize(14), backgroundColor: colors.surfaceVariant }} />
-          )}
-          keyExtractor={(item) => `skeleton-${item}`}
-        />
-      </View>
-    );
+    return <GallerySkeleton />;
   }
 
   if (data.length === 0) {
@@ -229,6 +230,16 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

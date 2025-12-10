@@ -7,7 +7,9 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
+import { createRefreshControl, enhancedRefreshConfig } from '../../utils/refreshUtils';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +69,18 @@ const Categories = () => {
   const { t } = useTranslation();
   const { translateItems } = useContentTranslation();
   const [getSectionRequest, { data: sectionData, isLoading, isError }] = useGetSectionsMutation();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await getSectionRequest({});
+    } catch (error) {
+      console.error('Categories - Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   
   useEffect(() => {
@@ -160,6 +174,14 @@ const Categories = () => {
         columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 15 }}
         contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: isTabletDevice ? 20 : 10, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            {...createRefreshControl(refreshing, onRefresh, {
+              ...enhancedRefreshConfig,
+              title: 'Pull to refresh categories'
+            })}
+          />
+        }
       />
     </View>
   );

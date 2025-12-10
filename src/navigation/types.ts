@@ -41,6 +41,7 @@ export type CategoriesStackParamList = {
   SubCategorie: { categoryData: any };
   EnhancedAudioPlayer: { item: any; playlist?: any[] };
   EnhancedVideoPlayer: { item: any; playlist?: any[] };
+  PdfViewer: { uri?: string; title?: string; item?: any };
   GalleryList: { initialIndex?: number };
   ImageViewer: { images: string[]; initialIndex: number; title?: string };
 };

@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigation, DrawerActions } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
+import LoadingButton from './LoadingButton'
 
 interface MainAppHeaderProps {
   username: string;
@@ -11,9 +12,16 @@ interface MainAppHeaderProps {
 const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const openDrawer = () => {
     navigation.dispatch(DrawerActions.openDrawer());
+  };
+
+  const handleSearch = () => {
+    setSearchLoading(true);
+    (navigation as any).navigate('SearchScreen');
+    setTimeout(() => setSearchLoading(false), 1000);
   };
 
   return (
@@ -23,15 +31,21 @@ const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
           <MaterialDesignIcons name="menu" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.rightIcons}>
-          <TouchableOpacity style={styles.iconButton}>
-            <MaterialDesignIcons name="bell-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity 
+          <LoadingButton
+            iconName="bell-outline"
+            iconSize={24}
+            iconColor="#fff"
+            onPress={() => {}}
             style={styles.iconButton}
-            onPress={() => (navigation as any).navigate('SearchScreen')}
-          >
-            <MaterialDesignIcons name="magnify" size={24} color="#fff" />
-          </TouchableOpacity>
+          />
+          <LoadingButton
+            iconName="magnify"
+            iconSize={24}
+            iconColor="#fff"
+            onPress={handleSearch}
+            loading={searchLoading}
+            style={styles.iconButton}
+          />
         </View>
       </View>
       <View style={styles.welcomeSection}>

@@ -8,6 +8,7 @@ import {
   Dimensions,
   Platform,
   SafeAreaView,
+  RefreshControl,
 } from 'react-native';
 import { wp, hp, normalize, getResponsiveSize, isTablet } from '../utils/responsive';
 import { useTheme } from 'react-native-paper';
@@ -16,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from '../components/CustomFastImage';
 import ImageGalleryViewer from '../components/ImageGalleryViewer';
+import { GridViewSkeleton, ListViewSkeleton } from '../components/SkeletonLoader';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
 import { useBookmarks } from '../context/BookmarkContext';
@@ -52,15 +54,28 @@ const GalleryListScreen: React.FC = () => {
   
   const is7Inch = width >= 600 && width < 800
   const is10Inch = width >= 800
-  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
+  const numColumns = is10Inch ? 4 : 3
   const itemSize = is10Inch ? (width - 80) / 4 : is7Inch ? (width - 64) / 3 : (width - wp(12)) / 2
   
   // Fetch trending images from API - same as DailyGyanGallery
-  const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
+  const { data: apiResponse, isLoading, error, refetch } = useGetTrendingQuery({
     type: 'image',
     days: 18,
     limit: 100
   });
+  
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('GalleryList - Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   
   // Extract image items from the response
   const images = Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image') : [];
@@ -170,7 +185,7 @@ const GalleryListScreen: React.FC = () => {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <MaterialDesignIcons name="arrow-left" size={24} color={colors.onSurface} />
+          <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.onSurface }]}>
           {t('screens.home.dailyGyan')} {t('screens.gallery.title')}
@@ -182,24 +197,14 @@ const GalleryListScreen: React.FC = () => {
           <MaterialDesignIcons
             name={viewMode === 'grid' ? 'view-list' : 'view-grid'}
             size={24}
-            color={colors.onSurface}
+            color={colors.primary}
           />
         </TouchableOpacity>
       </View>
 
       {/* Gallery List */}
       {isLoading ? (
-        <FlatList
-          data={Array(12).fill(0)}
-          numColumns={numColumns}
-          key={`skeleton-${numColumns}`}
-          keyExtractor={(_, index) => `skeleton-${index}`}
-          renderItem={() => (
-            <View style={[styles.gridItem, { backgroundColor: colors.surfaceVariant }]} />
-          )}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-        />
+        viewMode === 'grid' ? <GridViewSkeleton /> : <ListViewSkeleton />
       ) : images.length === 0 ? (
         <View style={styles.loadingContainer}>
           <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.noImages')}</Text>
@@ -213,6 +218,14 @@ const GalleryListScreen: React.FC = () => {
           key={viewMode === 'grid' ? `grid-${numColumns}` : 'list'}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#F8803B']}
+              tintColor="#F8803B"
+            />
+          }
         />
       )}
 

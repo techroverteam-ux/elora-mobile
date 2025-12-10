@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import EnhancedVideoPlayer from './EnhancedVideoPlayer';
 import PdfViewer from './PdfViewer';
 import { useNavigation } from '@react-navigation/native';
+import { processAzureUrl } from '../utils/azureUrlHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -40,10 +42,9 @@ const BlogLayoutRenderer: React.FC<BlogLayoutRendererProps> = ({ category }) => 
   
   // Helper to convert Azure URLs to proxy URLs
   const getProxyUrl = (url: string) => {
-    if (url && url.includes('gbsprod.blob.core.windows.net')) {
-      return `/api/azure-blob/file?blobUrl=${encodeURIComponent(url)}`;
-    }
-    return url;
+    if (!url) return '';
+    // Use the centralized Azure URL helper
+    return processAzureUrl(url);
   };
   
   // Determine blog layout type based on API response
@@ -157,21 +158,45 @@ const BlogLayoutRenderer: React.FC<BlogLayoutRendererProps> = ({ category }) => 
           return (
             <View key={index} style={styles.videoContainer}>
               <Text style={styles.mediaTitle}>🎥 Video Content</Text>
-              {field.azureFiles.map((videoUrl, vidIndex) => (
-                <View key={vidIndex} style={styles.videoWrapper}>
-                  <EnhancedVideoPlayer
-                    item={{
-                      _id: `video-${index}-${vidIndex}`,
-                      title: field.content || `Video ${vidIndex + 1}`,
-                      videoUrl: videoUrl,
-                      streamingUrl: videoUrl,
-                      type: 'video'
+              {field.azureFiles.map((videoUrl, vidIndex) => {
+                const processedUrl = getProxyUrl(videoUrl);
+                return (
+                  <TouchableOpacity 
+                    key={vidIndex} 
+                    style={styles.videoWrapper}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      (navigation as any).navigate('EnhancedVideoPlayer', {
+                        item: {
+                          _id: `video-${index}-${vidIndex}`,
+                          title: field.content || `Video ${vidIndex + 1}`,
+                          videoUrl: processedUrl,
+                          streamingUrl: processedUrl,
+                          thumbnailUrl: processedUrl,
+                          type: 'video'
+                        },
+                        playlist: []
+                      });
                     }}
-                    playlist={[]}
-                    style={styles.videoPlayer}
-                  />
-                </View>
-              ))}
+                  >
+                    <CustomFastImage
+                      imageUrl={processedUrl}
+                      style={styles.videoThumbnail}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.videoOverlay}>
+                      <View style={styles.playButtonContainer}>
+                        <MaterialDesignIcons name="play-circle" size={72} color="rgba(255,255,255,0.95)" />
+                      </View>
+                      <View style={styles.videoTextOverlay}>
+                        <Text style={styles.videoOverlayText} numberOfLines={2}>
+                          {field.content || `Video ${vidIndex + 1}`}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           );
         }
@@ -182,28 +207,35 @@ const BlogLayoutRenderer: React.FC<BlogLayoutRendererProps> = ({ category }) => 
           return (
             <View key={index} style={styles.pdfContainer}>
               <Text style={styles.mediaTitle}>📄 PDF Documents</Text>
-              {field.azureFiles.map((pdfUrl, pdfIndex) => (
-                <TouchableOpacity 
-                  key={pdfIndex} 
-                  style={styles.pdfItem}
-                  onPress={() => {
-                    (navigation as any).navigate('PdfViewer', {
-                      uri: pdfUrl,
-                      title: field.content || `Document ${pdfIndex + 1}`,
-                      item: {
-                        _id: `pdf-${index}-${pdfIndex}`,
+              {field.azureFiles.map((pdfUrl, pdfIndex) => {
+                const processedUrl = getProxyUrl(pdfUrl);
+                return (
+                  <TouchableOpacity 
+                    key={pdfIndex} 
+                    style={styles.pdfItem}
+                    onPress={() => {
+                      (navigation as any).navigate('PdfViewer', {
+                        uri: processedUrl,
                         title: field.content || `Document ${pdfIndex + 1}`,
-                        pdfUrl: pdfUrl,
-                        streamingUrl: pdfUrl,
-                        type: 'pdf'
-                      }
-                    });
-                  }}
-                >
-                  <Text style={styles.pdfText}>📄 {field.content || `Document ${pdfIndex + 1}`}</Text>
-                  <Text style={styles.pdfAction}>Tap to open PDF</Text>
-                </TouchableOpacity>
-              ))}
+                        item: {
+                          _id: `pdf-${index}-${pdfIndex}`,
+                          title: field.content || `Document ${pdfIndex + 1}`,
+                          pdfUrl: processedUrl,
+                          streamingUrl: processedUrl,
+                          type: 'pdf'
+                        }
+                      });
+                    }}
+                  >
+                    <MaterialDesignIcons name="file-pdf-box" size={24} color="#ef4444" style={{ marginRight: 8 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.pdfText}>{field.content || `Document ${pdfIndex + 1}`}</Text>
+                      <Text style={styles.pdfAction}>Tap to open PDF</Text>
+                    </View>
+                    <MaterialDesignIcons name="chevron-right" size={20} color="#9ca3af" />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           );
         }
@@ -530,13 +562,54 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 8,
   },
   videoWrapper: {
-    marginVertical: 8,
-    borderRadius: 8,
+    marginVertical: 12,
+    borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  videoPlayer: {
+  videoThumbnail: {
     width: width - 32,
-    height: 200,
+    height: 220,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonContainer: {
+    backgroundColor: 'rgba(248,128,59,0.9)',
+    borderRadius: 50,
+    padding: 8,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  videoTextOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 12,
+  },
+  videoOverlayText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   pdfContainer: {
     marginVertical: 16,
@@ -548,21 +621,28 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   pdfItem: {
     backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 6,
-    marginVertical: 4,
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   pdfText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
+    marginBottom: 4,
   },
   pdfAction: {
     fontSize: 12,
     color: '#3b82f6',
-    marginTop: 4,
     fontWeight: '500',
   },
   

@@ -4,6 +4,7 @@ import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import UnifiedMediaCard from './UnifiedMediaCard';
+import { MediaListSkeleton } from './SkeletonLoader';
 
 interface MediaHorizontalListProps {
   title: string;
@@ -11,6 +12,7 @@ interface MediaHorizontalListProps {
   type?: 'audio' | 'video' | 'pdf';
   onItemPress: (item: any) => void;
   onSeeAll?: () => void;
+  isLoading?: boolean;
 }
 
 const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
@@ -19,6 +21,7 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
   type = 'audio',
   onItemPress,
   onSeeAll,
+  isLoading = false,
 }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -43,6 +46,10 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
       default: return 'headphones';
     }
   };
+
+  if (isLoading) {
+    return <MediaListSkeleton />;
+  }
 
   if (!data || data.length === 0) return null;
 

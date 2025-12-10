@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Dimensions } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Dimensions, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import CardCarousel from '../../components/CardCarousel';
 import MediaHorizontalList from '../../components/MediaHorizontalList';
 import DailyGyanGallery from '../../components/DailyGyanGallery';
 import DebugCategoriesApi from '../../components/DebugCategoriesApi';
+import SimplePullToRefresh from '../../components/SimplePullToRefresh';
 
 import { useAuth } from '../../context/AuthContext';
 import { HomeStackParamList } from '../../navigation/types';
@@ -47,24 +48,29 @@ const Home: React.FC = () => {
   console.log('Home - Recent items:', recentItems?.length || 0, recentItems);
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('Home - Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (isError) return <ErrorState colors={colors} onRetry={refetch} t={t} />;
 
   const dashboardData = data?.data || {};
   const { recentUploads = [], topVideos = [], topAudios = [], topBooks = [] } = dashboardData;
 
-  // Use skeleton data while loading, real data when loaded
-  const displayTopAudios = isLoading ? [] : topAudios;
-  const displayTopVideos = isLoading ? [] : topVideos;
-  const displayTopBooks = isLoading ? [] : topBooks;
-  const displayRecentUploads = isLoading ? [] : recentUploads;
-  
-  // Skeleton data for loading state
-  const skeletonData = Array(6).fill(null).map((_, index) => ({
-    _id: `skeleton-${index}`,
-    title: '',
-    isLoading: true
-  }));
+  // Use real data when loaded
+  const displayTopAudios = topAudios;
+  const displayTopVideos = topVideos;
+  const displayTopBooks = topBooks;
+  const displayRecentUploads = recentUploads;
 
   // console.log('Home - Dashboard data:', {
   //   topAudios: topAudios.length,
@@ -178,13 +184,11 @@ const Home: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <MainAppHeader username={isAuthenticated && user?.name ? user.name : ''} />
-      <ScrollView
+      <SimplePullToRefresh
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         contentContainerStyle={[styles.scrollContainer, is10InchTablet && { paddingHorizontal: 48 }, is7InchTablet && { paddingHorizontal: 32 }]}
         showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-        keyboardShouldPersistTaps="handled"
-        bounces={false}
-        overScrollMode="never"
       >
         <CardCarousel />
 
@@ -232,29 +236,31 @@ const Home: React.FC = () => {
             type="audio"
             onItemPress={handleRecentItemPress}
             onSeeAll={() => navigation.navigate('RecentlyPlayed')}
+            isLoading={false}
           />
         )}
 
         <MediaHorizontalList
           title={t('mediaTypes.video')}
-          data={isLoading ? skeletonData : displayTopVideos.filter(item => item && item._id)}
+          data={displayTopVideos.filter(item => item && item._id)}
           type="video"
-          onItemPress={(item) => !item.isLoading && handleVideoPress(item, displayTopVideos)}
-          onSeeAll={() => !isLoading && navigation.navigate('AllVideos', { item: displayTopVideos })}
+          onItemPress={(item) => handleVideoPress(item, displayTopVideos)}
+          onSeeAll={() => navigation.navigate('AllVideos', { item: displayTopVideos })}
+          isLoading={isLoading}
         />
 
         <MediaHorizontalList
           title={t('mediaTypes.audio')}
-          data={isLoading ? skeletonData : displayTopAudios.filter(item => item && item._id)}
+          data={displayTopAudios.filter(item => item && item._id)}
           type="audio"
-          onItemPress={(item) => !item.isLoading && handleAudioPress(item, displayTopAudios)}
-          onSeeAll={() => !isLoading && navigation.navigate('AllAudios')}
+          onItemPress={(item) => handleAudioPress(item, displayTopAudios)}
+          onSeeAll={() => navigation.navigate('AllAudios')}
+          isLoading={isLoading}
         />
 
-        {/* Books Section - Always show with fallback data */}
         <MediaHorizontalList
           title={t('mediaTypes.book') + 's'}
-          data={displayTopBooks && displayTopBooks.length > 0 ? displayTopBooks : [
+          data={displayTopBooks.length > 0 ? displayTopBooks : [
             {
               _id: 'book-1',
               title: 'Bhagavad Gita – As It Is',
@@ -283,7 +289,6 @@ const Home: React.FC = () => {
           type="pdf"
           onItemPress={(item) => {
             requireAuth(() => {
-              console.log('Home - PDF item pressed:', item);
               const pdfItem = { ...item, type: 'pdf' };
               addRecentItem(pdfItem);
               (navigation as any).navigate('PdfViewer', {
@@ -295,14 +300,14 @@ const Home: React.FC = () => {
             });
           }}
           onSeeAll={() => navigation.navigate('AllPDFs')}
+          isLoading={isLoading}
         />
 
         <MediaHorizontalList
           title={t('screens.home.recentUploads')}
-          data={isLoading ? skeletonData : displayRecentUploads}
+          data={displayRecentUploads}
           type="audio"
           onItemPress={(item) => {
-            if (item.isLoading) return;
             if (item.type === 'video') {
               handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
             } else if (item.type === 'pdf') {
@@ -318,8 +323,9 @@ const Home: React.FC = () => {
               handleAudioPress(item, displayRecentUploads.filter(i => i.type !== 'video' && i.type !== 'pdf'));
             }
           }}
+          isLoading={isLoading}
         />
-      </ScrollView>
+      </SimplePullToRefresh>
     </View>
   );
 };

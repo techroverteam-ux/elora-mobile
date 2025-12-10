@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, Dimensions } from 'react-native'
+import { StyleSheet, Text, View, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBarHeader from '../../components/AppBarHeader'
@@ -6,6 +6,7 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard'
 import MediaListItem from '../../components/MediaListItem'
 import ViewToggle from '../../components/ViewToggle'
+import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader'
 import { useTheme } from 'react-native-paper'
 import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi'
 
@@ -35,9 +36,21 @@ const AllVideos = () => {
   
   const is7Inch = width >= 600 && width < 800
   const is10Inch = width >= 800
-  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
+  const numColumns = is10Inch ? 4 : 3
   
-  const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'video' })
+  const { data: featuredData, isLoading, refetch } = useGetFeaturedQuery({ type: 'video' })
+  const [refreshing, setRefreshing] = useState(false)
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await refetch()
+    } catch (error) {
+      console.error('AllVideos - Refresh error:', error)
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const videoData = featuredData?.data?.videos || route.params?.item || []
 
   const handleVideoPress = (videoItem: any) => {
@@ -55,17 +68,7 @@ const AllVideos = () => {
       <AppBarHeader title={t('mediaTypes.video')} />
 
       {isLoading ? (
-        <FlatList
-          data={Array(8).fill(0)}
-          numColumns={numColumns}
-          key={`skeleton-${numColumns}`}
-          keyExtractor={(_, index) => `skeleton-${index}`}
-          renderItem={() => (
-            <View style={{ flex: 1, aspectRatio: 0.75, margin: 8, borderRadius: 12, backgroundColor: colors.surfaceVariant }} />
-          )}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-        />
+        isGridView ? <GridViewSkeleton /> : <ListViewSkeleton />
       ) : (
         <>
           <View style={styles.header}>
@@ -96,6 +99,14 @@ const AllVideos = () => {
             contentContainerStyle={isGridView ? styles.gridContent : styles.listContent}
             columnWrapperStyle={isGridView ? styles.row : undefined}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#F8803B']}
+                tintColor="#F8803B"
+              />
+            }
           />
         </>
       )}

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, StyleSheet, Animated, Dimensions } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { wp, hp, normalize } from '../utils/responsive';
 
@@ -33,12 +33,12 @@ const SkeletonItem: React.FC<SkeletonProps> = ({
 
   const translateX = animatedValue.interpolate({
     inputRange: [0, 1],
-    outputRange: [-100, 100],
+    outputRange: [-200, 200],
   });
 
   const opacity = animatedValue.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0.3, 0.7, 0.3],
+    outputRange: [0.2, 0.8, 0.2],
   });
 
   return (
@@ -48,7 +48,7 @@ const SkeletonItem: React.FC<SkeletonProps> = ({
           width,
           height,
           borderRadius,
-          backgroundColor: '#E1E9EE',
+          backgroundColor: '#E8E8E8',
           overflow: 'hidden',
         },
         style,
@@ -61,7 +61,7 @@ const SkeletonItem: React.FC<SkeletonProps> = ({
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: '#F7F8F8',
+          backgroundColor: 'rgba(255,255,255,0.9)',
           opacity,
           transform: [{ translateX }],
         }}
@@ -95,21 +95,39 @@ export const CarouselSkeleton: React.FC = () => {
 };
 
 export const GallerySkeleton: React.FC = () => {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    const { width, height } = Dimensions.get('window');
+    setDimensions({ width, height });
+    
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const is7Inch = dimensions.width >= 600 && dimensions.width < 800;
+  const is10Inch = dimensions.width >= 800;
+  const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
+  const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
+  const spacing = is10Inch ? 20 : is7Inch ? 14 : wp(2.5);
+  
   return (
     <View style={styles.galleryContainer}>
       <View style={styles.galleryHeader}>
         <View style={styles.titleRow}>
-          <SkeletonItem width={24} height={24} borderRadius={12} />
-          <SkeletonItem width={wp(40)} height={16} borderRadius={8} style={{ marginLeft: 8 }} />
+          <SkeletonItem width={is10Inch ? 32 : is7Inch ? 26 : 24} height={is10Inch ? 32 : is7Inch ? 26 : 24} borderRadius={12} />
+          <SkeletonItem width={wp(40)} height={is10Inch ? 24 : is7Inch ? 20 : 16} borderRadius={8} style={{ marginLeft: 8 }} />
         </View>
-        <SkeletonItem width={wp(20)} height={16} borderRadius={8} />
+        <SkeletonItem width={wp(20)} height={is10Inch ? 15 : 13} borderRadius={8} />
       </View>
       <View style={styles.galleryItems}>
         {[...Array(4)].map((_, index) => (
-          <View key={index} style={styles.galleryItemSkeleton}>
+          <View key={index} style={[styles.galleryItemSkeleton, { marginRight: index < 3 ? spacing : 0 }]}>
             <SkeletonItem 
-              width={wp(30)} 
-              height={wp(36)} 
+              width={itemWidth} 
+              height={itemHeight} 
               borderRadius={14} 
             />
           </View>
@@ -161,12 +179,27 @@ export const ListViewSkeleton: React.FC = () => {
 };
 
 export const GridViewSkeleton: React.FC = () => {
-  const itemWidth = (wp(100) - 48) / 3;
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    const { width, height } = Dimensions.get('window');
+    setDimensions({ width, height });
+    
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+  
+  const is10Inch = dimensions.width >= 800;
+  const numColumns = is10Inch ? 4 : 3;
+  const itemWidth = (dimensions.width - (16 * 2) - (8 * (numColumns - 1))) / numColumns;
+  
   return (
     <View style={styles.gridViewContainer}>
-      {[...Array(9)].map((_, index) => (
-        <View key={index} style={[styles.gridItemSkeleton, { width: itemWidth }]}>
-          <SkeletonItem width={itemWidth} height={itemWidth * 0.75} borderRadius={4} />
+      {[...Array(12)].map((_, index) => (
+        <View key={index} style={[styles.gridItemSkeleton, { width: itemWidth, marginRight: (index + 1) % numColumns === 0 ? 0 : 8 }]}>
+          <SkeletonItem width={itemWidth} height={itemWidth * 0.75} borderRadius={12} />
           <View style={styles.gridItemContent}>
             <SkeletonItem width={itemWidth * 0.8} height={14} borderRadius={7} style={{ marginTop: 8 }} />
             <SkeletonItem width={itemWidth * 0.6} height={12} borderRadius={6} style={{ marginTop: 4 }} />
@@ -249,7 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     padding: 16,
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
   },
   gridItemSkeleton: {
     marginBottom: 16,

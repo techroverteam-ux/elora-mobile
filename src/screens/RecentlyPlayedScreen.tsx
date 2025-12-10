@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from '../components/CustomFastImage';
+import { GridViewSkeleton, ListViewSkeleton } from '../components/SkeletonLoader';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { translateContent } from '../utils/contentTranslator';
@@ -226,7 +227,7 @@ const RecentlyPlayedScreen = () => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
+            <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 8 }}>
             <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{translateContent('Recently Played')}</Text>
@@ -259,7 +260,7 @@ const RecentlyPlayedScreen = () => {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialDesignIcons name="arrow-left" size={24} color={colors.onBackground} />
+          <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{translateContent('Recently Played')}</Text>
@@ -271,7 +272,7 @@ const RecentlyPlayedScreen = () => {
           <MaterialDesignIcons 
             name={viewMode === 'grid' ? 'view-list' : 'view-grid'} 
             size={24} 
-            color={colors.onBackground} 
+            color={colors.primary} 
           />
         </TouchableOpacity>
       </View>
@@ -280,7 +281,7 @@ const RecentlyPlayedScreen = () => {
         data={recentItems}
         keyExtractor={(item) => item._id}
         renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
-        numColumns={viewMode === 'grid' ? 2 : 1}
+        numColumns={viewMode === 'grid' ? 3 : 1}
         key={viewMode}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   gridItem: {
-    width: (width - 48) / 2,
+    width: (width - 64) / 3,
     margin: 4,
     borderRadius: 12,
     overflow: 'hidden',

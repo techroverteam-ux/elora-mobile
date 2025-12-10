@@ -6,13 +6,17 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { useGetSectionsMutation } from '../data/redux/services/sectionsApi';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import SkeletonItem from './SkeletonLoader';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
+import { useThemeContext } from '../context/ThemeContext';
 
 const { width, height } = Dimensions.get('window');
 
 const PdfViewer = () => {
   const { colors } = useTheme();
+  const { theme } = useThemeContext();
+  const isDark = theme === 'dark';
   const { t } = useTranslation();
   const route = useRoute();
   const navigation = useNavigation();
@@ -22,6 +26,8 @@ const PdfViewer = () => {
   const title = params?.title || item?.title;
   
   const [loading, setLoading] = useState(true);
+  const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [useProxy, setUseProxy] = useState(false);
   const [showSections, setShowSections] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -38,7 +44,9 @@ const PdfViewer = () => {
   const isBookmarkedItem = item ? isBookmarked(item._id) : false;
 
   const pdfUrl = uri || item?.streamingUrl || item?.pdfUrl;
+  const directUrl = pdfUrl;
   const proxyUrl = pdfUrl ? `https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api/azure-blob/file?blobUrl=${encodeURIComponent(pdfUrl)}` : null;
+  const finalUrl = useProxy ? proxyUrl : directUrl;
   
   useEffect(() => {
     getSectionsRequest({});
@@ -48,56 +56,67 @@ const PdfViewer = () => {
     }
   }, [getSectionsRequest, item, addRecentItem]);
   
-  // Generate dynamic sections based on total pages
+  // Generate intelligent sections based on total pages and content type
   useEffect(() => {
     if (totalPages > 0) {
       const sections = [];
+      const pdfTitle = title || 'Document';
       
-      if (totalPages <= 50) {
-        // Small PDFs: 10 pages per section
-        const pagesPerSection = 10;
-        for (let i = 0; i < Math.ceil(totalPages / pagesPerSection); i++) {
-          const startPage = i * pagesPerSection + 1;
-          const endPage = Math.min((i + 1) * pagesPerSection, totalPages);
-          sections.push({
-            title: `Section ${i + 1}`,
-            subtitle: `Pages ${startPage}-${endPage}`,
-            page: startPage,
-            endPage: endPage
-          });
-        }
-      } else if (totalPages <= 200) {
-        // Medium PDFs: 20 pages per section
-        const pagesPerSection = 20;
-        for (let i = 0; i < Math.ceil(totalPages / pagesPerSection); i++) {
-          const startPage = i * pagesPerSection + 1;
-          const endPage = Math.min((i + 1) * pagesPerSection, totalPages);
-          sections.push({
-            title: `Chapter ${i + 1}`,
-            subtitle: `Pages ${startPage}-${endPage}`,
-            page: startPage,
-            endPage: endPage
-          });
-        }
+      // Determine section type and size based on PDF characteristics
+      let sectionType = 'Section';
+      let pagesPerSection = 10;
+      
+      if (pdfTitle.toLowerCase().includes('gita') || pdfTitle.toLowerCase().includes('geeta')) {
+        sectionType = 'Chapter';
+        pagesPerSection = totalPages <= 100 ? 5 : 8;
+      } else if (pdfTitle.toLowerCase().includes('ramayan') || pdfTitle.toLowerCase().includes('mahabharat')) {
+        sectionType = 'Kand';
+        pagesPerSection = totalPages <= 200 ? 15 : 25;
+      } else if (pdfTitle.toLowerCase().includes('puran') || pdfTitle.toLowerCase().includes('upanishad')) {
+        sectionType = 'Adhyay';
+        pagesPerSection = totalPages <= 150 ? 12 : 20;
       } else {
-        // Large PDFs: 50 pages per section
-        const pagesPerSection = 50;
-        for (let i = 0; i < Math.ceil(totalPages / pagesPerSection); i++) {
-          const startPage = i * pagesPerSection + 1;
-          const endPage = Math.min((i + 1) * pagesPerSection, totalPages);
-          sections.push({
-            title: `Part ${i + 1}`,
-            subtitle: `Pages ${startPage}-${endPage}`,
-            page: startPage,
-            endPage: endPage
-          });
-        }
+        // General documents
+        if (totalPages <= 50) pagesPerSection = 8;
+        else if (totalPages <= 200) pagesPerSection = 15;
+        else pagesPerSection = 25;
       }
       
-      console.log(`Generated ${sections.length} sections for ${totalPages} pages`);
+      const totalSections = Math.ceil(totalPages / pagesPerSection);
+      
+      for (let i = 0; i < totalSections; i++) {
+        const startPage = i * pagesPerSection + 1;
+        const endPage = Math.min((i + 1) * pagesPerSection, totalPages);
+        const sectionNumber = i + 1;
+        
+        // Generate meaningful section titles
+        let sectionTitle = `${sectionType} ${sectionNumber}`;
+        if (sectionType === 'Chapter' && totalSections <= 18) {
+          const chapterNames = [
+            'Arjuna Vishada Yoga', 'Sankhya Yoga', 'Karma Yoga', 'Gyan Karma Sanyasa Yoga',
+            'Karma Sanyasa Yoga', 'Dhyana Yoga', 'Gyan Vigyan Yoga', 'Akshar Brahma Yoga',
+            'Raja Vidya Raja Guhya Yoga', 'Vibhuti Yoga', 'Vishvarupa Darshan Yoga', 'Bhakti Yoga',
+            'Kshetra Kshetrajna Vibhaga Yoga', 'Gunatraya Vibhaga Yoga', 'Purushottama Yoga',
+            'Daivasura Sampad Vibhaga Yoga', 'Shraddhatraya Vibhaga Yoga', 'Moksha Sanyasa Yoga'
+          ];
+          if (i < chapterNames.length) {
+            sectionTitle = `Chapter ${sectionNumber}: ${chapterNames[i]}`;
+          }
+        }
+        
+        sections.push({
+          title: sectionTitle,
+          subtitle: `${endPage - startPage + 1} pages`,
+          page: startPage,
+          endPage: endPage,
+          progress: 0
+        });
+      }
+      
+      console.log(`Generated ${sections.length} ${sectionType.toLowerCase()}s for ${totalPages} pages`);
       setPdfSections(sections);
     }
-  }, [totalPages]);
+  }, [totalPages, title]);
   
   const zoomIn = () => {
     const newScale = Math.min(scale + 0.2, 3.0);
@@ -134,8 +153,8 @@ const PdfViewer = () => {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
+    <View style={[styles.screen, { backgroundColor: isDark ? '#121212' : colors.background }]}>
+      <View style={[styles.header, { backgroundColor: isDark ? '#1e1e1e' : colors.surface, borderBottomColor: isDark ? '#2a2a2a' : colors.outline }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
         </TouchableOpacity>
@@ -203,7 +222,7 @@ const PdfViewer = () => {
       </View>
 
       {showSearch && (
-        <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
+        <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e1e1e' : colors.surface, borderBottomColor: isDark ? '#2a2a2a' : colors.outline }]}>
           <MaterialDesignIcons name="magnify" size={20} color={colors.onSurfaceVariant} />
           <TextInput
             style={[styles.searchInput, { color: colors.onSurface }]}
@@ -221,7 +240,7 @@ const PdfViewer = () => {
 
       <View style={styles.container}>
         {showSections && (
-          <View style={[styles.sectionsPanel, { backgroundColor: colors.surface }]}>
+          <View style={[styles.sectionsPanel, { backgroundColor: isDark ? '#1e1e1e' : colors.surface }]}>
             <View style={styles.sectionsPanelHeader}>
               <Text style={[styles.sectionsPanelTitle, { color: colors.onSurface }]}>{t('screens.pdfViewer.pdfSections')}</Text>
             </View>
@@ -250,92 +269,155 @@ const PdfViewer = () => {
               </View>
               
               {/* Page Sections */}
-              {pdfSections.map((section: any, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.sectionItem, { borderBottomColor: colors.outline }]}
-                  onPress={() => goToPage(section.page)}
-                >
-                  <MaterialDesignIcons 
-                    name="file-document-outline" 
-                    size={20} 
-                    color={colors.primary} 
-                  />
-                  <View style={styles.sectionContent}>
-                    <Text style={[styles.sectionItemText, { color: colors.onSurface }]}>
-                      {section.title}
-                    </Text>
-                    <Text style={[styles.pageNumber, { color: colors.onSurfaceVariant }]}>
-                      {section.subtitle || `Page ${section.page}`}
-                    </Text>
-                  </View>
-                  <MaterialDesignIcons 
-                    name="chevron-right" 
-                    size={16} 
-                    color={colors.onSurfaceVariant} 
-                  />
-                </TouchableOpacity>
-              ))}
+              {pdfSections.map((section: any, index: number) => {
+                const isCurrentSection = currentPage >= section.page && currentPage <= section.endPage;
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.sectionItem, 
+                      { 
+                        borderBottomColor: colors.outline,
+                        backgroundColor: isCurrentSection ? colors.primary + '15' : 'transparent'
+                      }
+                    ]}
+                    onPress={() => goToPage(section.page)}
+                  >
+                    <View style={[
+                      styles.sectionIndex,
+                      { backgroundColor: isCurrentSection ? colors.primary : colors.surfaceVariant }
+                    ]}>
+                      <Text style={[
+                        styles.sectionIndexText,
+                        { color: isCurrentSection ? '#fff' : colors.onSurfaceVariant }
+                      ]}>
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <View style={styles.sectionContent}>
+                      <Text style={[
+                        styles.sectionItemText, 
+                        { 
+                          color: isCurrentSection ? colors.primary : colors.onSurface,
+                          fontWeight: isCurrentSection ? '600' : '400'
+                        }
+                      ]}>
+                        {section.title}
+                      </Text>
+                      <Text style={[styles.pageNumber, { color: colors.onSurfaceVariant }]}>
+                        {section.subtitle || `Pages ${section.page}-${section.endPage}`}
+                      </Text>
+                      {isCurrentSection && (
+                        <Text style={[styles.currentPageIndicator, { color: colors.primary }]}>
+                          Currently reading • Page {currentPage}
+                        </Text>
+                      )}
+                    </View>
+                    <MaterialDesignIcons 
+                      name={isCurrentSection ? "bookmark" : "chevron-right"} 
+                      size={16} 
+                      color={isCurrentSection ? colors.primary : colors.onSurfaceVariant} 
+                    />
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
         
-        {proxyUrl ? (
+        {loading && !pdfLoaded ? (
+          <View style={styles.loadingContainer}>
+            <View style={styles.skeletonContainer}>
+              <SkeletonItem width="100%" height={60} borderRadius={8} style={{ marginBottom: 16 }} />
+              <SkeletonItem width="100%" height={200} borderRadius={12} style={{ marginBottom: 16 }} />
+              <SkeletonItem width="80%" height={20} borderRadius={4} style={{ marginBottom: 8 }} />
+              <SkeletonItem width="60%" height={20} borderRadius={4} style={{ marginBottom: 8 }} />
+              <SkeletonItem width="90%" height={20} borderRadius={4} style={{ marginBottom: 16 }} />
+              <SkeletonItem width="100%" height={150} borderRadius={12} style={{ marginBottom: 16 }} />
+              <SkeletonItem width="70%" height={20} borderRadius={4} style={{ marginBottom: 8 }} />
+              <SkeletonItem width="85%" height={20} borderRadius={4} />
+            </View>
+            <View style={styles.loadingTextContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading PDF...</Text>
+            </View>
+          </View>
+        ) : finalUrl ? (
           <>
             <Pdf
               ref={pdfRef}
-              trustAllCerts={false}
+              trustAllCerts={true}
               source={{
-                uri: proxyUrl,
+                uri: finalUrl,
                 cache: true,
                 expiration: 24 * 60 * 60 * 1000,
+                headers: useProxy ? {} : {
+                  'Accept': 'application/pdf',
+                  'Cache-Control': 'max-age=3600'
+                }
               }}
               page={currentPage}
               onLoadComplete={(numberOfPages) => {
+                console.log('PDF loaded successfully:', numberOfPages, 'pages');
                 setTotalPages(numberOfPages);
                 setLoading(false);
+                setPdfLoaded(true);
               }}
               onPageChanged={(page) => {
                 setCurrentPage(page);
               }}
               onError={(error) => {
                 console.error('PDF Error:', error);
-                setLoading(false);
+                if (!useProxy && proxyUrl) {
+                  console.log('Trying proxy URL as fallback');
+                  setUseProxy(true);
+                  setLoading(true);
+                } else {
+                  setLoading(false);
+                }
               }}
               style={styles.pdf}
-              enablePaging={false}
+              enablePaging={true}
               horizontal={false}
-              spacing={10}
+              spacing={5}
               scale={scale}
               minScale={0.5}
               maxScale={3.0}
-              enableAntialiasing={true}
+              enableAntialiasing={false}
               enableAnnotationRendering={false}
               showsHorizontalScrollIndicator={false}
               showsVerticalScrollIndicator={true}
-              singlePage={false}
-              fitPolicy={0}
+              singlePage={true}
+              fitPolicy={1}
+              activityIndicatorProps={{
+                color: colors.primary,
+                progressTintColor: colors.primary
+              }}
               renderActivityIndicator={() => (
-                <View style={styles.loadingContainer}>
+                <View style={styles.pdfLoadingContainer}>
                   <ActivityIndicator size="large" color={colors.primary} />
-                  <Text style={[styles.loadingText, { color: colors.onBackground }]}>Loading PDF...</Text>
+                  <Text style={[styles.pdfLoadingText, { color: colors.onBackground }]}>Rendering PDF...</Text>
                 </View>
               )}
             />
             
             <View style={[styles.pageCounter, { 
-              backgroundColor: colors.surface,
-              borderColor: colors.outline 
+              backgroundColor: isDark ? 'rgba(248,128,59,0.9)' : colors.surface,
+              borderColor: isDark ? 'transparent' : colors.outline 
             }]}>
-              <Text style={[styles.pageCounterText, { color: colors.primary }]}>
+              <Text style={[styles.pageCounterText, { color: isDark ? '#fff' : colors.primary }]}>
                 {currentPage} / {totalPages > 0 ? totalPages : '...'}
               </Text>
             </View>
           </>
         ) : (
           <View style={styles.errorContainer}>
+            <MaterialDesignIcons name="file-pdf-box" size={64} color={colors.error} />
             <Text style={[styles.errorText, { color: colors.error }]}>
               {t('screens.pdfViewer.noPdfAvailable')}
+            </Text>
+            <Text style={[styles.errorSubtext, { color: colors.onSurfaceVariant }]}>
+              Please check your internet connection
             </Text>
           </View>
         )}
@@ -392,7 +474,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     position: 'relative',
   },
   sectionsPanel: {
@@ -439,6 +520,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
+    borderRadius: 8,
+    marginHorizontal: 8,
+    marginVertical: 2,
   },
   sectionContent: {
     flex: 1,
@@ -471,7 +555,6 @@ const styles = StyleSheet.create({
   pdf: {
     flex: 1,
     width: width,
-    backgroundColor: '#f5f5f5',
   },
   pageCounter: {
     position: 'absolute',
@@ -493,14 +576,51 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
+    padding: 16,
+  },
+  skeletonContainer: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  loadingTextContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    transform: [{ translateY: -50 }],
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
     fontWeight: '500',
+  },
+  pdfLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pdfLoadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sectionIndex: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sectionIndexText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  currentPageIndicator: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
   },
   errorContainer: {
     flex: 1,
@@ -509,7 +629,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: '600',
     textAlign: 'center',
+    marginTop: 16,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });

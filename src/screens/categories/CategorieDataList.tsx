@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
+import SimplePullToRefresh from '../../components/SimplePullToRefresh';
 import React, { useEffect, useMemo } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,6 +36,16 @@ const CategorieDataList = () => {
   const { navigate } = useNavigation<CategorieDataListNavigationProp>();
 
   const [getCategoriesRequest, { data, error, isLoading }] = useGetCategoriesMutation();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await getCategoriesRequest(id);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Translate categories data when language changes
   const translatedCategories = useMemo(() => {
@@ -92,7 +103,7 @@ const CategorieDataList = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={{ flex: 1 }}>
+        <SimplePullToRefresh refreshing={refreshing} onRefresh={onRefresh}>
           {translatedCategories.length === 0 ? (
             <View style={styles.loaderContainer}>
               <Text style={styles.errorText}>No categories found for this section</Text>
@@ -118,7 +129,7 @@ const CategorieDataList = () => {
               }}
             />
           )}
-        </View>
+        </SimplePullToRefresh>
       )}
     </View>
   );

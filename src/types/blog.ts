@@ -336,6 +336,33 @@ export interface BlogInteractionEvent {
   timestamp: number;
 }
 
+// Pull-to-Refresh Types
+export interface PullToRefreshProps {
+  refreshing: boolean;
+  onRefresh: () => void;
+  children: React.ReactNode;
+  refreshThreshold?: number;
+  pullDistance?: number;
+  style?: any;
+  showsVerticalScrollIndicator?: boolean;
+  contentContainerStyle?: any;
+}
+
+export interface RefreshState {
+  state: 'idle' | 'pulling' | 'ready' | 'refreshing';
+  progress: number;
+  distance: number;
+}
+
+export interface RefreshAnimations {
+  pullDistance: any;
+  refreshOpacity: any;
+  iconRotation: any;
+  iconScale: any;
+  waveAnimation: any;
+  particleAnimations: any[];
+}
+
 export default {
   ContentField,
   BlogCategory,

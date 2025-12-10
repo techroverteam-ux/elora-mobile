@@ -7,6 +7,7 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import { debounce } from '../utils/debounce';
 import AppBarHeader from '../components/AppBarHeader';
 import SpotifyMediaCard from '../components/SpotifyMediaCard';
+import { GridViewSkeleton } from '../components/SkeletonLoader';
 import { useSearchContentQuery } from '../data/redux/services/mediaApi';
 
 const SearchScreen = () => {
@@ -66,6 +67,10 @@ const SearchScreen = () => {
   };
 
   const renderSearchResults = () => {
+    if (isLoading || isFetching) {
+      return <GridViewSkeleton />;
+    }
+
     if (!searchData?.data) return null;
 
     const { media = [] } = searchData.data;

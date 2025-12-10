@@ -26,7 +26,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface ContentField {
   id: string;
-  type: 'header' | 'description' | 'image' | 'video' | 'pdf';
+  type: 'header' | 'description' | 'image' | 'video' | 'audio' | 'pdf';
   content: string;
   order: number;
   azureFiles?: string[];
@@ -70,6 +70,16 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
   // Sort content fields by order
   const sortedContentFields = category.contentFields
     ?.sort((a, b) => (a.order || 0) - (b.order || 0)) || [];
+    
+  console.log('📝 EnhancedBlogRenderer - Content fields received:', {
+    categoryId: category._id,
+    categoryTitle: category.title,
+    totalFields: sortedContentFields.length,
+    fieldTypes: sortedContentFields.map(f => ({ id: f.id, type: f.type, hasAzureFiles: !!f.azureFiles?.length })),
+    videoFields: sortedContentFields.filter(f => f.type === 'video'),
+    pdfFields: sortedContentFields.filter(f => f.type === 'pdf'),
+    audioFields: sortedContentFields.filter(f => f.type === 'audio')
+  });
 
   // Calculate reading time estimate
   const estimateReadingTime = () => {
@@ -150,6 +160,9 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
       case 'video':
         return renderVideoField(field, index);
 
+      case 'audio':
+        return renderAudioField(field, index);
+
       case 'pdf':
         return renderPdfField(field, index);
 
@@ -160,8 +173,26 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
 
   // Process Azure files using the same method as Daily Gyan Gallery
   const processAzureFiles = (field: ContentField) => {
-    if (!field.azureFiles || field.azureFiles.length === 0) return [];
-    return field.azureFiles.map(url => processAzureUrl(url)).filter(Boolean);
+    console.log('🔍 Processing Azure files for field:', {
+      fieldId: field.id,
+      fieldType: field.type,
+      azureFiles: field.azureFiles,
+      azureFilesCount: field.azureFiles?.length || 0
+    });
+    
+    if (!field.azureFiles || field.azureFiles.length === 0) {
+      console.log('❌ No Azure files found for field:', field.id);
+      return [];
+    }
+    
+    const processedUrls = field.azureFiles.map(url => {
+      const processed = processAzureUrl(url);
+      console.log('🔗 URL processing:', { original: url, processed });
+      return processed;
+    }).filter(Boolean);
+    
+    console.log('✅ Processed URLs for field:', field.id, processedUrls);
+    return processedUrls;
   };
 
   // Render image field with enhanced UI
@@ -271,19 +302,90 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
         </View>
         
         {processedUrls.map((videoUrl, vidIndex) => (
-          <View key={vidIndex} style={fieldStyles.videoWrapper}>
-            <EnhancedVideoPlayer
-              item={{
-                _id: `video-${field.id}-${vidIndex}`,
-                title: field.content || `Video ${vidIndex + 1}`,
-                videoUrl: videoUrl,
-                streamingUrl: videoUrl,
-                type: 'video'
-              }}
-              playlist={[]}
-              style={fieldStyles.videoPlayer}
+          <TouchableOpacity
+            key={vidIndex}
+            style={fieldStyles.videoWrapper}
+            activeOpacity={0.9}
+            onPress={() => {
+              (navigation as any).navigate('EnhancedVideoPlayer', {
+                item: {
+                  _id: `video-${field.id}-${vidIndex}`,
+                  title: field.content || `Video ${vidIndex + 1}`,
+                  videoUrl: videoUrl,
+                  streamingUrl: videoUrl,
+                  thumbnailUrl: videoUrl,
+                  type: 'video'
+                },
+                playlist: []
+              });
+            }}
+          >
+            <CustomFastImage
+              imageUrl={videoUrl}
+              style={fieldStyles.videoThumbnail}
+              resizeMode="cover"
             />
-          </View>
+            <View style={fieldStyles.videoOverlay}>
+              <View style={fieldStyles.playButtonContainer}>
+                <MaterialDesignIcons name="play-circle" size={normalize(72)} color="rgba(255,255,255,0.95)" />
+              </View>
+              <View style={fieldStyles.videoTextOverlay}>
+                <Text style={fieldStyles.videoOverlayText} numberOfLines={2}>
+                  {field.content || `Video ${vidIndex + 1}`}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  // Render audio field
+  const renderAudioField = (field: ContentField, index: number) => {
+    const processedUrls = processAzureFiles(field);
+    if (processedUrls.length === 0) return null;
+
+    const fieldStyles = getFieldStyles(isDark);
+
+    return (
+      <View key={field.id} style={fieldStyles.mediaContainer}>
+        <View style={fieldStyles.mediaHeader}>
+          <MaterialDesignIcons name="music-circle" size={normalize(24)} color={AppColors.success} />
+          <Text style={[fieldStyles.mediaTitle, { color: isDark ? '#fff' : colors.onSurface }]}>
+            {field.content || 'Audio Content'}
+          </Text>
+        </View>
+        
+        {processedUrls.map((audioUrl, audioIndex) => (
+          <TouchableOpacity
+            key={audioIndex}
+            style={[fieldStyles.audioItem, { backgroundColor: isDark ? '#2a2a2a' : '#f0f9ff' }]}
+            onPress={() => {
+              (navigation as any).navigate('EnhancedAudioPlayer', {
+                item: {
+                  _id: `audio-${field.id}-${audioIndex}`,
+                  title: field.content || `Audio ${audioIndex + 1}`,
+                  audioUrl: audioUrl,
+                  streamingUrl: audioUrl,
+                  type: 'audio'
+                }
+              });
+            }}
+          >
+            <View style={fieldStyles.audioIcon}>
+              <MaterialDesignIcons name="music-circle" size={normalize(32)} color={AppColors.success} />
+            </View>
+            <View style={fieldStyles.audioContent}>
+              <Text style={[fieldStyles.audioTitle, { color: isDark ? '#fff' : colors.onSurface }]}>
+                {field.content || `Audio ${audioIndex + 1}`}
+              </Text>
+              <Text style={[fieldStyles.audioAction, { color: AppColors.success }]}>
+                Tap to play audio
+              </Text>
+            </View>
+            <MaterialDesignIcons name="play-circle" size={normalize(24)} color={AppColors.success} />
+          </TouchableOpacity>
         ))}
       </View>
     );
@@ -722,11 +824,52 @@ const getFieldStyles = (isDark: boolean) => StyleSheet.create({
   videoWrapper: {
     borderRadius: normalize(12),
     overflow: 'hidden',
-    marginVertical: hp(1),
+    marginVertical: hp(1.5),
+    backgroundColor: '#000',
+    position: 'relative',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
-  videoPlayer: {
+  videoThumbnail: {
     width: '100%',
     height: hp(25),
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButtonContainer: {
+    backgroundColor: 'rgba(248,128,59,0.9)',
+    borderRadius: normalize(50),
+    padding: wp(2),
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  videoTextOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: wp(3),
+  },
+  videoOverlayText: {
+    color: '#fff',
+    fontSize: normalize(15),
+    fontWeight: '600',
+    textAlign: 'center',
   },
   pdfItem: {
     flexDirection: 'row',
@@ -736,6 +879,11 @@ const getFieldStyles = (isDark: boolean) => StyleSheet.create({
     marginVertical: hp(0.5),
     borderWidth: 1,
     borderColor: isDark ? '#3a3a3a' : '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   pdfIcon: {
     marginRight: wp(3),
@@ -748,6 +896,29 @@ const getFieldStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '600',
   },
   pdfAction: {
+    fontSize: normalize(14),
+    marginTop: hp(0.5),
+  },
+  audioItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: wp(4),
+    borderRadius: normalize(12),
+    marginVertical: hp(0.5),
+    borderWidth: 1,
+    borderColor: isDark ? '#3a3a3a' : '#e0f2fe',
+  },
+  audioIcon: {
+    marginRight: wp(3),
+  },
+  audioContent: {
+    flex: 1,
+  },
+  audioTitle: {
+    fontSize: normalize(16),
+    fontWeight: '600',
+  },
+  audioAction: {
     fontSize: normalize(14),
     marginTop: hp(0.5),
   },

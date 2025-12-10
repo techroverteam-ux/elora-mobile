@@ -50,7 +50,7 @@ const EnhancedVideoPlayer = () => {
   const isLiked = isBookmarked(currentVideo?._id || '');
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [currentVideo, setCurrentVideo] = useState(item);
-  const [muted, setMuted] = useState(true);
+  const [muted, setMuted] = useState(false);
   const [hasUserPlayed, setHasUserPlayed] = useState(false);
 
   // Get video URL - use direct URL if flagged, otherwise process through Azure
@@ -205,7 +205,6 @@ const EnhancedVideoPlayer = () => {
       }
       if (!hasUserPlayed) {
         setHasUserPlayed(true);
-        setMuted(false);
       }
       setPaused(false);
     }

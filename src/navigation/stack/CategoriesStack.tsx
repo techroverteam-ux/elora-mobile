@@ -6,6 +6,8 @@ import BlogPage from '../../screens/categories/BlogPage';
 import SubCategorie from '../../screens/categories/SubCategorie';
 import EnhancedAudioPlayer from '../../components/EnhancedAudioPlayer';
 import EnhancedVideoPlayer from '../../components/EnhancedVideoPlayer';
+import PdfViewer from '../../components/PdfViewer';
+import ImageGalleryViewer from '../../components/ImageGalleryViewer';
 import GalleryListScreen from '../../screens/GalleryListScreen';
 
 const Stack = createNativeStackNavigator<CategoriesStackParamList>();
@@ -21,6 +23,8 @@ const CategoriesStack = () => (
     <Stack.Screen name="SubCategorie" component={SubCategorie} />
     <Stack.Screen name="EnhancedAudioPlayer" component={EnhancedAudioPlayer} />
     <Stack.Screen name="EnhancedVideoPlayer" component={EnhancedVideoPlayer} />
+    <Stack.Screen name="PdfViewer" component={PdfViewer} />
+    <Stack.Screen name="ImageViewer" component={ImageGalleryViewer} />
     <Stack.Screen name="GalleryList" component={GalleryListScreen} />
   </Stack.Navigator>
 );

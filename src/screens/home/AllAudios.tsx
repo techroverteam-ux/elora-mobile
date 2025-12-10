@@ -1,10 +1,11 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, ActivityIndicator, Dimensions } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppBarHeader from '../../components/AppBarHeader'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard';
 import MediaListItem from '../../components/MediaListItem';
 import ViewToggle from '../../components/ViewToggle';
+import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
@@ -36,9 +37,21 @@ const AllAudios = () => {
   
   const is7Inch = width >= 600 && width < 800
   const is10Inch = width >= 800
-  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
+  const numColumns = is10Inch ? 4 : 3
 
-  const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'audio' });
+  const { data: featuredData, isLoading, refetch } = useGetFeaturedQuery({ type: 'audio' });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('AllAudios - Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const audioData = featuredData?.data?.audios || [];
 
   const handleAudioPress = (item: any) => {
@@ -63,7 +76,17 @@ const AllAudios = () => {
     <View>
       <AppBarHeader title={t('mediaTypes.audio')} />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F8803B']}
+            tintColor="#F8803B"
+          />
+        }
+      >
         {rows.map((row, rowIndex) => (
           <View key={rowIndex} style={styles.buttonRow}>
             {row.map((btn, index) => (
@@ -76,24 +99,14 @@ const AllAudios = () => {
                 }}
               >
                 <Text style={styles.text}>{translateContent(btn.label)}</Text>
-                <Text style={styles.arrow}>›</Text>
+                <Text style={[styles.arrow, { color: '#fff' }]}>›</Text>
               </TouchableOpacity>
             ))}
           </View>
         ))}
 
         {isLoading ? (
-          <FlatList
-            data={Array(8).fill(0)}
-            numColumns={numColumns}
-            key={`skeleton-${numColumns}`}
-            keyExtractor={(_, index) => `skeleton-${index}`}
-            renderItem={() => (
-              <View style={{ flex: 1, aspectRatio: 0.75, margin: 8, borderRadius: 12, backgroundColor: colors.surfaceVariant }} />
-            )}
-            contentContainerStyle={styles.gridContent}
-            showsVerticalScrollIndicator={false}
-          />
+          isGridView ? <GridViewSkeleton /> : <ListViewSkeleton />
         ) : (
           <>
             <View style={styles.header}>

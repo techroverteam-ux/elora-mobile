@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import SkeletonLoader from './SkeletonLoader';
@@ -20,6 +20,7 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   const { t } = useTranslation();
   const { resourceUrls } = useAzureAssets(item || {});
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  const [loading, setLoading] = useState(false);
   
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -130,11 +131,18 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
   };
 
   if (!isGridView) {
+    const handleListPress = () => {
+      setLoading(true);
+      onPress(item);
+      setTimeout(() => setLoading(false), 1500);
+    };
+
     return (
       <TouchableOpacity
-        style={[styles.listCard, { backgroundColor: colors.surface }]}
-        onPress={() => onPress(item)}
+        style={[styles.listCard, { backgroundColor: colors.surface, opacity: loading ? 0.7 : 1 }]}
+        onPress={handleListPress}
         activeOpacity={0.8}
+        disabled={loading}
       >
         <View style={styles.listImageContainer}>
           {getImageUrl() ? (
@@ -178,6 +186,12 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
     );
   }
 
+  const handlePress = () => {
+    setLoading(true);
+    onPress(item);
+    setTimeout(() => setLoading(false), 1500);
+  };
+
   return (
     <TouchableOpacity
       style={{
@@ -192,9 +206,11 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
         shadowRadius: 6,
         overflow: 'hidden',
         backgroundColor: colors.surface,
+        opacity: loading ? 0.7 : 1,
       }}
-      onPress={() => onPress(item)}
+      onPress={handlePress}
       activeOpacity={0.8}
+      disabled={loading}
     >
       <View style={{ position: 'relative', borderTopLeftRadius: 12, borderTopRightRadius: 12, overflow: 'hidden', height: CARD_WIDTH * 0.75 }}>
         {getImageUrl() ? (
@@ -211,11 +227,15 @@ const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({ item, onPress, type
             ...getBackgroundStyle(),
             borderWidth: 1
           }}>
-            <MaterialDesignIcons
-              name={getIcon()}
-              size={is10InchTablet ? 56 : is7InchTablet ? 48 : 40}
-              color={getIconColor()}
-            />
+            {loading ? (
+              <ActivityIndicator size={is10InchTablet ? 'large' : 'small'} color={getIconColor()} />
+            ) : (
+              <MaterialDesignIcons
+                name={getIcon()}
+                size={is10InchTablet ? 56 : is7InchTablet ? 48 : 40}
+                color={getIconColor()}
+              />
+            )}
           </View>
         )}
 

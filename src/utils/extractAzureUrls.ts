@@ -1,6 +1,6 @@
 export const extractBlobUrls = (
   data: Record<string, any>,
-  allowedExtensions = ['.jpg', '.jpeg', '.png', '.mp4', '.webp', '.mp3']
+  allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.mp4', '.mov', '.avi', '.mkv', '.webm', '.mp3', '.wav', '.aac', '.ogg', '.m4a', '.pdf']
 ): Record<string, string> => {
   const result: Record<string, string> = {};
 

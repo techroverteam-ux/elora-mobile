@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native'
 import { getImageUrl, processAzureUrl } from '../utils/azureUrlHelper'
 import { useAzureAssets } from '../hooks/useAzureAssets'
 import { useRequireAuth } from '../hooks/useRequireAuth'
+import { CarouselSkeleton } from './SkeletonLoader'
 
 type Category = {
   _id: string
@@ -34,6 +35,7 @@ type CardItemProps = {
 
 const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
   const { resourceUrls } = useAzureAssets(item || {})
+  const [loading, setLoading] = useState(false)
   const imageUrl =
     resourceUrls?.headerImage ||
     resourceUrls?.mainImage ||
@@ -44,8 +46,26 @@ const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
     getImageUrl(item || {})
   const truncatedTitle = item.title.length > 35 ? item.title.substring(0, 35) + '...' : item.title
 
+  const handlePress = () => {
+    setLoading(true)
+    onPress(item)
+    setTimeout(() => setLoading(false), 1500)
+  }
+
+  const handleReadMore = (e: any) => {
+    e.stopPropagation()
+    setLoading(true)
+    onReadMore(item)
+    setTimeout(() => setLoading(false), 1500)
+  }
+
   return (
-    <TouchableOpacity style={styles.cardContainer} onPress={() => onPress(item)} activeOpacity={0.9}>
+    <TouchableOpacity 
+      style={[styles.cardContainer, { opacity: loading ? 0.7 : 1 }]} 
+      onPress={handlePress} 
+      activeOpacity={0.9}
+      disabled={loading}
+    >
       {imageUrl ? (
         <CustomFastImage style={styles.image} imageUrl={imageUrl} />
       ) : (
@@ -60,14 +80,18 @@ const CardItem: React.FC<CardItemProps> = ({ item, onPress, onReadMore }) => {
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.actionButton}
-          onPress={(e) => {
-            e.stopPropagation()
-            onReadMore(item)
-          }}
+          style={[styles.actionButton, { opacity: loading ? 0.7 : 1 }]}
+          onPress={handleReadMore}
+          disabled={loading}
         >
-          <Text style={styles.actionText}>Read More</Text>
-          <MaterialDesignIcons name="chevron-right" size={24} color="#000" />
+          {loading ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <>
+              <Text style={styles.actionText}>Read More</Text>
+              <MaterialDesignIcons name="chevron-right" size={24} color="#000" />
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -130,16 +154,7 @@ const CardCarousel: React.FC = () => {
   }
 
   if (isLoading) {
-    return (
-      <View>
-        <View style={{ height: carouselHeight, marginBottom: 6, marginHorizontal: 10, borderRadius: 20, backgroundColor: colors.surfaceVariant }} />
-        <View style={styles.dotsContainer}>
-          {[0, 1, 2].map((i) => (
-            <View key={i} style={{ width: is10Inch ? 10 : 8, height: is10Inch ? 10 : 8, borderRadius: is10Inch ? 5 : 4, marginHorizontal: 5, backgroundColor: colors.outlineVariant }} />
-          ))}
-        </View>
-      </View>
-    )
+    return <CarouselSkeleton />
   }
 
   if (error) {

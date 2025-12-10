@@ -115,12 +115,17 @@ export const testAzureUrl = async (url: string): Promise<boolean> => {
 // Helper to create proper Azure API proxy URL
 export const createAzureProxyUrl = (blobUrl: string): string => {
   if (!blobUrl) return '';
+  
+  // If URL already has proxy format, return as-is
+  if (blobUrl.includes('/azure-blob/file?blobUrl=')) {
+    return blobUrl;
+  }
 
   const baseApiUrl = 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api';
   const encodedBlobUrl = encodeURIComponent(blobUrl);
   const proxyUrl = `${baseApiUrl}/azure-blob/file?blobUrl=${encodedBlobUrl}`;
 
-  // console.log('createAzureProxyUrl: Original blob URL:', blobUrl);
-  // console.log('createAzureProxyUrl: Created proxy URL:', proxyUrl);
+  console.log('createAzureProxyUrl: Original blob URL:', blobUrl);
+  console.log('createAzureProxyUrl: Created proxy URL:', proxyUrl);
   return proxyUrl;
 };

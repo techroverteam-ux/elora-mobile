@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,7 @@ import AppBarHeader from '../../components/AppBarHeader';
 import UnifiedMediaCard from '../../components/UnifiedMediaCard';
 import MediaListItem from '../../components/MediaListItem';
 import ViewToggle from '../../components/ViewToggle';
+import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader';
 import { HomeStackParamList } from '../../navigation/types';
 import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi';
 
@@ -31,7 +32,19 @@ const AllPDFs = () => {
   const is10Inch = width >= 800
   const numColumns = is10Inch ? 4 : is7Inch ? 3 : 2
 
-  const { data: featuredData, isLoading } = useGetFeaturedQuery({ type: 'pdf' });
+  const { data: featuredData, isLoading, refetch } = useGetFeaturedQuery({ type: 'pdf' });
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error('AllPDFs - Refresh error:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const pdfData = featuredData?.data?.pdfs || [];
 
   const handlePDFPress = (item: any) => {
@@ -49,17 +62,7 @@ const AllPDFs = () => {
       <AppBarHeader title={t('mediaTypes.book')} />
 
       {isLoading ? (
-        <FlatList
-          data={Array(8).fill(0)}
-          numColumns={numColumns}
-          key={`skeleton-${numColumns}`}
-          keyExtractor={(_, index) => `skeleton-${index}`}
-          renderItem={() => (
-            <View style={{ flex: 1, aspectRatio: 0.75, margin: 8, borderRadius: 12, backgroundColor: colors.surfaceVariant }} />
-          )}
-          contentContainerStyle={styles.gridContent}
-          showsVerticalScrollIndicator={false}
-        />
+        isGridView ? <GridViewSkeleton /> : <ListViewSkeleton />
       ) : pdfData.length > 0 ? (
         <>
           <View style={styles.header}>
@@ -90,6 +93,14 @@ const AllPDFs = () => {
             contentContainerStyle={isGridView ? styles.gridContent : styles.listContent}
             columnWrapperStyle={isGridView ? styles.row : undefined}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#F8803B']}
+                tintColor="#F8803B"
+              />
+            }
           />
         </>
       ) : (
