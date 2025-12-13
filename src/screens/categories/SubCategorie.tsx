@@ -1,56 +1,357 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, RefreshControl } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import AppBarHeader from '../../components/AppBarHeader'
 import { useTheme } from 'react-native-paper'
-import { useGetSubcategoriesMutation } from '../../data/redux/services/sectionsApi'
+import { useGetSubcategoriesByActionButtonMutation, useGetSubcategoriesMutation } from '../../data/redux/services/sectionsApi'
 import { ScrollView } from 'react-native-gesture-handler'
 import CustomFastImage from '../../components/CustomFastImage'
 import BlogVideo from '../../components/BlogVideo'
 import { useAzureAssets } from '../../hooks/useAzureAssets'
 import CollageFrame from '../../components/CollageFrame'
+import SkeletonItem from '../../components/SkeletonLoader'
 
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 import { wp, hp, normalize, isTablet } from '../../utils/responsive'
 import LinearGradient from 'react-native-linear-gradient'
 import { CategoriesStackParamList } from '../../navigation/types'
+import { processAzureUrl } from '../../utils/azureUrlHelper'
 
-type SubCategorieRouteParams = {
-  SubCategorie: { categoryData: any }
-}
+type SubCategorieRouteProp = RouteProp<CategoriesStackParamList, 'SubCategorie'>;
 
 type CategoriesNavigationProp = NativeStackNavigationProp<
   CategoriesStackParamList,
   'SubCategorie'
 >;
 
-const SubCategorie = () => {
-  const route = useRoute<RouteProp<SubCategorieRouteParams, 'SubCategorie'>>()
-  const navigation = useNavigation<CategoriesNavigationProp>()
-  const { categoryData } = route.params
-  const { colors } = useTheme()
-  const [readingTime, setReadingTime] = useState(0)
+interface Subcategory {
+  _id: string;
+  title: string;
+  subtitle?: string;
+  description1?: string;
+  description2?: string;
+  headerImage?: string;
+  mainImage?: string;
+  video?: string;
+  mediaType?: string;
+  mediaCount?: number;
+  videos?: Array<{
+    _id: string;
+    title: string;
+    duration: string;
+    description: string;
+    mediaFile: string;
+    order: number;
+  }>;
+  audios?: Array<{
+    _id: string;
+    title: string;
+    duration: string;
+    description: string;
+    mediaFile: string;
+    order: number;
+  }>;
+  chapters?: Array<{
+    _id: string;
+    title: string;
+    duration: string;
+    url?: string;
+    mediaFile?: string;
+    order: number;
+  }>;
+  actionButton?: {
+    id: string;
+    title: string;
+    icon: string;
+    color: string;
+    navigationType: string;
+  };
+}
 
-  const mainCategoryData = categoryData
+const SubCategorie = () => {
+  const route = useRoute<SubCategorieRouteProp>()
+  const navigation = useNavigation<CategoriesNavigationProp>()
+  const { categoryData, sectionId, categoryId, buttonType, title, actionButton } = route.params
+  const { colors } = useTheme()
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const [refreshing, setRefreshing] = useState(false)
+  const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null)
+  const [showMediaList, setShowMediaList] = useState(false)
+  const [mediaListLoading, setMediaListLoading] = useState(false)
+  
+  const [getSubcategoriesByActionButton, { isLoading, error }] = useGetSubcategoriesByActionButtonMutation()
+  const [getSubcategoriesLegacy] = useGetSubcategoriesMutation()
+
+  const isActionButtonMode = sectionId && categoryId && buttonType
 
   useEffect(() => {
-    if (mainCategoryData) {
-      // Calculate reading time
-      const wordCount = (mainCategoryData?.description1?.split(' ').length || 0) + 
-                       (mainCategoryData?.description2?.split(' ').length || 0);
-      setReadingTime(Math.ceil(wordCount / 200));
+    fetchSubcategories()
+  }, [sectionId, categoryId, buttonType])
+
+  const fetchSubcategories = async () => {
+    try {
+      if (isActionButtonMode) {
+        console.log('📱 Fetching subcategories by action button:', { sectionId, categoryId, buttonType })
+        const response = await getSubcategoriesByActionButton({ sectionId, categoryId, buttonType })
+        if (response.data?.success) {
+          setSubcategories(response.data.data || [])
+          console.log('📱 Subcategories fetched:', response.data.data?.length || 0)
+        } else {
+          console.error('📱 Failed to fetch subcategories:', response.data)
+          setSubcategories([])
+        }
+      } else if (categoryData) {
+        // Legacy mode - show single category content
+        setSubcategories([])
+      }
+    } catch (error) {
+      console.error('📱 Error fetching subcategories:', error)
+      setSubcategories([])
     }
-  }, [mainCategoryData]);
+  }
 
-  const { resourceUrls } = useAzureAssets(mainCategoryData)
-  const { mainImage: mainImageUrl, video: videoUrl } = resourceUrls
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await fetchSubcategories()
+    setRefreshing(false)
+  }
 
-  if (!mainCategoryData) {
+  const handleSubcategoryPress = (subcategory: Subcategory) => {
+    console.log('📱 Subcategory pressed:', subcategory.title, 'MediaType:', subcategory.mediaType)
+    console.log('📱 Videos available:', subcategory.videos?.length || 0)
+    
+    // Show media list in same screen
+    if ((subcategory.videos && subcategory.videos.length > 0) || (subcategory.audios && subcategory.audios.length > 0)) {
+      setMediaListLoading(true)
+      setSelectedSubcategory(subcategory)
+      setTimeout(() => {
+        setShowMediaList(true)
+        setMediaListLoading(false)
+      }, 500)
+    } else {
+      navigation.navigate('BlogPage', { categoryData: subcategory })
+    }
+  }
+
+  const renderSubcategoryItem = ({ item }: { item: Subcategory }) => {
+    // Process image URL same as CategorieDataList
+    let rawImageUrl = item.headerImage || item.mainImage || item.imageUrl;
+    const finalImageUrl = processAzureUrl(rawImageUrl);
+    
+    console.log('🖼️ Subcategory image processing:', {
+      title: item.title,
+      headerImage: item.headerImage,
+      mainImage: item.mainImage,
+      finalUrl: finalImageUrl
+    });
+    
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }]}>
-        <MaterialDesignIcons name="alert-circle" size={40} color={colors.error} />
-        <Text style={[styles.errorText, { color: colors.error }]}>No data available</Text>
+      <View>
+        <TouchableOpacity
+          style={styles.listRow}
+          onPress={() => handleSubcategoryPress(item)}
+          activeOpacity={0.8}
+        >
+          {finalImageUrl && (
+            <CustomFastImage
+              style={styles.listImage}
+              imageUrl={finalImageUrl}
+              resizeMode="cover"
+            />
+          )}
+
+          <View style={styles.listTextContainer}>
+            <Text
+              style={[styles.listTitle, { color: colors.onSurface }]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]}
+              numberOfLines={2}
+            >
+              {item.subtitle || 'Subcategory content'}
+            </Text>
+            
+
+          </View>
+
+          <MaterialDesignIcons
+            name="chevron-right"
+            size={24}
+            color={colors.outline}
+          />
+        </TouchableOpacity>
+
+        <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
+      </View>
+    )
+  }
+
+  // Legacy mode - show single category content
+  if (!isActionButtonMode && categoryData) {
+    const { resourceUrls } = useAzureAssets(categoryData)
+    const { mainImage: mainImageUrl, video: videoUrl } = resourceUrls
+    const [readingTime, setReadingTime] = useState(0)
+
+    useEffect(() => {
+      if (categoryData) {
+        const wordCount = (categoryData?.description1?.split(' ').length || 0) + 
+                         (categoryData?.description2?.split(' ').length || 0);
+        setReadingTime(Math.ceil(wordCount / 200));
+      }
+    }, [categoryData]);
+
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <AppBarHeader title={categoryData?.title || 'Category'} />
+
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* Legacy category content rendering */}
+          {categoryData && mainImageUrl && (
+            <View style={styles.heroSection}>
+              <TouchableOpacity style={styles.imageContainer} activeOpacity={0.9}>
+                <CustomFastImage style={styles.mainImage} imageUrl={mainImageUrl} />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.7)']}
+                  style={styles.imageOverlay}
+                />
+                <View style={styles.heroContent}>
+                  <View style={styles.categoryBadge}>
+                    <MaterialDesignIcons name="folder-multiple" size={normalize(16)} color="#fff" />
+                    <Text style={styles.categoryText}>Category</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {categoryData && (
+            <View style={styles.contentWrapper}>
+              <View style={styles.articleHeader}>
+                <Text style={[styles.title, { color: colors.onSurface }]}>
+                  {categoryData.title}
+                </Text>
+                
+                {categoryData.subtitle && (
+                  <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
+                    {categoryData.subtitle}
+                  </Text>
+                )}
+
+                <View style={styles.articleMeta}>
+                  <View style={styles.metaItem}>
+                    <MaterialDesignIcons name="clock-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.metaText, { color: colors.onSurfaceVariant }]}>
+                      {readingTime} min read
+                    </Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <MaterialDesignIcons name="eye-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.metaText, { color: colors.onSurfaceVariant }]}>
+                      Article
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.articleContent}>
+                {categoryData.description1 && (
+                  <View style={styles.paragraphContainer}>
+                    <Text style={[styles.paragraph, { color: colors.onSurface }]}>
+                      {categoryData.description1}
+                    </Text>
+                  </View>
+                )}
+
+                {videoUrl && (
+                  <View style={styles.videoSection}>
+                    <View style={styles.sectionHeader}>
+                      <MaterialDesignIcons name="play-circle" size={normalize(20)} color={colors.primary} />
+                      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+                        Watch Video
+                      </Text>
+                    </View>
+                    <View style={styles.videoContainer}>
+                      <BlogVideo uri={videoUrl} />
+                    </View>
+                  </View>
+                )}
+
+                {categoryData.description2 && (
+                  <View style={styles.paragraphContainer}>
+                    <Text style={[styles.paragraph, { color: colors.onSurface }]}>
+                      {categoryData.description2}
+                    </Text>
+                  </View>
+                )}
+
+                {categoryData.collegeFrame?.type && (
+                  <View style={styles.collageSection}>
+                    <View style={styles.sectionHeader}>
+                      <MaterialDesignIcons name="image-multiple" size={normalize(20)} color={colors.primary} />
+                      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+                        Gallery
+                      </Text>
+                    </View>
+                    <CollageFrame
+                      resourceUrls={resourceUrls}
+                      type={categoryData.collegeFrame.type}
+                      title={categoryData.title || 'Gallery'}
+                    />
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    )
+  }
+
+  // Action button mode - show subcategories list
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <AppBarHeader title={title || 'Subcategories'} />
+        <ScrollView style={styles.skeletonContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.listContainer}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <View key={i} style={styles.skeletonListItem}>
+                <SkeletonItem width={wp(18)} height={wp(18)} borderRadius={normalize(10)} />
+                <View style={styles.skeletonTextContainer}>
+                  <SkeletonItem width="80%" height={normalize(16)} borderRadius={8} style={{ marginBottom: hp(0.5) }} />
+                  <SkeletonItem width="60%" height={normalize(14)} borderRadius={7} />
+                </View>
+                <SkeletonItem width={24} height={24} borderRadius={12} />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <AppBarHeader title={title || 'Subcategories'} />
+        <View style={styles.errorContainer}>
+          <MaterialDesignIcons name="alert-circle" size={64} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>Failed to load subcategories</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={fetchSubcategories}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
   }
@@ -58,115 +359,163 @@ const SubCategorie = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <AppBarHeader title={mainCategoryData?.title || 'Subcategories'} />
+      <AppBarHeader title={title || 'Subcategories'} />
+      
+    
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-      >
-        {/* Hero Section */}
-        {mainCategoryData && mainImageUrl && (
-          <View style={styles.heroSection}>
-            <TouchableOpacity style={styles.imageContainer} activeOpacity={0.9}>
-              <CustomFastImage style={styles.mainImage} imageUrl={mainImageUrl} />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.7)']}
-                style={styles.imageOverlay}
+      {subcategories.length === 0 ? (
+        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+          <MaterialDesignIcons name="folder-open" size={64} color={colors.primary} />
+          <Text style={[styles.emptyText, { color: colors.onSurface }]}>No {actionButton?.title || title} found</Text>
+          <Text style={[styles.emptySubtext, { color: colors.onSurfaceVariant }]}>
+            No content available for {actionButton?.title || title}
+          </Text>
+        </View>
+      ) : mediaListLoading ? (
+        <ScrollView style={styles.skeletonContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.listContainer}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <View key={i} style={styles.skeletonListItem}>
+                <SkeletonItem width={wp(18)} height={wp(18)} borderRadius={normalize(10)} />
+                <View style={styles.skeletonTextContainer}>
+                  <SkeletonItem width="75%" height={normalize(16)} borderRadius={8} style={{ marginBottom: hp(0.5) }} />
+                  <SkeletonItem width="50%" height={normalize(14)} borderRadius={7} />
+                </View>
+                <SkeletonItem width={24} height={24} borderRadius={12} />
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      ) : showMediaList && selectedSubcategory ? (
+        <ScrollView>
+            <View style={styles.listContainer}>
+              <FlatList
+                data={selectedSubcategory.videos || selectedSubcategory.audios || []}
+                renderItem={({ item }) => (
+                  <View>
+                    <TouchableOpacity
+                      style={styles.listRow}
+                      onPress={() => {
+                        const mediaList = selectedSubcategory.videos || selectedSubcategory.audios || []
+                        const processedMediaFile = processAzureUrl(item.mediaFile)
+                        console.log('🎬 Raw mediaFile:', item.mediaFile)
+                        console.log('🎬 Processed mediaFile:', processedMediaFile)
+                        
+                        // Use original URL if processed URL is empty or if it's a .mov file
+                        const finalMediaFile = processedMediaFile || item.mediaFile
+                        
+                        if (!finalMediaFile || finalMediaFile.trim() === '') {
+                          console.error('❌ No valid media URL found for:', item.title)
+                          return
+                        }
+                        
+                        console.log('🎬 Final media URL to use:', finalMediaFile)
+                        
+                        const processedItem = {
+                          ...item,
+                          mediaFile: finalMediaFile,
+                          videoUrl: finalMediaFile,
+                          audioUrl: finalMediaFile,
+                          streamingUrl: finalMediaFile,
+                          headerImage: item.headerImage ? processAzureUrl(item.headerImage) : undefined,
+                          mainImage: item.mainImage ? processAzureUrl(item.mainImage) : undefined,
+                          imageUrl: item.imageUrl ? processAzureUrl(item.imageUrl) : undefined
+                        }
+                        console.log('🎬 Playing media:', processedItem.title, 'Final URL:', processedItem.mediaFile)
+                        
+                        if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                          navigation.navigate('EnhancedVideoPlayer', { 
+                            item: processedItem, 
+                            playlist: selectedSubcategory.videos.map(media => {
+                              const processedUrl = processAzureUrl(media.mediaFile) || media.mediaFile
+                              return {
+                                ...media,
+                                mediaFile: processedUrl,
+                                videoUrl: processedUrl,
+                                streamingUrl: processedUrl,
+                                headerImage: media.headerImage ? processAzureUrl(media.headerImage) : undefined,
+                                mainImage: media.mainImage ? processAzureUrl(media.mainImage) : undefined,
+                                imageUrl: media.imageUrl ? processAzureUrl(media.imageUrl) : undefined
+                              }
+                            })
+                          })
+                        } else if (selectedSubcategory.audios && selectedSubcategory.audios.find(a => a._id === item._id)) {
+                          navigation.navigate('EnhancedAudioPlayer', { 
+                            item: processedItem, 
+                            playlist: selectedSubcategory.audios.map(media => {
+                              const processedUrl = processAzureUrl(media.mediaFile) || media.mediaFile
+                              return {
+                                ...media,
+                                mediaFile: processedUrl,
+                                audioUrl: processedUrl,
+                                streamingUrl: processedUrl,
+                                headerImage: media.headerImage ? processAzureUrl(media.headerImage) : undefined,
+                                mainImage: media.mainImage ? processAzureUrl(media.mainImage) : undefined,
+                                imageUrl: media.imageUrl ? processAzureUrl(media.imageUrl) : undefined
+                              }
+                            })
+                          })
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      {item.headerImage || item.mainImage || item.imageUrl ? (
+                        <CustomFastImage
+                          style={styles.listImage}
+                          imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[styles.mediaIcon, { 
+                          backgroundColor: selectedSubcategory.videos ? '#FF6B6B20' : '#4ECDC420' 
+                        }]}>
+                          <MaterialDesignIcons 
+                            name={selectedSubcategory.videos ? 'play-circle' : 'music-note'} 
+                            size={24} 
+                            color={selectedSubcategory.videos ? '#FF6B6B' : '#4ECDC4'} 
+                          />
+                        </View>
+                      )}
+                      <View style={styles.listTextContainer}>
+                        <Text style={[styles.listTitle, { color: colors.onSurface }]} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={2}>
+                          {item.description || item.duration}
+                        </Text>
+                      </View>
+                      <MaterialDesignIcons name="chevron-right" size={24} color={colors.outline} />
+                    </TouchableOpacity>
+                    <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
+                  </View>
+                )}
+                keyExtractor={(item) => item._id}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
               />
-              <View style={styles.heroContent}>
-                <View style={styles.categoryBadge}>
-                  <MaterialDesignIcons name="folder-multiple" size={normalize(16)} color="#fff" />
-                  <Text style={styles.categoryText}>Category</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Content Section */}
-        {mainCategoryData && (
-          <View style={styles.contentWrapper}>
-            <View style={styles.articleHeader}>
-              <Text style={[styles.title, { color: colors.onSurface }]}>
-                {mainCategoryData.title}
-              </Text>
-              
-              {mainCategoryData.subtitle && (
-                <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>
-                  {mainCategoryData.subtitle}
-                </Text>
-              )}
-
-              {/* Article Meta */}
-              <View style={styles.articleMeta}>
-                <View style={styles.metaItem}>
-                  <MaterialDesignIcons name="clock-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
-                  <Text style={[styles.metaText, { color: colors.onSurfaceVariant }]}>
-                    {readingTime} min read
-                  </Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <MaterialDesignIcons name="eye-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
-                  <Text style={[styles.metaText, { color: colors.onSurfaceVariant }]}>
-                    Article
-                  </Text>
-                </View>
-              </View>
             </View>
-
-            <View style={styles.articleContent}>
-              {mainCategoryData.description1 && (
-                <View style={styles.paragraphContainer}>
-                  <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-                    {mainCategoryData.description1}
-                  </Text>
-                </View>
-              )}
-
-              {videoUrl && (
-                <View style={styles.videoSection}>
-                  <View style={styles.sectionHeader}>
-                    <MaterialDesignIcons name="play-circle" size={normalize(20)} color={colors.primary} />
-                    <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
-                      Watch Video
-                    </Text>
-                  </View>
-                  <View style={styles.videoContainer}>
-                    <BlogVideo uri={videoUrl} />
-                  </View>
-                </View>
-              )}
-
-              {mainCategoryData.description2 && (
-                <View style={styles.paragraphContainer}>
-                  <Text style={[styles.paragraph, { color: colors.onSurface }]}>
-                    {mainCategoryData.description2}
-                  </Text>
-                </View>
-              )}
-
-              {mainCategoryData.collegeFrame?.type && (
-                <View style={styles.collageSection}>
-                  <View style={styles.sectionHeader}>
-                    <MaterialDesignIcons name="image-multiple" size={normalize(20)} color={colors.primary} />
-                    <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
-                      Gallery
-                    </Text>
-                  </View>
-                  <CollageFrame
-                    resourceUrls={resourceUrls}
-                    type={mainCategoryData.collegeFrame.type}
-                    title={mainCategoryData.title || 'Gallery'}
-                  />
-                </View>
-              )}
-            </View>
+        </ScrollView>
+      ) : (
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }
+        >
+          <View style={styles.listContainer}>
+            <FlatList
+              data={subcategories}
+              renderItem={renderSubcategoryItem}
+              keyExtractor={(item) => item._id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
           </View>
-        )}
-
-
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   )
 }
@@ -180,6 +529,175 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingBottom: hp(12),
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: hp(2),
+    fontSize: normalize(16),
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: wp(4),
+  },
+  errorText: {
+    fontSize: normalize(18),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: hp(2),
+    marginBottom: hp(3),
+  },
+  retryButton: {
+    paddingHorizontal: wp(6),
+    paddingVertical: hp(1.5),
+    borderRadius: normalize(8),
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: normalize(16),
+    fontWeight: '600',
+  },
+  actionButtonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(2),
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  actionButtonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(3),
+    paddingVertical: hp(0.8),
+    borderRadius: normalize(20),
+  },
+  actionButtonIcon: {
+    fontSize: normalize(16),
+    marginRight: wp(1),
+  },
+  actionButtonText: {
+    fontSize: normalize(14),
+    fontWeight: '600',
+  },
+  subcategoryCount: {
+    fontSize: normalize(14),
+    fontWeight: '500',
+  },
+  listContainer: {
+    width: '90%',
+    alignSelf: 'center',
+  },
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: hp(1.5),
+  },
+  listImage: {
+    width: wp(18),
+    height: wp(18),
+    borderRadius: normalize(10),
+    overflow: 'hidden',
+  },
+  listTextContainer: {
+    flex: 1,
+    marginLeft: wp(4),
+  },
+  listTitle: {
+    fontSize: normalize(16),
+    fontWeight: '600',
+    marginBottom: hp(0.5),
+  },
+  listSubtitle: {
+    fontSize: normalize(14),
+    marginBottom: hp(0.5),
+    width: '75%',
+  },
+  listBadgeContainer: {
+    marginTop: hp(0.5),
+  },
+  listActionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.3),
+    borderRadius: normalize(12),
+    alignSelf: 'flex-start',
+  },
+  listActionIcon: {
+    fontSize: normalize(12),
+    marginRight: wp(1),
+  },
+  listActionText: {
+    fontSize: normalize(12),
+    fontWeight: '500',
+  },
+  listSeparator: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: hp(1),
+  },
+  backText: {
+    fontSize: normalize(16),
+    fontWeight: '500',
+    marginLeft: wp(1),
+  },
+  mediaListTitle: {
+    fontSize: normalize(18),
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+    marginRight: wp(12),
+  },
+  mediaIcon: {
+    width: wp(18),
+    height: wp(18),
+    borderRadius: normalize(10),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: wp(8),
+  },
+  emptyText: {
+    fontSize: normalize(18),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: hp(2),
+  },
+  emptySubtext: {
+    fontSize: normalize(14),
+    textAlign: 'center',
+    marginTop: hp(1),
+  },
+  skeletonContainer: {
+    flex: 1,
+    padding: wp(4),
+  },
+  skeletonListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: hp(1.5),
+    marginBottom: hp(1),
+  },
+  skeletonTextContainer: {
+    flex: 1,
+    marginLeft: wp(4),
+  },
+  // Legacy styles for category content
   heroSection: {
     position: 'relative',
   },
@@ -286,85 +804,5 @@ const styles = StyleSheet.create({
   videoContainer: {
     borderRadius: normalize(12),
     overflow: 'hidden',
-  },
-  relatedSection: {
-    marginTop: hp(5),
-    paddingHorizontal: wp(4),
-    paddingBottom: hp(2),
-  },
-  relatedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: hp(3),
-  },
-  titleSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: wp(3),
-  },
-  relatedTitle: {
-    fontSize: normalize(18),
-    fontWeight: '700',
-    marginLeft: wp(2),
-    flex: 1,
-  },
-  countBadge: {
-    backgroundColor: 'rgba(248, 128, 59, 0.1)',
-    paddingHorizontal: wp(2),
-    paddingVertical: hp(0.3),
-    borderRadius: normalize(12),
-    marginLeft: wp(2),
-  },
-  countText: {
-    fontSize: normalize(12),
-    fontWeight: '600',
-  },
-  gridContent: {
-    paddingTop: hp(1),
-  },
-  listContent: {
-    paddingTop: hp(1),
-  },
-  row: {
-    justifyContent: 'space-between',
-    marginBottom: hp(2),
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  noDataWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: wp(8),
-    marginTop: hp(10),
-  },
-  noDataText: {
-    fontSize: normalize(16),
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: hp(2),
   },
 })

@@ -454,83 +454,83 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: '#fff',
   },
   contentContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 16,
   },
   headerImage: {
     width: width,
     height: 220,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: 'bold',
     color: colors.onSurface,
-    marginBottom: 8,
-    lineHeight: 32,
+    marginBottom: 6,
+    lineHeight: 30,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.onSurfaceVariant,
-    marginBottom: 16,
-    lineHeight: 24,
+    marginBottom: 12,
+    lineHeight: 22,
   },
   mainImage: {
-    width: width - 32,
-    height: 200,
-    marginVertical: 16,
-    borderRadius: 8,
-  },
-  description: {
-    fontSize: 16,
-    lineHeight: 26,
-    color: colors.onSurface,
-    marginBottom: 16,
-  },
-  header: {
-    fontWeight: 'bold',
-    color: colors.onSurface,
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  h1: { fontSize: 24 },
-  h2: { fontSize: 22 },
-  h3: { fontSize: 20 },
-  contentImage: {
-    width: width - 32,
+    width: width - 24,
     height: 180,
     marginVertical: 12,
     borderRadius: 8,
   },
+  description: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: colors.onSurface,
+    marginBottom: 12,
+  },
+  header: {
+    fontWeight: 'bold',
+    color: colors.onSurface,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  h1: { fontSize: 22 },
+  h2: { fontSize: 20 },
+  h3: { fontSize: 18 },
+  contentImage: {
+    width: width - 24,
+    height: 140,
+    marginVertical: 6,
+    borderRadius: 8,
+  },
   netflixGallery: {
-    marginVertical: 20,
+    marginVertical: 8,
     backgroundColor: '#141414',
-    paddingVertical: 20,
-    marginHorizontal: -16,
+    paddingVertical: 10,
+    marginHorizontal: -12,
   },
   netflixTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
-    marginLeft: 16,
+    marginBottom: 8,
+    marginLeft: 12,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
   netflixCarousel: {
-    paddingLeft: 16,
+    paddingLeft: 12,
   },
   netflixContent: {
-    paddingRight: 16,
+    paddingRight: 12,
   },
   netflixItem: {
-    marginRight: 12,
+    marginRight: 8,
     position: 'relative',
   },
   netflixImage: {
-    width: 160,
-    height: 240,
+    width: 140,
+    height: 200,
     borderRadius: 8,
   },
   netflixOverlay: {
@@ -548,8 +548,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   videoContainer: {
-    marginVertical: 16,
-    padding: 16,
+    marginVertical: 12,
+    padding: 12,
     backgroundColor: '#fef3c7',
     borderRadius: 8,
     borderLeftWidth: 3,
@@ -562,7 +562,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 8,
   },
   videoWrapper: {
-    marginVertical: 12,
+    marginVertical: 10,
     borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#000',
@@ -574,8 +574,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     shadowRadius: 4,
   },
   videoThumbnail: {
-    width: width - 32,
-    height: 220,
+    width: width - 24,
+    height: 200,
   },
   videoOverlay: {
     position: 'absolute',
@@ -612,8 +612,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     textAlign: 'center',
   },
   pdfContainer: {
-    marginVertical: 16,
-    padding: 16,
+    marginVertical: 12,
+    padding: 12,
     backgroundColor: '#fef2f2',
     borderRadius: 8,
     borderLeftWidth: 3,
@@ -621,9 +621,9 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   pdfItem: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     borderRadius: 8,
-    marginVertical: 6,
+    marginVertical: 5,
     borderWidth: 1,
     borderColor: '#e5e7eb',
     flexDirection: 'row',
@@ -667,7 +667,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
   },
   interactiveContainer: {
-    paddingTop: 24,
+    paddingTop: 16,
   },
   interactiveTitle: {
     color: '#8b5cf6',
@@ -676,7 +676,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#7c3aed',
   },
   progressContainer: {
-    marginVertical: 16,
+    marginVertical: 10,
   },
   progressBar: {
     height: 4,
@@ -696,7 +696,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   interactiveImageContainer: {
     position: 'relative',
-    marginVertical: 16,
+    marginVertical: 10,
   },
   imageInteraction: {
     position: 'absolute',
@@ -712,8 +712,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontSize: 10,
   },
   interactiveField: {
-    marginVertical: 8,
-    padding: 12,
+    marginVertical: 6,
+    padding: 10,
     backgroundColor: '#f8fafc',
     borderRadius: 8,
     borderLeftWidth: 3,
@@ -757,7 +757,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 20,
   },
   richMediaContainer: {
-    paddingTop: 24,
+    paddingTop: 16,
   },
   richMediaTitle: {
     color: '#F8803B',
@@ -766,11 +766,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#ea580c',
   },
   dynamicGrid: {
-    marginVertical: 16,
+    marginVertical: 10,
     justifyContent: 'space-between',
   },
   gridItem: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   mediaGallery: {
     marginVertical: 20,
@@ -833,7 +833,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 20,
   },
   imageContainer: {
-    paddingTop: 24,
+    paddingTop: 16,
   },
   imageTitle: {
     color: '#22c55e',
@@ -842,23 +842,23 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: '#16a34a',
   },
   imageTextLayout: {
-    marginTop: 16,
+    marginTop: 10,
   },
   textBlock: {
-    marginVertical: 12,
-    padding: 16,
+    marginVertical: 8,
+    padding: 12,
     backgroundColor: '#f0fdf4',
     borderRadius: 8,
     borderLeftWidth: 3,
     borderLeftColor: colors.primary || '#22c55e',
   },
   secondaryImageContainer: {
-    marginVertical: 16,
+    marginVertical: 10,
     alignItems: 'center',
   },
   secondaryImage: {
     width: width - 64,
-    height: 160,
+    height: 140,
     borderRadius: 12,
   },
   imageCaption: {
@@ -868,7 +868,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     fontStyle: 'italic',
   },
   imageContentField: {
-    marginVertical: 8,
+    marginVertical: 6,
   },
   
   // Content Only Layout Styles
@@ -877,7 +877,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   contentHeader: {
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   contentBadge: {
     backgroundColor: 'rgba(59, 130, 246, 0.9)',
@@ -895,8 +895,8 @@ const createStyles = (colors: any) => StyleSheet.create({
   readingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
+    marginBottom: 12,
+    gap: 8,
   },
   readingTime: {
     fontSize: 12,
@@ -911,11 +911,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 12,
   },
   contentFields: {
-    marginVertical: 16,
+    marginVertical: 10,
   },
   contentField: {
-    marginVertical: 8,
-    padding: 16,
+    marginVertical: 6,
+    padding: 10,
     backgroundColor: '#f8fafc',
     borderRadius: 8,
     borderLeftWidth: 3,

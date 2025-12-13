@@ -29,13 +29,11 @@ export const useAzureBlobImages = (
         // console.log('useAzureBlobImages - Azure API URL:', azureApiUrl);
 
         // Update initial data with the image URL and loading state
-        if (!imageData[key]) {
-          newData[key] = {
-            resourceUrl: azureApiUrl,
-            base64Image: null,
-            isLoading, // Maintain loading state
-          };
-        }
+        newData[key] = {
+          resourceUrl: azureApiUrl,
+          base64Image: null,
+          isLoading: false,
+        };
 
         // Fetch base64 data asynchronously
         // try {
@@ -61,7 +59,7 @@ export const useAzureBlobImages = (
     if (Object.keys(blobUrls).length > 0) {
       fetchImageData();
     }
-  }, [blobUrls, isLoading, getAzureBlobRequest]); // Dependencies: fetch new data when `blobUrls` or `isLoading` changes
+  }, [blobUrls]); // Dependencies: fetch new data when `blobUrls` changes
 
   return imageData;
 };

@@ -131,7 +131,11 @@ const Categories = () => {
   const keyExtractor = useCallback((item: CategoryItem, index: number) => item?._id || index.toString(), []);
 
   if (isLoading) {
-    return <CategoriesSkeleton />;
+    return (
+      <View style={styles.container}>
+        <CategoriesSkeleton />
+      </View>
+    );
   }
 
   if (isError) {
@@ -197,17 +201,29 @@ const CategoryCard = memo(({ item, cardWidth, isTablet }: { item: CategoryItem; 
 
   const handlePress = () => {
     try {
-      console.log('CategoryCard - Pressed category:', item.title, 'ID:', item._id);
+      console.log('CategoryCard - Pressed category:', item.title, 'ID:', item._id, 'ContentType:', item.contentType);
       requireAuth(() => {
-        // This callback runs only if user is authenticated
-        console.log('CategoryCard - Navigating to CategorieDataList with:', {
-          title: item.title || 'Category',
-          id: item._id,
-        });
-        navigation.navigate('CategorieDataList', {
-          title: item.title || 'Category',
-          id: item._id,
-        });
+        // Check if it's a blog section
+        if (item.contentType === 'blog') {
+          console.log('CategoryCard - Blog section, navigating to CategorieDataList');
+          navigation.navigate('CategorieDataList', {
+            title: item.title || 'Category',
+            id: item._id,
+          });
+        } else if (item.contentType === 'attractive') {
+          // For attractive sections with action buttons, navigate to buttons screen
+          console.log('CategoryCard - Attractive section with buttons, navigating to AttractiveButtonsScreen');
+          (navigation as any).navigate('AttractiveButtonsScreen', {
+            sectionId: item._id,
+            title: item.title,
+          });
+        } else {
+          // Default: navigate to category list
+          navigation.navigate('CategorieDataList', {
+            title: item.title || 'Category',
+            id: item._id,
+          });
+        }
       });
     } catch (error) {
       console.error('CategoryCard - Navigation error:', error);

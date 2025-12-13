@@ -4,6 +4,8 @@ import {
   View,
   ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import SimplePullToRefresh from '../../components/SimplePullToRefresh';
 import React, { useEffect, useMemo } from 'react';
@@ -103,7 +105,14 @@ const CategorieDataList = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <SimplePullToRefresh refreshing={refreshing} onRefresh={onRefresh}>
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+            />
+          }
+        >
           {translatedCategories.length === 0 ? (
             <View style={styles.loaderContainer}>
               <Text style={styles.errorText}>No categories found for this section</Text>
@@ -129,7 +138,7 @@ const CategorieDataList = () => {
               }}
             />
           )}
-        </SimplePullToRefresh>
+        </ScrollView>
       )}
     </View>
   );

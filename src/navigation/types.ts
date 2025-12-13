@@ -38,12 +38,22 @@ export type CategoriesStackParamList = {
   CategoriesMain: undefined;
   CategorieDataList: { title: string, id: string };
   BlogPage: { categoryData: any };
-  SubCategorie: { categoryData: any };
+  SubCategorie: { 
+    categoryData?: any;
+    sectionId?: string;
+    categoryId?: string;
+    buttonType?: string;
+    title?: string;
+    actionButton?: any;
+  };
+  AttractiveButtonsScreen: { sectionId: string; title: string };
   EnhancedAudioPlayer: { item: any; playlist?: any[] };
   EnhancedVideoPlayer: { item: any; playlist?: any[] };
   PdfViewer: { uri?: string; title?: string; item?: any };
   GalleryList: { initialIndex?: number };
   ImageViewer: { images: string[]; initialIndex: number; title?: string };
+  AllVideos: { categoryId?: string; title?: string; videos?: any[] };
+  AllAudios: { categoryId?: string; title?: string; audios?: any[] };
 };
 
 export type AccountStackParamList = {

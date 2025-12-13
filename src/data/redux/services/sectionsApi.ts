@@ -23,6 +23,12 @@ export const sectionsApi = createApi({
         method: 'GET',
       }),
     }),
+    getSubcategoriesByActionButton: builder.mutation<any, any>({
+      query: ({ sectionId, categoryId, buttonType }) => ({
+        url: `/subcategories/by-action-button?sectionId=${sectionId}&categoryId=${categoryId}&buttonType=${buttonType}`,
+        method: 'GET',
+      }),
+    }),
     getAzureBlob: builder.mutation<any, any>({
       query: (url) => ({
         url: `/azure-blob/file?blobUrl=${url}`,
@@ -36,5 +42,6 @@ export const {
   useGetSectionsMutation,
   useGetCategoriesMutation,
   useGetSubcategoriesMutation,
+  useGetSubcategoriesByActionButtonMutation,
   useGetAzureBlobMutation
 } = sectionsApi;

@@ -184,11 +184,15 @@ const Home: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <MainAppHeader username={isAuthenticated && user?.name ? user.name : ''} />
-      <SimplePullToRefresh
-        refreshing={refreshing}
-        onRefresh={onRefresh}
+      <ScrollView
         contentContainerStyle={[styles.scrollContainer, is10InchTablet && { paddingHorizontal: 48 }, is7InchTablet && { paddingHorizontal: 32 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
       >
         <CardCarousel />
 
@@ -325,7 +329,7 @@ const Home: React.FC = () => {
           }}
           isLoading={isLoading}
         />
-      </SimplePullToRefresh>
+      </ScrollView>
     </View>
   );
 };

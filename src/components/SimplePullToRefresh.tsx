@@ -43,7 +43,6 @@ const SimplePullToRefresh: React.FC<SimplePullToRefreshProps> = ({
       contentContainerStyle={contentContainerStyle}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       refreshControl={<CustomRefreshControl />}
-      bounces={true}
     >
       {children}
     </ScrollView>

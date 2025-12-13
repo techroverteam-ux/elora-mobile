@@ -9,6 +9,7 @@ import {
   BackHandler,
   Alert,
   Share,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +53,10 @@ const EnhancedVideoPlayer = () => {
   const [currentVideo, setCurrentVideo] = useState(item);
   const [muted, setMuted] = useState(false);
   const [hasUserPlayed, setHasUserPlayed] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [quality, setQuality] = useState('auto');
+  const [volume, setVolume] = useState(1.0);
+  const animatedValues = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
 
   // Get video URL - use direct URL if flagged, otherwise process through Azure
   const getValidVideoUrl = () => {
@@ -233,6 +238,34 @@ const EnhancedVideoPlayer = () => {
     setShowControls(true);
   };
 
+  const startNetflixAnimation = () => {
+    const animations = animatedValues.map((value, index) => 
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(value, {
+            toValue: 1,
+            duration: 600,
+            delay: index * 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(value, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      )
+    );
+    Animated.stagger(200, animations).start();
+  };
+
+  const stopNetflixAnimation = () => {
+    animatedValues.forEach(value => {
+      value.stopAnimation();
+      value.setValue(0);
+    });
+  };
+
   const changePlaybackRate = () => {
     const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     const currentIndex = rates.indexOf(playbackRate);
@@ -320,6 +353,8 @@ const EnhancedVideoPlayer = () => {
           onLoad={({ duration }) => {
             console.log('Video loaded, duration:', duration);
             setDuration(duration);
+            setIsBuffering(false);
+            stopNetflixAnimation();
           }}
           onProgress={({ currentTime }) => setCurrentTime(currentTime)}
           onEnd={() => {
@@ -362,9 +397,56 @@ const EnhancedVideoPlayer = () => {
               );
             }
           }}
-          onBuffer={({ isBuffering }) => console.log('Video buffering:', isBuffering)}
-          onReadyForDisplay={() => console.log('Video ready for display')}
+          onBuffer={({ isBuffering }) => {
+            console.log('Video buffering:', isBuffering);
+            setIsBuffering(isBuffering);
+            if (isBuffering) {
+              startNetflixAnimation();
+            } else {
+              stopNetflixAnimation();
+            }
+          }}
+          onReadyForDisplay={() => {
+            console.log('Video ready for display');
+            setIsBuffering(false);
+            stopNetflixAnimation();
+          }}
+          bufferConfig={{
+            minBufferMs: 15000,
+            maxBufferMs: 50000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000,
+          }}
+          volume={volume}
+          playInBackground={false}
+          playWhenInactive={false}
+          ignoreSilentSwitch={'ignore'}
         />
+
+        {/* Netflix-style Buffering Indicator */}
+        {isBuffering && (
+          <View style={styles.netflixBufferingContainer}>
+            <View style={styles.netflixSpinner}>
+              {animatedValues.map((animatedValue, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.netflixDot,
+                    {
+                      opacity: animatedValue,
+                      transform: [{
+                        scale: animatedValue.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.2],
+                        })
+                      }]
+                    }
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Video Controls Overlay */}
         {showControls && (
@@ -431,12 +513,22 @@ const EnhancedVideoPlayer = () => {
           <View style={styles.enhancedActionRow}>
             <TouchableOpacity style={styles.enhancedActionButton} onPress={changePlaybackRate}>
               <MaterialDesignIcons name="speedometer" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.speed')} ({playbackRate}x)</Text>
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Speed ({playbackRate}x)</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.enhancedActionButton}>
+            <TouchableOpacity style={styles.enhancedActionButton} onPress={() => {
+              const qualities = ['auto', '720p', '480p', '360p'];
+              const currentIndex = qualities.indexOf(quality);
+              const nextQuality = qualities[(currentIndex + 1) % qualities.length];
+              setQuality(nextQuality);
+            }}>
+              <MaterialDesignIcons name="high-definition" size={20} color={colors.onSurfaceVariant} />
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Quality ({quality})</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.enhancedActionButton} onPress={() => hasNext && handleNext()}>
               <MaterialDesignIcons name="skip-next" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>{t('screens.videoPlayer.nextUp')}</Text>
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Next Up</Text>
             </TouchableOpacity>
           </View>
 
@@ -712,6 +804,37 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+  },
+  netflixBufferingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  netflixSpinner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  netflixDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F8803B',
+    marginHorizontal: 2,
+  },
+  netflixDot1: {
+    animationDelay: '0s',
+  },
+  netflixDot2: {
+    animationDelay: '0.2s',
+  },
+  netflixDot3: {
+    animationDelay: '0.4s',
   },
 });
 
