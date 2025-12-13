@@ -79,6 +79,7 @@ const SubCategorie = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null)
   const [showMediaList, setShowMediaList] = useState(false)
   const [mediaListLoading, setMediaListLoading] = useState(false)
+  const [audioList, setAudioList] = useState<any[]>([])
   
   const [getSubcategoriesByActionButton, { isLoading, error }] = useGetSubcategoriesByActionButtonMutation()
   const [getSubcategoriesLegacy] = useGetSubcategoriesMutation()
@@ -95,8 +96,24 @@ const SubCategorie = () => {
         console.log('📱 Fetching subcategories by action button:', { sectionId, categoryId, buttonType })
         const response = await getSubcategoriesByActionButton({ sectionId, categoryId, buttonType })
         if (response.data?.success) {
-          setSubcategories(response.data.data || [])
-          console.log('📱 Subcategories fetched:', response.data.data?.length || 0)
+          const subcategoriesData = response.data.data || []
+          console.log('📱 All subcategories data:', JSON.stringify(subcategoriesData, null, 2))
+          console.log('📱 Looking for button ID:', actionButton?.id)
+          
+          // Filter subcategories based on the specific button ID
+          const filteredSubcategories = subcategoriesData.filter((subcategory: Subcategory) => {
+            console.log('📱 Checking subcategory:', subcategory.title, 'actionButton.id:', subcategory.actionButton?.id)
+            return subcategory.actionButton?.id === actionButton?.id
+          })
+          
+          // If it's audio-list, the audios are in data[0].audios
+          if (buttonType === 'audio-list' && subcategoriesData.length > 0 && subcategoriesData[0].audios) {
+            console.log('🎧 Audio list found in data[0].audios:', subcategoriesData[0].audios.length)
+            setAudioList(subcategoriesData[0].audios)
+          }
+          
+          setSubcategories(filteredSubcategories)
+          console.log('📱 Filtered subcategories for button ID:', actionButton?.id, 'Count:', filteredSubcategories?.length || 0)
         } else {
           console.error('📱 Failed to fetch subcategories:', response.data)
           setSubcategories([])
@@ -111,6 +128,28 @@ const SubCategorie = () => {
     }
   }
 
+  const fetchAudioList = async (subcategory: Subcategory) => {
+    setMediaListLoading(true)
+    setSelectedSubcategory(subcategory)
+    try {
+      const response = await getSubcategoriesByActionButton({ 
+        sectionId, 
+        categoryId: subcategory._id, 
+        buttonType: 'audio-list' 
+      })
+      if (response.data?.success && response.data.data) {
+        setAudioList(response.data.data)
+        console.log('🎧 Audio list fetched:', response.data.data.length)
+      }
+    } catch (error) {
+      console.error('🎧 Error fetching audio list:', error)
+    }
+    setTimeout(() => {
+      setShowMediaList(true)
+      setMediaListLoading(false)
+    }, 500)
+  }
+
   const onRefresh = async () => {
     setRefreshing(true)
     await fetchSubcategories()
@@ -119,7 +158,23 @@ const SubCategorie = () => {
 
   const handleSubcategoryPress = (subcategory: Subcategory) => {
     console.log('📱 Subcategory pressed:', subcategory.title, 'MediaType:', subcategory.mediaType)
+    console.log('📱 Full subcategory object:', JSON.stringify(subcategory, null, 2))
     console.log('📱 Videos available:', subcategory.videos?.length || 0)
+    console.log('📱 Audios available:', subcategory.audios?.length || 0)
+    
+    // Check if this is an audio-list type and use available audio data
+    if (subcategory.mediaType === 'audio-list' && (audioList.length > 0 || (subcategory.audios && subcategory.audios.length > 0))) {
+      console.log('📱 Audio-list detected, audioList:', audioList.length, 'subcategory.audios:', subcategory.audios?.length || 0)
+      console.log('📱 Setting states: mediaListLoading=true, selectedSubcategory=', subcategory.title)
+      setMediaListLoading(true)
+      setSelectedSubcategory(subcategory)
+      setTimeout(() => {
+        console.log('📱 Timeout completed, setting showMediaList=true, mediaListLoading=false')
+        setShowMediaList(true)
+        setMediaListLoading(false)
+      }, 500)
+      return
+    }
     
     // Show media list in same screen
     if ((subcategory.videos && subcategory.videos.length > 0) || (subcategory.audios && subcategory.audios.length > 0)) {
@@ -389,8 +444,9 @@ const SubCategorie = () => {
       ) : showMediaList && selectedSubcategory ? (
         <ScrollView>
             <View style={styles.listContainer}>
+              {console.log('🎧 Rendering media list, showMediaList:', showMediaList, 'selectedSubcategory:', selectedSubcategory?.title, 'data length:', (selectedSubcategory.videos || selectedSubcategory.audios || audioList || []).length)}
               <FlatList
-                data={selectedSubcategory.videos || selectedSubcategory.audios || []}
+                data={selectedSubcategory.mediaType === 'audio-list' ? (selectedSubcategory.audios || audioList || []) : (selectedSubcategory.videos || selectedSubcategory.audios || [])}
                 renderItem={({ item }) => (
                   <View>
                     <TouchableOpacity
@@ -439,10 +495,12 @@ const SubCategorie = () => {
                               }
                             })
                           })
-                        } else if (selectedSubcategory.audios && selectedSubcategory.audios.find(a => a._id === item._id)) {
+                        } else {
+                          // Handle audio from either subcategory.audios or audioList
+                          const currentAudioList = selectedSubcategory.audios || audioList || []
                           navigation.navigate('EnhancedAudioPlayer', { 
                             item: processedItem, 
-                            playlist: selectedSubcategory.audios.map(media => {
+                            playlist: currentAudioList.map(media => {
                               const processedUrl = processAzureUrl(media.mediaFile) || media.mediaFile
                               return {
                                 ...media,
@@ -467,12 +525,12 @@ const SubCategorie = () => {
                         />
                       ) : (
                         <View style={[styles.mediaIcon, { 
-                          backgroundColor: selectedSubcategory.videos ? '#FF6B6B20' : '#4ECDC420' 
+                          backgroundColor: (selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC420' : '#FF6B6B20' 
                         }]}>
                           <MaterialDesignIcons 
-                            name={selectedSubcategory.videos ? 'play-circle' : 'music-note'} 
+                            name={(selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? 'music-note' : 'play-circle'} 
                             size={24} 
-                            color={selectedSubcategory.videos ? '#FF6B6B' : '#4ECDC4'} 
+                            color={(selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC4' : '#FF6B6B'} 
                           />
                         </View>
                       )}

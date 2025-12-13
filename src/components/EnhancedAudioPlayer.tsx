@@ -171,6 +171,10 @@ const EnhancedAudioPlayer = () => {
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(item);
   const [hasUserStartedPlayback, setHasUserStartedPlayback] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [volume, setVolume] = useState(1.0);
+  const [showSpeedControl, setShowSpeedControl] = useState(false);
 
   const { resourceUrls } = useAzureAssets(currentTrack || {});
   const isLiked = isBookmarked(currentTrack?._id || '');
@@ -264,15 +268,19 @@ const EnhancedAudioPlayer = () => {
   useEffect(() => {
     if (audioUrl && currentTrack?._id) {
       setIsLoading(true);
+      setIsBuffering(true);
       console.log('Enhanced Audio Player - Loading new track:', currentTrack.title);
       console.log('Enhanced Audio Player - Audio URL:', audioUrl);
       
       // Reset audio state before loading new track
       reset();
       
-      loadBuffer(audioUrl).catch(error => {
+      loadBuffer(audioUrl).then(() => {
+        setIsBuffering(false);
+      }).catch(error => {
         console.error('Enhanced Audio Player - Error loading audio:', error);
         setIsLoading(false);
+        setIsBuffering(false);
       });
     }
   }, [currentTrack?._id, audioUrl]); // Depend on both track ID and audio URL
@@ -281,9 +289,17 @@ const EnhancedAudioPlayer = () => {
   useEffect(() => {
     if (duration > 0) {
       setIsLoading(false);
+      setIsBuffering(false);
       // Don't auto-play - let user control playback completely
     }
   }, [duration]);
+
+  const changePlaybackRate = () => {
+    const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+    const currentIndex = rates.indexOf(playbackRate);
+    const nextRate = rates[(currentIndex + 1) % rates.length];
+    setPlaybackRate(nextRate);
+  };
   
   const switchTrack = (newTrack: any) => {
     if (newTrack && newTrack._id !== currentTrack?._id) {
@@ -367,6 +383,18 @@ const EnhancedAudioPlayer = () => {
         <Text style={[styles.artistName, { color: colors.onSurfaceVariant }]} numberOfLines={1}>{currentTrack.artist || t('screens.audioPlayer.unknownArtist')}</Text>
       </View>
 
+      {/* Buffering Indicator */}
+      {isBuffering && (
+        <View style={styles.bufferingContainer}>
+          <View style={styles.spotifySpinner}>
+            <View style={[styles.spotifyDot, styles.spotifyDot1]} />
+            <View style={[styles.spotifyDot, styles.spotifyDot2]} />
+            <View style={[styles.spotifyDot, styles.spotifyDot3]} />
+          </View>
+          <Text style={[styles.bufferingText, { color: colors.onSurfaceVariant }]}>Loading...</Text>
+        </View>
+      )}
+
       {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <Slider
@@ -376,18 +404,38 @@ const EnhancedAudioPlayer = () => {
           maximumValue={1}
           onSlidingComplete={(val) => {
             if (duration) {
+              setIsBuffering(true);
               seekTo(val * duration);
+              setTimeout(() => setIsBuffering(false), 500);
             }
           }}
           minimumTrackTintColor="#F8803B"
-          maximumTrackTintColor="#333"
+          maximumTrackTintColor={colors.outline}
           thumbTintColor="#F8803B"
-
         />
         <View style={styles.timeContainer}>
           <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>{formatTime(currentTime)}</Text>
           <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>{formatTime(duration ?? 0)}</Text>
         </View>
+      </View>
+
+      {/* Enhanced Controls Row */}
+      <View style={styles.enhancedControlsRow}>
+        <TouchableOpacity onPress={changePlaybackRate} style={styles.speedButton}>
+          <Text style={[styles.speedText, { color: colors.onSurfaceVariant }]}>{playbackRate}x</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.volumeButton}>
+          <MaterialDesignIcons name="volume-high" size={20} color={colors.onSurfaceVariant} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.repeatButton}>
+          <MaterialDesignIcons name="repeat" size={20} color={colors.onSurfaceVariant} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.shuffleButton}>
+          <MaterialDesignIcons name="shuffle" size={20} color={colors.onSurfaceVariant} />
+        </TouchableOpacity>
       </View>
 
       {/* Controls */}
@@ -701,6 +749,62 @@ const styles = StyleSheet.create({
   emptyPlaylistText: {
     fontSize: 16,
     marginTop: 10,
+  },
+  bufferingContainer: {
+    alignItems: 'center',
+    marginVertical: hp(1),
+  },
+  spotifySpinner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spotifyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F8803B',
+    marginHorizontal: 1,
+  },
+  spotifyDot1: {
+    animationDelay: '0s',
+  },
+  spotifyDot2: {
+    animationDelay: '0.2s',
+  },
+  spotifyDot3: {
+    animationDelay: '0.4s',
+  },
+  bufferingText: {
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  enhancedControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: wp(8),
+    marginBottom: hp(1),
+  },
+  speedButton: {
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.5),
+    borderRadius: 12,
+    backgroundColor: 'rgba(248, 128, 59, 0.1)',
+  },
+  speedText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  volumeButton: {
+    padding: wp(2),
+  },
+  repeatButton: {
+    padding: wp(2),
+  },
+  shuffleButton: {
+    padding: wp(2),
   },
 });
 
