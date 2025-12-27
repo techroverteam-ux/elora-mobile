@@ -60,7 +60,7 @@ const AudioCategoryScreen = ({ route }: { route: any }) => {
             />
           )}
           contentContainerStyle={styles.gridContent}
-          columnWrapperStyle={styles.row}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
           showsVerticalScrollIndicator={false}
         />
       ) : (

@@ -6,17 +6,20 @@ import {
 } from '@reduxjs/toolkit/query/react'
 import { _log, colorLog } from '../../../utils/logger'
 
-const BASE_URL =
-  'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api'
+const BASE_URL = __DEV__ 
+  ? 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api'
+  : 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api'
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
+  timeout: 30000, // 30 second timeout
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as any)?.auth?.token
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
     }
     headers.set('Content-Type', 'application/json')
+    headers.set('Accept', 'application/json')
     return headers
   },
 })

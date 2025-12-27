@@ -7,6 +7,7 @@ import {
   View,
   ActivityIndicator, // Add ActivityIndicator
   Alert,
+  Animated,
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { useAudioPlayerContext } from '../context/AudioPlayerContext';
@@ -19,6 +20,7 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { AccountStackParamList } from '../navigation/types';
 import CustomFastImage from './CustomFastImage';
 import { useAzureAssets } from '../hooks/useAzureAssets';
+import { getStreamingUrl } from '../utils/azureUrlHelper';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
@@ -62,8 +64,47 @@ const AudioPlayer: React.FC = () => {
 
   // Loading state for the play button
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Animation for music note icon
+  const musicNoteScale = new Animated.Value(1);
+  const musicNoteRotation = new Animated.Value(0);
+  
+  // Start animation when playing
+  useEffect(() => {
+    if (isPlaying) {
+      // Pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(musicNoteScale, {
+            toValue: 1.2,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(musicNoteScale, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+      
+      // Rotation animation
+      Animated.loop(
+        Animated.timing(musicNoteRotation, {
+          toValue: 1,
+          duration: 3000,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      musicNoteScale.stopAnimation();
+      musicNoteRotation.stopAnimation();
+      musicNoteScale.setValue(1);
+      musicNoteRotation.setValue(0);
+    }
+  }, [isPlaying]);
 
-  const audioDataURL = audioUrl || streamingUrl
+  const audioDataURL = getStreamingUrl(item, 'audio');
   console.log("audioDataURL: ", audioDataURL);
 
 
@@ -123,8 +164,30 @@ const AudioPlayer: React.FC = () => {
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.innerContainer}>
           {/* Album Art */}
-          {imageUrl && (
+          {imageUrl ? (
             <CustomFastImage style={styles.albumArt} imageUrl={imageUrl} />
+          ) : (
+            <View style={[styles.albumArt, { backgroundColor: colors.surfaceVariant, justifyContent: 'center', alignItems: 'center' }]}>
+              <Animated.View
+                style={{
+                  transform: [
+                    { scale: musicNoteScale },
+                    { 
+                      rotate: musicNoteRotation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      })
+                    }
+                  ]
+                }}
+              >
+                <MaterialDesignIcons 
+                  name="music-note" 
+                  size={80} 
+                  color={isPlaying ? colors.primary : colors.onSurfaceVariant} 
+                />
+              </Animated.View>
+            </View>
           )}
 
           {/* Song Info */}

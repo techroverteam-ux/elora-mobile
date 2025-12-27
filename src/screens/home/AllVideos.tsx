@@ -1,12 +1,15 @@
-import { StyleSheet, Text, View, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 import AppBarHeader from '../../components/AppBarHeader'
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard'
+import CustomFastImage from '../../components/CustomFastImage'
 import MediaListItem from '../../components/MediaListItem'
 import ViewToggle from '../../components/ViewToggle'
 import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader'
+import { processAzureUrl } from '../../utils/azureUrlHelper'
 import { useTheme } from 'react-native-paper'
 import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi'
 
@@ -25,6 +28,7 @@ const AllVideos = () => {
   const { colors } = useTheme()
   const { t } = useTranslation()
   const [isGridView, setIsGridView] = useState(true)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [width, setWidth] = useState(Dimensions.get('window').width)
   
   useEffect(() => {
@@ -65,17 +69,35 @@ const AllVideos = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <AppBarHeader title={t('mediaTypes.video')} />
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.outline }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('mediaTypes.video')}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.viewToggle}
+          onPress={() => {
+            setIsTransitioning(true)
+            setTimeout(() => {
+              setIsGridView(!isGridView)
+              setIsTransitioning(false)
+            }, 100)
+          }}
+        >
+          <MaterialDesignIcons 
+            name={isGridView ? 'view-list' : 'view-grid'} 
+            size={24} 
+            color={colors.primary} 
+          />
+        </TouchableOpacity>
+      </View>
 
-      {isLoading ? (
-        isGridView ? <GridViewSkeleton /> : <ListViewSkeleton />
+      {isLoading || isTransitioning ? (
+        isGridView ? <ListViewSkeleton /> : <GridViewSkeleton />
       ) : (
         <>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.featuredContent')} {t('mediaTypes.video')}</Text>
-            <ViewToggle isGridView={isGridView} onToggle={setIsGridView} />
-          </View>
-          
           <FlatList
             data={videoData}
             numColumns={isGridView ? numColumns : 1}
@@ -89,15 +111,57 @@ const AllVideos = () => {
                   onPress={handleVideoPress}
                 />
               ) : (
-                <MediaListItem
-                  item={item}
-                  type="video"
-                  onPress={handleVideoPress}
-                />
+                <View>
+                  <TouchableOpacity
+                    style={styles.listItemRow}
+                    onPress={() => handleVideoPress(item)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.itemImage}>
+                      {(() => {
+                        const imageUrl = item.streamingUrl || item.thumbnailUrl || item.imageUrl || item.coverImage || item.headerImage || item.mainImage;
+                        const processedUrl = processAzureUrl(imageUrl);
+                        console.log('Video item:', item.title, 'Raw URL:', imageUrl, 'Processed URL:', processedUrl);
+                        return processedUrl ? (
+                          <CustomFastImage 
+                            style={styles.listImage} 
+                            imageUrl={processedUrl}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.listPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+                            <MaterialDesignIcons 
+                              name="video" 
+                              size={24} 
+                              color={colors.onSurfaceVariant} 
+                            />
+                          </View>
+                        );
+                      })()}
+                    </View>
+                    
+                    <View style={styles.listTextContainer}>
+                      <Text style={[styles.listItemTitle, { color: colors.onSurface }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.listItemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={2}>
+                        {item.artist || item.description || 'Unknown'}
+                      </Text>
+                    </View>
+                    
+                    <MaterialDesignIcons 
+                      name="chevron-right" 
+                      size={24} 
+                      color="#F8803B" 
+                    />
+                  </TouchableOpacity>
+                  
+                  <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
+                </View>
               )
             }
-            contentContainerStyle={isGridView ? styles.gridContent : styles.listContent}
-            columnWrapperStyle={isGridView ? styles.row : undefined}
+            contentContainerStyle={isGridView ? styles.gridContent : styles.listContentContainer}
+            columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -120,6 +184,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 60,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  viewToggle: {
+    padding: 8,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -133,15 +214,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  row: {
-    justifyContent: 'space-around',
+  listContentContainer: {
+    width: '90%',
+    alignSelf: 'center',
   },
-  header: {
+  listItemRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginVertical: 16,
+    paddingVertical: 12,
+  },
+  itemImage: {
+    marginRight: 15,
+  },
+  listImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+  },
+  listPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listTextContainer: {
+    flex: 1,
+  },
+  listItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listItemSubtitle: {
+    fontSize: 14,
+    width: '75%',
+  },
+  listSeparator: {
+    height: 1,
+  },
+  row: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
   },
   title: {
     fontSize: 20,

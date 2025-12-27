@@ -7,29 +7,56 @@ import { useTheme } from 'react-native-paper';
 // Props interface
 interface AppBarHeaderProps {
   title: string;
+  onBack?: () => void;
+  icon?: string;
+  showViewToggle?: boolean;
+  isGridView?: boolean;
+  onToggleView?: () => void;
+  showDownload?: boolean;
+  subtitle?: string;
 }
 
 // Use correct type if you have a typed stack param list
 type RootStackParamList = any; // Replace 'any' with your actual param list if using TypeScript navigation
 
-const AppBarHeader: React.FC<AppBarHeaderProps> = ({ title }) => {
+const AppBarHeader: React.FC<AppBarHeaderProps> = ({ title, onBack, icon, showViewToggle = false, isGridView = true, onToggleView, showDownload = true, subtitle }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
 
   return (
     <View style={[styles.container, { borderBottomColor: colors.outline }]}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
+      <TouchableOpacity onPress={onBack || (() => navigation.goBack())} style={styles.iconButton}>
         <MaterialDesignIcons name="arrow-left" size={24} color={colors.primary} />
       </TouchableOpacity>
 
+      {icon && (
+        <MaterialDesignIcons name={icon} size={20} color={colors.primary} style={styles.titleIcon} />
+      )}
+      
       <Text style={[styles.title, { color: colors.onBackground }]} numberOfLines={1}>
         {title}
       </Text>
+      {subtitle && (
+        <Text style={[styles.subtitle, { color: colors.onBackground }]} numberOfLines={1}>
+          {subtitle}
+        </Text>
+      )}
 
       <View style={styles.actions}>
-        <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
-          <MaterialDesignIcons name="tray-arrow-down" size={24} color={colors.primary} />
-        </TouchableOpacity>
+        {showViewToggle && onToggleView && (
+          <TouchableOpacity onPress={onToggleView} style={styles.iconButton}>
+            <MaterialDesignIcons 
+              name={isGridView ? 'view-list' : 'view-grid'} 
+              size={24} 
+              color={colors.primary} 
+            />
+          </TouchableOpacity>
+        )}
+        {showDownload && (
+          <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
+            <MaterialDesignIcons name="tray-arrow-down" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
           <MaterialDesignIcons name="share-variant-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
@@ -56,6 +83,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     flex: 1,
+  },
+  subtitle: {
+    fontSize: 12,
+    flex: 1,
+    marginTop: 2,
+  },
+  titleIcon: {
+    marginRight: 8,
   },
   actions: {
     flexDirection: 'row',

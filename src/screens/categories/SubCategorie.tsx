@@ -72,7 +72,7 @@ interface Subcategory {
 const SubCategorie = () => {
   const route = useRoute<SubCategorieRouteProp>()
   const navigation = useNavigation<CategoriesNavigationProp>()
-  const { categoryData, sectionId, categoryId, buttonType, title, actionButton } = route.params
+  const { categoryData, sectionId, categoryId, buttonType, title, actionButton, isChaptersList } = route.params
   const { colors } = useTheme()
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [refreshing, setRefreshing] = useState(false)
@@ -80,11 +80,14 @@ const SubCategorie = () => {
   const [showMediaList, setShowMediaList] = useState(false)
   const [mediaListLoading, setMediaListLoading] = useState(false)
   const [audioList, setAudioList] = useState<any[]>([])
+  const [isGridView, setIsGridView] = useState(false)
   
   const [getSubcategoriesByActionButton, { isLoading, error }] = useGetSubcategoriesByActionButtonMutation()
   const [getSubcategoriesLegacy] = useGetSubcategoriesMutation()
 
   const isActionButtonMode = sectionId && categoryId && buttonType
+  
+  console.log('📱 Mode check - isActionButtonMode:', isActionButtonMode, 'isChaptersList:', isChaptersList, 'categoryData exists:', !!categoryData)
 
   useEffect(() => {
     fetchSubcategories()
@@ -116,6 +119,19 @@ const SubCategorie = () => {
           console.log('📱 Filtered subcategories for button ID:', actionButton?.id, 'Count:', filteredSubcategories?.length || 0)
         } else {
           console.error('📱 Failed to fetch subcategories:', response.data)
+          setSubcategories([])
+        }
+      } else if (sectionId && categoryId && !isChaptersList) {
+        // Regular subcategories mode - fetch subcategories for the category
+        console.log('📱 Fetching regular subcategories for category:', categoryId)
+        const response = await getSubcategoriesLegacy(categoryId)
+        if (response.data?.success) {
+          const subcategoriesData = response.data.data || []
+          console.log('📱 Regular subcategories data:', subcategoriesData.length)
+          console.log('📱 Subcategories details:', JSON.stringify(subcategoriesData, null, 2))
+          setSubcategories(subcategoriesData)
+        } else {
+          console.error('📱 Failed to fetch regular subcategories:', response.data)
           setSubcategories([])
         }
       } else if (categoryData) {
@@ -161,6 +177,20 @@ const SubCategorie = () => {
     console.log('📱 Full subcategory object:', JSON.stringify(subcategory, null, 2))
     console.log('📱 Videos available:', subcategory.videos?.length || 0)
     console.log('📱 Audios available:', subcategory.audios?.length || 0)
+    console.log('📱 Chapters available:', subcategory.chapters?.length || 0)
+    
+    // Check if subcategory has chapters - navigate to chapters list
+    if (subcategory.chapters && subcategory.chapters.length > 0) {
+      console.log('📱 Chapters found, navigating to chapters list')
+      navigation.navigate('SubCategorie', {
+        sectionId,
+        categoryId: subcategory._id,
+        title: `${subcategory.title} - Chapters`,
+        categoryData: subcategory,
+        isChaptersList: true
+      })
+      return
+    }
     
     // Check if this is an audio-list type and use available audio data
     if (subcategory.mediaType === 'audio-list' && (audioList.length > 0 || (subcategory.audios && subcategory.audios.length > 0))) {
@@ -201,6 +231,43 @@ const SubCategorie = () => {
       finalUrl: finalImageUrl
     });
     
+    if (isGridView) {
+      return (
+        <TouchableOpacity
+          style={styles.gridItem}
+          onPress={() => handleSubcategoryPress(item)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.gridImageContainer}>
+            {finalImageUrl ? (
+              <CustomFastImage
+                style={styles.gridImage}
+                imageUrl={finalImageUrl}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant || '#f0f0f0' }]}>
+                <MaterialDesignIcons 
+                  name="folder-outline" 
+                  size={32} 
+                  color={colors.primary} 
+                />
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.gridContent}>
+            <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
+              {item.subtitle || 'Subcategory'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    
     return (
       <View>
         <TouchableOpacity
@@ -224,19 +291,17 @@ const SubCategorie = () => {
               {item.title}
             </Text>
             <Text
-              style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]}
+              style={[styles.listSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]}
               numberOfLines={2}
             >
               {item.subtitle || 'Subcategory content'}
             </Text>
-            
-
           </View>
 
           <MaterialDesignIcons
             name="chevron-right"
             size={24}
-            color={colors.outline}
+            color={colors.primary}
           />
         </TouchableOpacity>
 
@@ -245,8 +310,45 @@ const SubCategorie = () => {
     )
   }
 
+  // Regular subcategories mode - show subcategories list
+  if (sectionId && categoryId && !buttonType && !isChaptersList && subcategories.length > 0) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <AppBarHeader title={title || 'Subcategories'} onBack={() => navigation.goBack()} showDownload={false} showViewToggle={true} isGridView={isGridView} onToggleView={() => setIsGridView(!isGridView)} />
+        
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }
+          nestedScrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.listContainer}>
+            <FlatList
+              data={subcategories}
+              renderItem={renderSubcategoryItem}
+              keyExtractor={(item) => item._id}
+              numColumns={isGridView ? 2 : 1}
+              key={isGridView ? 'grid' : 'list'}
+              columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
+              scrollEnabled={false}
+              nestedScrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1 }}
+            />
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
   // Legacy mode - show single category content
-  if (!isActionButtonMode && categoryData) {
+  if (!isActionButtonMode && categoryData && !sectionId) {
     const { resourceUrls } = useAzureAssets(categoryData)
     const { mainImage: mainImageUrl, video: videoUrl } = resourceUrls
     const [readingTime, setReadingTime] = useState(0)
@@ -262,7 +364,7 @@ const SubCategorie = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-        <AppBarHeader title={categoryData?.title || 'Category'} />
+        <AppBarHeader title={categoryData?.title || 'Category'} onBack={() => navigation.goBack()} showDownload={false} />
 
         <ScrollView 
           contentContainerStyle={styles.scrollContainer}
@@ -371,12 +473,120 @@ const SubCategorie = () => {
     )
   }
 
+  // Chapters list mode - show chapters from categoryData
+  if (isChaptersList && categoryData?.chapters) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+        <AppBarHeader title={title || 'Chapters'} onBack={() => navigation.goBack()} showDownload={false} />
+        
+        <ScrollView>
+          <View style={styles.listContainer}>
+            <FlatList
+              data={categoryData.chapters}
+              renderItem={({ item }) => (
+                <View>
+                  <TouchableOpacity
+                    style={styles.listRow}
+                    onPress={() => {
+                      console.log('📖 Chapter pressed:', item.title)
+                      // Navigate to appropriate player based on chapter content
+                      if (item.mediaFile) {
+                        const processedMediaFile = processAzureUrl(item.mediaFile)
+                        const finalMediaFile = processedMediaFile || item.mediaFile
+                        
+                        const processedItem = {
+                          ...item,
+                          mediaFile: finalMediaFile,
+                          audioUrl: finalMediaFile,
+                          videoUrl: finalMediaFile,
+                          streamingUrl: finalMediaFile
+                        }
+                        
+                        // Check if it's audio or video based on file extension or mediaType
+                        const isAudio = item.mediaFile?.includes('.mp3') || item.mediaFile?.includes('.m4a') || item.mediaFile?.includes('audio')
+                        
+                        if (isAudio) {
+                          navigation.navigate('EnhancedAudioPlayer', { 
+                            item: processedItem, 
+                            playlist: categoryData.chapters.map(chapter => ({
+                              ...chapter,
+                              mediaFile: processAzureUrl(chapter.mediaFile) || chapter.mediaFile,
+                              audioUrl: processAzureUrl(chapter.mediaFile) || chapter.mediaFile
+                            }))
+                          })
+                        } else if (item.mediaFile?.includes('.pdf') || item.url?.includes('.pdf')) {
+                          navigation.navigate('BookDetailsScreen', { 
+                            item: {
+                              ...processedItem,
+                              pdfUrl: finalMediaFile,
+                              streamingUrl: finalMediaFile
+                            },
+                            title: item.title 
+                          })
+                        } else {
+                          navigation.navigate('EnhancedVideoPlayer', { 
+                            item: processedItem, 
+                            playlist: categoryData.chapters.map(chapter => ({
+                              ...chapter,
+                              mediaFile: processAzureUrl(chapter.mediaFile) || chapter.mediaFile,
+                              videoUrl: processAzureUrl(chapter.mediaFile) || chapter.mediaFile
+                            }))
+                          })
+                        }
+                      } else if (item.url) {
+                        // Handle URL-based chapters (e.g., PDFs)
+                        navigation.navigate('BookDetailsScreen', { 
+                          item: {
+                            ...item,
+                            pdfUrl: item.url,
+                            streamingUrl: item.url
+                          },
+                          title: item.title 
+                        })
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.mediaIcon, { backgroundColor: '#4ECDC420' }]}>
+                      <MaterialDesignIcons 
+                        name={item.mediaFile?.includes('.pdf') || item.url?.includes('.pdf') ? 'file-pdf-box' : 
+                              item.mediaFile?.includes('.mp3') || item.mediaFile?.includes('.m4a') ? 'music-note' : 'play-circle'} 
+                        size={24} 
+                        color="#4ECDC4" 
+                      />
+                    </View>
+                    
+                    <View style={styles.listTextContainer}>
+                      <Text style={[styles.listTitle, { color: colors.onSurface }]} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.listSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={2}>
+                        {item.duration || 'Chapter content'}
+                      </Text>
+                    </View>
+                    
+                    <MaterialDesignIcons name="chevron-right" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                  <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
+                </View>
+              )}
+              keyExtractor={(item) => item._id}
+              scrollEnabled={false}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
   // Action button mode - show subcategories list
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-        <AppBarHeader title={title || 'Subcategories'} />
+        <AppBarHeader title={title || 'Subcategories'} onBack={() => navigation.goBack()} showDownload={false} />
         <ScrollView style={styles.skeletonContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.listContainer}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -399,7 +609,7 @@ const SubCategorie = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-        <AppBarHeader title={title || 'Subcategories'} />
+        <AppBarHeader title={title || 'Subcategories'} onBack={() => navigation.goBack()} showDownload={false} />
         <View style={styles.errorContainer}>
           <MaterialDesignIcons name="alert-circle" size={64} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.error }]}>Failed to load subcategories</Text>
@@ -414,11 +624,14 @@ const SubCategorie = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <AppBarHeader title={title || 'Subcategories'} />
+      {!showMediaList && (
+        <AppBarHeader title={title || 'Subcategories'} onBack={() => navigation.goBack()} showDownload={false} showViewToggle={true} isGridView={isGridView} onToggleView={() => setIsGridView(!isGridView)} />
+      )}
       
     
 
-      {subcategories.length === 0 ? (
+      {console.log('📱 Render check - subcategories.length:', subcategories.length, 'isChaptersList:', isChaptersList, 'showMediaList:', showMediaList, 'mediaListLoading:', mediaListLoading)}
+      {subcategories.length === 0 && !isChaptersList ? (
         <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
           <MaterialDesignIcons name="folder-open" size={64} color={colors.primary} />
           <Text style={[styles.emptyText, { color: colors.onSurface }]}>No {actionButton?.title || title} found</Text>
@@ -442,12 +655,83 @@ const SubCategorie = () => {
           </View>
         </ScrollView>
       ) : showMediaList && selectedSubcategory ? (
-        <ScrollView>
+        <View style={{ flex: 1 }}>
+          <AppBarHeader 
+            title={selectedSubcategory.title} 
+            onBack={() => setShowMediaList(false)} 
+            showDownload={false} 
+            showViewToggle={true} 
+            isGridView={isGridView} 
+            onToggleView={() => setIsGridView(!isGridView)} 
+          />
+          <ScrollView>
             <View style={styles.listContainer}>
-              {console.log('🎧 Rendering media list, showMediaList:', showMediaList, 'selectedSubcategory:', selectedSubcategory?.title, 'data length:', (selectedSubcategory.videos || selectedSubcategory.audios || audioList || []).length)}
               <FlatList
                 data={selectedSubcategory.mediaType === 'audio-list' ? (selectedSubcategory.audios || audioList || []) : (selectedSubcategory.videos || selectedSubcategory.audios || [])}
-                renderItem={({ item }) => (
+                renderItem={({ item }) => {
+                  const isAudio = selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos);
+                  
+                  if (isGridView) {
+                    return (
+                      <TouchableOpacity
+                        style={styles.gridItem}
+                        onPress={() => {
+                          const mediaList = selectedSubcategory.videos || selectedSubcategory.audios || []
+                          const processedMediaFile = processAzureUrl(item.mediaFile)
+                          const finalMediaFile = processedMediaFile || item.mediaFile
+                          
+                          if (!finalMediaFile || finalMediaFile.trim() === '') {
+                            console.error('❌ No valid media URL found for:', item.title)
+                            return
+                          }
+                          
+                          const processedItem = {
+                            ...item,
+                            mediaFile: finalMediaFile,
+                            videoUrl: finalMediaFile,
+                            audioUrl: finalMediaFile,
+                            streamingUrl: finalMediaFile
+                          }
+                          
+                          if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                            navigation.navigate('EnhancedVideoPlayer', { item: processedItem, playlist: [] })
+                          } else {
+                            navigation.navigate('EnhancedAudioPlayer', { item: processedItem, playlist: [] })
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={styles.gridImageContainer}>
+                          {item.headerImage || item.mainImage || item.imageUrl ? (
+                            <CustomFastImage
+                              style={styles.gridImage}
+                              imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.gridPlaceholder, { backgroundColor: isAudio ? '#4ECDC420' : '#FF6B6B20' }]}>
+                              <MaterialDesignIcons 
+                                name={isAudio ? 'music-note' : 'play-circle'} 
+                                size={32} 
+                                color={isAudio ? '#4ECDC4' : '#FF6B6B'} 
+                              />
+                            </View>
+                          )}
+                        </View>
+                        
+                        <View style={styles.gridContent}>
+                          <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+                            {item.title}
+                          </Text>
+                          <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
+                            {item.description || item.duration || (isAudio ? 'Audio' : 'Video')}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  return (
                   <View>
                     <TouchableOpacity
                       style={styles.listRow}
@@ -542,18 +826,23 @@ const SubCategorie = () => {
                           {item.description || item.duration}
                         </Text>
                       </View>
-                      <MaterialDesignIcons name="chevron-right" size={24} color={colors.outline} />
+                      <MaterialDesignIcons name="chevron-right" size={24} color={colors.primary} />
                     </TouchableOpacity>
                     <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
                   </View>
-                )}
+                  );
+                  }
+                }
                 keyExtractor={(item) => item._id}
+                numColumns={isGridView ? 2 : 1}
+                key={isGridView ? 'grid' : 'list'}
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
             </View>
         </ScrollView>
-      ) : (
+        </View>
+      ) : subcategories.length > 0 ? (
         <ScrollView
           refreshControl={
             <RefreshControl
@@ -562,18 +851,25 @@ const SubCategorie = () => {
               colors={[colors.primary]}
             />
           }
+          nestedScrollEnabled={false}
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.listContainer}>
             <FlatList
               data={subcategories}
               renderItem={renderSubcategoryItem}
               keyExtractor={(item) => item._id}
+              numColumns={isGridView ? 2 : 1}
+              key={isGridView ? 'grid' : 'list'}
+              columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
               scrollEnabled={false}
+              nestedScrollEnabled={false}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1 }}
             />
           </View>
         </ScrollView>
-      )}
+      ) : null}
     </View>
   )
 }
@@ -710,6 +1006,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: wp(1),
   },
+  mediaListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
+    paddingVertical: hp(2),
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
   mediaListTitle: {
     fontSize: normalize(18),
     fontWeight: '700',
@@ -740,6 +1044,46 @@ const styles = StyleSheet.create({
     fontSize: normalize(14),
     textAlign: 'center',
     marginTop: hp(1),
+  },
+  gridItem: {
+    flex: 1,
+    margin: 4,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  gridImageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    overflow: 'hidden',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridContent: {
+    padding: 8,
+  },
+  gridTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  gridSubtitle: {
+    fontSize: 12,
+    opacity: 0.7,
   },
   skeletonContainer: {
     flex: 1,

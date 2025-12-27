@@ -17,7 +17,8 @@ interface CustomVerticalFlatlistProps {
   data: any[];
   onItemPress?: (item: any) => void;
   scrollEnabled?: boolean;
-  imageUrl?: string | ((item: any) => string | undefined); // ✅ can be a URL or a function that returns one
+  imageUrl?: string | ((item: any) => string | undefined);
+  isGridView?: boolean;
 }
 
 // ✅ Subcomponent for each row
@@ -25,10 +26,12 @@ const VerticalListItem = ({
   item,
   onItemPress,
   imageUrl,
+  isGridView = false,
 }: {
   item: any;
   onItemPress?: (item: any) => void;
   imageUrl?: string | ((item: any) => string | undefined);
+  isGridView?: boolean;
 }) => {
   const { colors } = useTheme();
   const navigation = useNavigation();
@@ -63,6 +66,43 @@ const VerticalListItem = ({
   const finalImageUrl = processAzureUrl(rawImageUrl);
       
   console.log('🖼️ Final image URL (processed):', finalImageUrl);
+
+  if (isGridView) {
+    return (
+      <TouchableOpacity
+        style={styles.gridItem}
+        onPress={() => onItemPress?.(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.gridImageContainer}>
+          {finalImageUrl ? (
+            <CustomFastImage
+              style={styles.gridImage}
+              imageUrl={finalImageUrl}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+              <MaterialDesignIcons 
+                name="folder-outline" 
+                size={32} 
+                color={colors.primary} 
+              />
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.gridContent}>
+          <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+            {item.subtitle || 'Category'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <View>
@@ -110,7 +150,7 @@ const VerticalListItem = ({
         <MaterialDesignIcons
           name="chevron-right"
           size={24}
-          color={colors.outline}
+          color={colors.primary}
         />
       </TouchableOpacity>
 
@@ -125,6 +165,7 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
   onItemPress,
   scrollEnabled = true,
   imageUrl,
+  isGridView = false,
 }) => {
   const { colors } = useTheme();
 
@@ -137,13 +178,17 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
       <FlatList
         data={data}
         renderItem={({ item }) => (
-          <VerticalListItem item={item} onItemPress={onItemPress} imageUrl={imageUrl} />
+          <VerticalListItem item={item} onItemPress={onItemPress} imageUrl={imageUrl} isGridView={isGridView} />
         )}
         keyExtractor={(item, index) =>
           item?._id?.toString() || item?.id?.toString() || index.toString()
         }
-        contentContainerStyle={styles.listContent}
+        numColumns={isGridView ? 2 : 1}
+        key={isGridView ? 'grid' : 'list'}
+        contentContainerStyle={isGridView ? styles.gridContainer : styles.listContent}
+        columnWrapperStyle={isGridView ? styles.gridRow : undefined}
         scrollEnabled={scrollEnabled}
+        nestedScrollEnabled={false}
       />
     </View>
   );
@@ -158,6 +203,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   listContent: {},
+  gridContainer: {
+    paddingHorizontal: 4,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
   itemContainer: {
     width: '90%',
     alignSelf: 'center',
@@ -190,5 +242,46 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#E5E5E5',
+  },
+  gridItem: {
+    flex: 1,
+    margin: 6,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    marginBottom: 12,
+  },
+  gridImageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    overflow: 'hidden',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridContent: {
+    padding: 8,
+  },
+  gridTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  gridSubtitle: {
+    fontSize: 12,
+    opacity: 0.7,
   },
 });

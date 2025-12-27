@@ -166,12 +166,16 @@ export const ListViewSkeleton: React.FC = () => {
   return (
     <View style={styles.listViewContainer}>
       {[...Array(8)].map((_, index) => (
-        <View key={index} style={styles.listItemSkeleton}>
-          <SkeletonItem width={60} height={60} borderRadius={8} />
-          <View style={styles.listItemContent}>
-            <SkeletonItem width={wp(50)} height={16} borderRadius={8} />
-            <SkeletonItem width={wp(35)} height={14} borderRadius={7} style={{ marginTop: 4 }} />
+        <View key={index}>
+          <View style={styles.listItemRow}>
+            <SkeletonItem width={70} height={70} borderRadius={10} />
+            <View style={styles.listItemTextContainer}>
+              <SkeletonItem width={wp(50)} height={16} borderRadius={8} />
+              <SkeletonItem width={wp(35)} height={14} borderRadius={7} style={{ marginTop: 4 }} />
+            </View>
+            <SkeletonItem width={24} height={24} borderRadius={12} />
           </View>
+          <View style={styles.listSeparator} />
         </View>
       ))}
     </View>
@@ -192,20 +196,23 @@ export const GridViewSkeleton: React.FC = () => {
   }, []);
   
   const is10Inch = dimensions.width >= 800;
-  const numColumns = is10Inch ? 4 : 3;
+  const numColumns = 3;
   const itemWidth = (dimensions.width - (16 * 2) - (8 * (numColumns - 1))) / numColumns;
   
   return (
     <View style={styles.gridViewContainer}>
-      {[...Array(12)].map((_, index) => (
-        <View key={index} style={[styles.gridItemSkeleton, { width: itemWidth, marginRight: (index + 1) % numColumns === 0 ? 0 : 8 }]}>
-          <SkeletonItem width={itemWidth} height={itemWidth * 0.75} borderRadius={12} />
-          <View style={styles.gridItemContent}>
-            <SkeletonItem width={itemWidth * 0.8} height={14} borderRadius={7} style={{ marginTop: 8 }} />
-            <SkeletonItem width={itemWidth * 0.6} height={12} borderRadius={6} style={{ marginTop: 4 }} />
+      {[...Array(12)].map((_, index) => {
+        const isLastInRow = (index + 1) % numColumns === 0;
+        return (
+          <View key={index} style={[styles.gridItemSkeleton, { width: itemWidth, marginRight: isLastInRow ? 0 : 8 }]}>
+            <SkeletonItem width={itemWidth} height={itemWidth * 0.75} borderRadius={12} />
+            <View style={styles.gridItemContent}>
+              <SkeletonItem width={itemWidth * 0.8} height={14} borderRadius={7} style={{ marginTop: 8 }} />
+              <SkeletonItem width={itemWidth * 0.6} height={12} borderRadius={6} style={{ marginTop: 4 }} />
+            </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 };
@@ -266,17 +273,21 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   listViewContainer: {
-    padding: 16,
+    width: '90%',
+    alignSelf: 'center',
   },
-  listItemSkeleton: {
+  listItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    padding: 12,
+    paddingVertical: 12,
   },
-  listItemContent: {
-    marginLeft: 12,
+  listItemTextContainer: {
     flex: 1,
+    marginLeft: 15,
+  },
+  listSeparator: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
   },
   gridViewContainer: {
     flexDirection: 'row',

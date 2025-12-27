@@ -263,8 +263,6 @@ const styles = StyleSheet.create({
   imageWrapper: {
     flex: 1,
     width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   imageContent: {
     width: Dimensions.get('window').width,

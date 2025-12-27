@@ -9,6 +9,7 @@ import {
   Platform,
   SafeAreaView,
   RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { wp, hp, normalize, getResponsiveSize, isTablet } from '../utils/responsive';
 import { useTheme } from 'react-native-paper';
@@ -54,8 +55,8 @@ const GalleryListScreen: React.FC = () => {
   
   const is7Inch = width >= 600 && width < 800
   const is10Inch = width >= 800
-  const numColumns = is10Inch ? 4 : 3
-  const itemSize = is10Inch ? (width - 80) / 4 : is7Inch ? (width - 64) / 3 : (width - wp(12)) / 2
+  const numColumns = is10Inch ? 4 : is7Inch ? 3 : 3
+  const itemSize = is10Inch ? (width - 80) / 4 : is7Inch ? (width - 64) / 3 : (width - wp(12)) / 3
   
   // Fetch trending images from API - same as DailyGyanGallery
   const { data: apiResponse, isLoading, error, refetch } = useGetTrendingQuery({
@@ -117,11 +118,33 @@ const GalleryListScreen: React.FC = () => {
         onPress={() => handleImagePress(index)}
         activeOpacity={0.8}
       >
-        <CustomFastImage
-          imageUrl={imageUrl}
-          style={styles.gridImage}
-          resizeMode="cover"
-        />
+        <View style={styles.gridImageContainer}>
+          {imageUrl ? (
+            <CustomFastImage
+              imageUrl={imageUrl}
+              style={styles.gridImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant || '#f0f0f0' }]}>
+              <MaterialDesignIcons 
+                name="image-outline" 
+                size={32} 
+                color={colors.primary} 
+              />
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.gridContent}>
+          <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
+            Image
+          </Text>
+        </View>
+        
         <TouchableOpacity
           style={styles.gridBookmarkButton}
           onPress={(event) => handleBookmarkToggle(item, event)}
@@ -129,14 +152,9 @@ const GalleryListScreen: React.FC = () => {
           <MaterialDesignIcons 
             name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
             size={16} 
-            color={isBookmarked(item._id) ? "#F8803B" : "#fff"} 
+            color={isBookmarked(item._id) ? "#F8803B" : colors.primary} 
           />
         </TouchableOpacity>
-        <View style={styles.gridOverlay}>
-          <Text style={styles.gridTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-        </View>
       </TouchableOpacity>
     );
   };
@@ -145,38 +163,57 @@ const GalleryListScreen: React.FC = () => {
     const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
     
     return (
-      <TouchableOpacity
-        style={[styles.listItem, { backgroundColor: colors.surface }]}
-        onPress={() => handleImagePress(index)}
-        activeOpacity={0.8}
-      >
-        <CustomFastImage
-          imageUrl={imageUrl}
-          style={styles.listImage}
-          resizeMode="cover"
-        />
-        <View style={styles.listContent}>
-          <Text style={[styles.listTitle, { color: colors.onSurface }]} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.listMeta}>
-            <MaterialDesignIcons name="eye" size={16} color={colors.onSurfaceVariant} />
-            <Text style={[styles.listMetaText, { color: colors.onSurfaceVariant }]}>
-              {t('screens.gallery.tapToView')}
+      <View>
+        <TouchableOpacity
+          style={styles.listRow}
+          onPress={() => handleImagePress(index)}
+          activeOpacity={0.8}
+        >
+          {imageUrl ? (
+            <CustomFastImage
+              imageUrl={imageUrl}
+              style={styles.listImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.listImagePlaceholder, { backgroundColor: colors.surfaceVariant || '#f0f0f0' }]}>
+              <MaterialDesignIcons 
+                name="image-outline" 
+                size={24} 
+                color={colors.primary} 
+              />
+            </View>
+          )}
+          
+          <View style={styles.listTextContainer}>
+            <Text style={[styles.listTitle, { color: colors.onSurface }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.listSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={2}>
+              Image content
             </Text>
           </View>
-        </View>
-        <TouchableOpacity
-          style={styles.listBookmarkButton}
-          onPress={(event) => handleBookmarkToggle(item, event)}
-        >
-          <MaterialDesignIcons 
-            name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
-            size={20} 
-            color={isBookmarked(item._id) ? "#F8803B" : colors.onSurfaceVariant} 
+          
+          <TouchableOpacity
+            style={styles.listBookmarkButton}
+            onPress={(event) => handleBookmarkToggle(item, event)}
+          >
+            <MaterialDesignIcons 
+              name={isBookmarked(item._id) ? "bookmark" : "bookmark-outline"} 
+              size={20} 
+              color={isBookmarked(item._id) ? "#F8803B" : colors.primary} 
+            />
+          </TouchableOpacity>
+          
+          <MaterialDesignIcons
+            name="chevron-right"
+            size={24}
+            color={colors.primary}
           />
         </TouchableOpacity>
-      </TouchableOpacity>
+        
+        <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
+      </View>
     );
   };
 
@@ -206,9 +243,10 @@ const GalleryListScreen: React.FC = () => {
       {isLoading ? (
         viewMode === 'grid' ? <GridViewSkeleton /> : <ListViewSkeleton />
       ) : images.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('screens.gallery.noImages')}</Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.emptyContentContainer}>
+          <MaterialDesignIcons name="cloud-upload-outline" size={normalize(48)} color={colors.onSurfaceVariant} style={{ marginBottom: hp(2) }} />
+          <Text style={[styles.loadingText, { color: colors.onSurfaceVariant, fontWeight: '500' }]}>Not uploaded yet</Text>
+        </ScrollView>
       ) : (
         <FlatList
           data={images}
@@ -216,7 +254,7 @@ const GalleryListScreen: React.FC = () => {
           keyExtractor={(item) => item._id}
           numColumns={viewMode === 'grid' ? numColumns : 1}
           key={viewMode === 'grid' ? `grid-${numColumns}` : 'list'}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -274,38 +312,59 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    width: '90%',
+    alignSelf: 'center',
+  },
+  gridContainer: {
+    paddingHorizontal: 8,
   },
   // Grid styles
   gridItem: {
     flex: 1,
-    aspectRatio: 1,
-    margin: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
+    margin: 4,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
     position: 'relative',
+  },
+  gridImageContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    overflow: 'hidden',
   },
   gridImage: {
     width: '100%',
     height: '100%',
   },
-  gridOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+  gridPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridContent: {
     padding: 8,
   },
   gridTitle: {
-    color: '#fff',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
+    marginBottom: 2,
+  },
+  gridSubtitle: {
+    fontSize: 12,
+    opacity: 0.7,
   },
   gridBookmarkButton: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderRadius: 12,
     width: 28,
     height: 28,
@@ -313,51 +372,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 2,
   },
-  listBookmarkButton: {
-    padding: 8,
-  },
   // List styles
-  listItem: {
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
+    paddingVertical: 12,
   },
   listImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-  listContent: {
+  listImagePlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listTextContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 15,
   },
   listTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  listMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  listSubtitle: {
+    fontSize: 14,
+    color: '#6e6e6e',
+    width: '75%',
   },
-  listMetaText: {
-    fontSize: 12,
-    marginLeft: 4,
+  listSeparator: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+  },
+  listBookmarkButton: {
+    padding: 8,
+    marginRight: 8,
   },
   loadingContainer: {
+    flex: 1,
+    padding: 40,
+  },
+  emptyContentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

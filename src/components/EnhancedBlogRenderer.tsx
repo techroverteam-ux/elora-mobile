@@ -16,6 +16,7 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import CustomFastImage from './CustomFastImage';
 import EnhancedVideoPlayer from './EnhancedVideoPlayer';
 import PdfViewer from './PdfViewer';
+import AppBarHeader from './AppBarHeader';
 import { useNavigation } from '@react-navigation/native';
 import { wp, hp, normalize, isTablet } from '../utils/responsive';
 import { AppColors, AppTypography, AppSpacing } from '../theme/colors';
@@ -48,11 +49,13 @@ interface BlogCategory {
 interface EnhancedBlogRendererProps {
   category: BlogCategory;
   onBack?: () => void;
+  hideHeader?: boolean;
 }
 
 const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
   category,
   onBack,
+  hideHeader = false,
 }) => {
   const navigation = useNavigation();
   const { colors } = useTheme();
@@ -454,37 +457,29 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
       />
       
       {/* Fixed Header */}
-      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <MaterialDesignIcons name="arrow-left" size={normalize(24)} color={isDark ? '#fff' : colors.onSurface} />
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: isDark ? '#fff' : colors.onSurface }]} numberOfLines={1}>
-            {category.title}
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: isDark ? '#b0b0b0' : colors.onSurfaceVariant }]}>
-            {Math.round(readingProgress * 100)}% • {readingTime} min read
-          </Text>
-        </View>
-        
-        <TouchableOpacity style={styles.moreButton}>
-          <MaterialDesignIcons name="dots-vertical" size={normalize(24)} color={isDark ? '#fff' : colors.onSurface} />
-        </TouchableOpacity>
-      </Animated.View>
+      {!hideHeader && (
+        <AppBarHeader 
+          title={category.title} 
+          onBack={onBack} 
+          showDownload={false}
+          subtitle={`${Math.round(readingProgress * 100)}% • ${readingTime} min read`}
+        />
+      )}
 
       {/* Progress Bar */}
-      <View style={[styles.progressContainer, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
-        <Animated.View
-          style={[
-            styles.progressBar,
-            {
-              width: progressWidth,
-              backgroundColor: AppColors.primary,
-            }
-          ]}
-        />
-      </View>
+      {!hideHeader && (
+        <View style={[styles.progressContainer, { backgroundColor: isDark ? '#2a2a2a' : '#f0f0f0' }]}>
+          <Animated.View
+            style={[
+              styles.progressBar,
+              {
+                width: progressWidth,
+                backgroundColor: AppColors.primary,
+              }
+            ]}
+          />
+        </View>
+      )}
 
       {/* Content */}
       <ScrollView
@@ -495,41 +490,42 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
         scrollEventThrottle={16}
       >
         {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.categoryBadge}>
-            <MaterialDesignIcons name="book-open-variant" size={normalize(16)} color="#fff" />
-            <Text style={styles.categoryText}>Article</Text>
-          </View>
-          
-          <Text style={[styles.title, { color: isDark ? '#fff' : colors.onSurface }]}>
-            {category.title}
-          </Text>
-          
-          {category.subtitle && (
-            <Text style={[styles.subtitle, { color: isDark ? '#e0e0e0' : colors.onSurfaceVariant }]}>
-              {category.subtitle}
+        {!hideHeader && (
+          <View style={styles.heroSection}>
+            <Text style={[styles.title, { color: isDark ? '#fff' : colors.onSurface }]}>
+              {category.title}
             </Text>
-          )}
-          
-          <View style={styles.metaInfo}>
-            <View style={styles.metaItem}>
-              <MaterialDesignIcons name="clock-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
-              <Text style={[styles.metaText, { color: isDark ? '#b0b0b0' : colors.onSurfaceVariant }]}>
-                {readingTime} min read
+            
+            {category.subtitle && (
+              <Text style={[styles.subtitle, { color: isDark ? '#e0e0e0' : colors.onSurfaceVariant }]}>
+                {category.subtitle}
               </Text>
-            </View>
-            <View style={styles.metaItem}>
-              <MaterialDesignIcons name="eye-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
-              <Text style={[styles.metaText, { color: isDark ? '#b0b0b0' : colors.onSurfaceVariant }]}>
-                {sortedContentFields.length} sections
-              </Text>
+            )}
+            
+            <View style={styles.metaInfo}>
+              <View style={styles.metaItem}>
+                <MaterialDesignIcons name="clock-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: isDark ? '#b0b0b0' : colors.onSurfaceVariant }]}>
+                  {readingTime} min read
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <MaterialDesignIcons name="eye-outline" size={normalize(16)} color={colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: isDark ? '#b0b0b0' : colors.onSurfaceVariant }]}>
+                  {sortedContentFields.length} sections
+                </Text>
+              </View>
+              <View style={styles.categoryBadge}>
+                <MaterialDesignIcons name="book-open-variant" size={normalize(16)} color="#fff" />
+                <Text style={styles.categoryText}>Article</Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* Content Body */}
         <View style={styles.contentBody}>
-          {category.description1 && (
+          {category.description1 && sortedContentFields.length === 0 && (
             <View style={[styles.introSection, { backgroundColor: isDark ? '#1e1e1e' : '#f8f9fa' }]}>
               <Text style={[styles.introText, { color: isDark ? '#e0e0e0' : colors.onSurface }]}>
                 {category.description1}
@@ -546,7 +542,7 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
             ))}
           </View>
 
-          {category.description2 && (
+          {category.description2 && sortedContentFields.length === 0 && (
             <View style={[styles.conclusionSection, { backgroundColor: isDark ? '#1e1e1e' : '#f8f9fa' }]}>
               <Text style={[styles.conclusionText, { color: isDark ? '#e0e0e0' : colors.onSurface }]}>
                 {category.description2}
@@ -618,8 +614,6 @@ const getStyles = (isDark: boolean, colors: any) => StyleSheet.create({
     paddingHorizontal: wp(3),
     paddingVertical: hp(0.8),
     borderRadius: normalize(20),
-    alignSelf: 'flex-start',
-    marginBottom: hp(2),
   },
   categoryText: {
     color: '#fff',
@@ -667,10 +661,10 @@ const getStyles = (isDark: boolean, colors: any) => StyleSheet.create({
     lineHeight: normalize(26),
   },
   contentFields: {
-    gap: hp(3),
+    gap: hp(0.8),
   },
   fieldWrapper: {
-    marginVertical: hp(0.5),
+    marginVertical: hp(0.1),
   },
   conclusionSection: {
     padding: wp(4),
@@ -697,8 +691,8 @@ const getStyles = (isDark: boolean, colors: any) => StyleSheet.create({
 // Field-specific styles
 const getFieldStyles = (isDark: boolean) => StyleSheet.create({
   headerContainer: {
-    marginTop: hp(2),
-    marginBottom: hp(0.5),
+    marginTop: hp(0.5),
+    marginBottom: hp(0.1),
   },
   headerDecoration: {
     width: wp(12),
@@ -713,8 +707,8 @@ const getFieldStyles = (isDark: boolean) => StyleSheet.create({
     lineHeight: normalize(30),
   },
   descriptionContainer: {
-    marginTop: hp(0.3),
-    marginBottom: hp(1),
+    marginTop: hp(0),
+    marginBottom: hp(0.2),
   },
   descriptionText: {
     fontSize: normalize(16),
@@ -722,7 +716,7 @@ const getFieldStyles = (isDark: boolean) => StyleSheet.create({
     textAlign: 'justify',
   },
   mediaContainer: {
-    marginVertical: hp(1.5),
+    marginVertical: hp(0.4),
   },
   mediaHeader: {
     flexDirection: 'row',

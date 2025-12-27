@@ -18,6 +18,7 @@ const RecentlyPlayedScreen = () => {
   const { t } = useTranslation();
   const { recentItems } = useRecentlyPlayed();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const { addRecentItem, removeRecentItem } = useRecentlyPlayed();
 
@@ -61,6 +62,18 @@ const RecentlyPlayedScreen = () => {
         },
         playlist: []
       });
+    }
+  };
+
+  const getIconForItem = (item: any) => {
+    // Check if we have multiple types in the array
+    const hasMultipleTypes = recentItems.some(i => getItemType(i) !== getItemType(recentItems[0]));
+    
+    if (hasMultipleTypes) {
+      return getPlaceholderIcon(item); // Use default icons
+    } else {
+      // Use specific icons for single type arrays
+      return getItemType(item) === 'pdf' ? 'book-open' : 'music-note';
     }
   };
 
@@ -108,68 +121,58 @@ const RecentlyPlayedScreen = () => {
   };
 
   const renderListItem = ({ item }: { item: any }) => (
-    <View style={[styles.listItem, { backgroundColor: colors.surface }]}>
+    <View>
       <TouchableOpacity
-        style={styles.itemTouchable}
+        style={styles.listItemRow}
         onPress={() => handleItemPress(item)}
+        activeOpacity={0.8}
       >
-      <View style={styles.itemImage}>
-        {(() => {
-          const imageUrl = item.thumbnailUrl || 
-                          item.imageUrl || 
-                          item.coverImage || 
-                          item.headerImage || 
-                          item.mainImage || 
-                          (item.type === 'image' ? item.streamingUrl : null);
-          
-          const processedUrl = imageUrl ? processAzureUrl(imageUrl) : null;
-          
-          return processedUrl ? (
-            <CustomFastImage 
-              style={styles.thumbnail} 
-              imageUrl={processedUrl} 
-            />
-          ) : (
-            <View style={[styles.placeholder, { backgroundColor: colors.surfaceVariant }]}>
-              <MaterialDesignIcons 
-                name={getPlaceholderIcon(item)} 
-                size={24} 
-                color={colors.onSurfaceVariant} 
+        <View style={styles.itemImage}>
+          {(() => {
+            const imageUrl = item.thumbnailUrl || 
+                            item.imageUrl || 
+                            item.coverImage || 
+                            item.headerImage || 
+                            item.mainImage || 
+                            (item.type === 'image' ? item.streamingUrl : null);
+            
+            const processedUrl = imageUrl ? processAzureUrl(imageUrl) : null;
+            
+            return processedUrl ? (
+              <CustomFastImage 
+                style={styles.listImage} 
+                imageUrl={processedUrl} 
+                resizeMode="cover"
               />
-            </View>
-          );
-        })()}
-      </View>
-      
-      <View style={styles.itemContent}>
-        <Text style={[styles.itemTitle, { color: colors.onBackground }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={[styles.itemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
-          {item.artist || item.author || translateContent('Unknown')}
-        </Text>
-        <Text style={[styles.playedTime, { color: colors.primary }]}>
-          {formatPlayedTime(item.playedAt)}
-        </Text>
-      </View>
-      
-      <MaterialDesignIcons 
-        name={getItemIcon(item)} 
-        size={24} 
-        color={colors.primary} 
-      />
-      </TouchableOpacity>
-      
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => removeRecentItem(item._id)}
-      >
+            ) : (
+              <View style={[styles.listPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+                <MaterialDesignIcons 
+                  name={getIconForItem(item)} 
+                  size={24} 
+                  color={colors.onSurfaceVariant} 
+                />
+              </View>
+            );
+          })()}
+        </View>
+        
+        <View style={styles.listTextContainer}>
+          <Text style={[styles.listItemTitle, { color: colors.onSurface }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={[styles.listItemSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={2}>
+            {item.artist || item.author || translateContent('Unknown')} • {formatPlayedTime(item.playedAt)}
+          </Text>
+        </View>
+        
         <MaterialDesignIcons 
-          name="close" 
-          size={20} 
-          color={colors.onSurface} 
+          name="chevron-right" 
+          size={24} 
+          color="#F8803B" 
         />
       </TouchableOpacity>
+      
+      <View style={[styles.listSeparator, { backgroundColor: colors.outline }]} />
     </View>
   );
 
@@ -197,7 +200,7 @@ const RecentlyPlayedScreen = () => {
           ) : (
             <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
               <MaterialDesignIcons 
-                name={getPlaceholderIcon(item)} 
+                name={getIconForItem(item)} 
                 size={32} 
                 color={colors.onSurfaceVariant} 
               />
@@ -267,7 +270,13 @@ const RecentlyPlayedScreen = () => {
         </View>
         <TouchableOpacity 
           style={styles.viewToggle}
-          onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+          onPress={() => {
+            setIsTransitioning(true);
+            setTimeout(() => {
+              setViewMode(viewMode === 'grid' ? 'list' : 'grid');
+              setIsTransitioning(false);
+            }, 100);
+          }}
         >
           <MaterialDesignIcons 
             name={viewMode === 'grid' ? 'view-list' : 'view-grid'} 
@@ -277,15 +286,19 @@ const RecentlyPlayedScreen = () => {
         </TouchableOpacity>
       </View>
       
-      <FlatList
-        data={recentItems}
-        keyExtractor={(item) => item._id}
-        renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
-        numColumns={viewMode === 'grid' ? 3 : 1}
-        key={viewMode}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      {isTransitioning ? (
+        viewMode === 'grid' ? <ListViewSkeleton /> : <GridViewSkeleton />
+      ) : (
+        <FlatList
+          data={recentItems}
+          keyExtractor={(item) => item._id}
+          renderItem={viewMode === 'grid' ? renderGridItem : renderListItem}
+          numColumns={viewMode === 'grid' ? 3 : 1}
+          key={viewMode}
+          contentContainerStyle={viewMode === 'list' ? styles.listContentContainer : styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };
@@ -359,6 +372,43 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+  },
+  listContentContainer: {
+    width: '90%',
+    alignSelf: 'center',
+  },
+  listItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  listImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+  },
+  listPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listTextContainer: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  listItemTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  listItemSubtitle: {
+    fontSize: 14,
+    width: '75%',
+  },
+  listSeparator: {
+    height: 1,
   },
   listItem: {
     flexDirection: 'row',

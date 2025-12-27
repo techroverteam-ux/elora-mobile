@@ -55,7 +55,8 @@ const BlogPage = () => {
     CategoriesStackParamList,
     'CategoriesMain'
   >;
-  const { navigate } = useNavigation<CategoriesNavigationProp>();
+  const navigation = useNavigation<CategoriesNavigationProp>();
+  const { navigate } = navigation;
   const { categoryData } = route.params;
   const { colors } = useTheme();
   const [isGridView, setIsGridView] = useState(true);
@@ -157,7 +158,8 @@ const BlogPage = () => {
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <EnhancedBlogRenderer 
           category={processedCategory} 
-          onBack={() => navigate('CategoriesMain')}
+          onBack={() => navigation.goBack()}
+          hideHeader={categoryData?.sectionId?.contentType === 'attractive'}
         />
       </View>
     );
@@ -168,7 +170,7 @@ const BlogPage = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <AppBarHeader title={categoryData?.title || 'Blog'} />
+      <AppBarHeader title={categoryData?.title || 'Blog'} showDownload={false} />
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
@@ -195,17 +197,24 @@ const BlogPage = () => {
                     .map(([, url]) => url);
                   allImages.push(...collageImages);
                   
+                  const validImages = allImages.filter(url => url && typeof url === 'string' && url.trim() !== '');
+                  
                   console.log('BlogPage - Navigating to ImageViewer with:', {
-                    images: allImages,
+                    allImages,
+                    validImages,
                     initialIndex: 0,
                     title: categoryData?.title || 'Blog Images',
                   });
                   
-                  navigate('ImageViewer', {
-                    images: allImages,
-                    initialIndex: 0,
-                    title: categoryData?.title || 'Blog Images',
-                  });
+                  if (validImages.length > 0) {
+                    navigate('ImageViewer', {
+                      images: validImages,
+                      initialIndex: 0,
+                      title: categoryData?.title || 'Blog Images',
+                    });
+                  } else {
+                    console.error('BlogPage - No valid images to display');
+                  }
                 } catch (error) {
                   console.error('BlogPage - Error navigating to ImageViewer:', error);
                 }
@@ -278,7 +287,10 @@ const BlogPage = () => {
                   </Text>
                 </View>
                 <View style={styles.videoContainer}>
-                  <BlogVideo uri={videoUrl} />
+                  <BlogVideo 
+                    uri={videoUrl} 
+                    playlist={subcategoriesData?.data?.filter(item => item.type === 'video') || []} 
+                  />
                 </View>
               </View>
             )}

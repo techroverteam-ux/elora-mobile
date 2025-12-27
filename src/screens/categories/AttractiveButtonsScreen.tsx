@@ -88,6 +88,22 @@ const AttractiveButtonsScreen: React.FC = () => {
       sectionId: sectionId
     });
     
+    // Handle blog-post navigation type
+    if (button.navigationType === 'blog-post') {
+      navigation.navigate('BlogPage', {
+        categoryData: category
+      });
+      return;
+    }
+    
+    // Handle gallery navigation type
+    if (button.navigationType === 'gallery') {
+      navigation.navigate('GalleryList', {
+        initialIndex: 0
+      });
+      return;
+    }
+    
     // Navigate to subcategories filtered by this action button
     navigation.navigate('SubCategorie', {
       sectionId: sectionId,
@@ -98,12 +114,12 @@ const AttractiveButtonsScreen: React.FC = () => {
     });
   };
 
-  const renderButton = (button: ActionButton, category: Category) => {
+  const renderButton = (button: ActionButton, category: Category, width: string) => {
     const buttonColor = getColorForButton(button.navigationType);
     return (
       <TouchableOpacity
         key={button.id}
-        style={[styles.gridButton, { backgroundColor: buttonColor + '15' }]}
+        style={[styles.gridButton, { backgroundColor: buttonColor + '15', width }]}
         onPress={() => handleButtonPress(button, category)}
         activeOpacity={0.7}
       >
@@ -122,7 +138,7 @@ const AttractiveButtonsScreen: React.FC = () => {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-        <AppBarHeader title={title} />
+        <AppBarHeader title={title} onBack={() => navigation.goBack()} showDownload={false} />
         <ScrollView style={styles.fullScreenSkeleton} showsVerticalScrollIndicator={false}>
           <View style={styles.buttonsGrid}>
             {[1, 2, 3, 4].map((i) => (
@@ -156,7 +172,7 @@ const AttractiveButtonsScreen: React.FC = () => {
   if (error || !data?.data) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <AppBarHeader title={title} />
+        <AppBarHeader title={title} onBack={() => navigation.goBack()} showDownload={false} />
         <View style={styles.errorContainer}>
           <MaterialDesignIcons name="alert-circle" size={64} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.error }]}>Failed to load content</Text>
@@ -174,7 +190,7 @@ const AttractiveButtonsScreen: React.FC = () => {
   if (!firstCategory) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <AppBarHeader title={title} />
+        <AppBarHeader title={title} onBack={() => navigation.goBack()} showDownload={false} />
         <View style={styles.emptyContainer}>
           <MaterialDesignIcons name="inbox" size={64} color={colors.onSurfaceVariant} />
           <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>No content available</Text>
@@ -185,11 +201,14 @@ const AttractiveButtonsScreen: React.FC = () => {
 
   const hasButtons = firstCategory.actionButtons && firstCategory.actionButtons.length > 0;
   const hasContent = firstCategory.contentFields && firstCategory.contentFields.length > 0;
+  const buttonCount = firstCategory.actionButtons?.length || 0;
+  const buttonsPerRow = buttonCount === 3 ? 3 : buttonCount > 4 ? 3 : 2;
+  const buttonWidth = buttonsPerRow === 3 ? '31%' : '48%';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <AppBarHeader title={title} />
+      <AppBarHeader title={title} onBack={() => navigation.goBack()} showDownload={false} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -197,7 +216,7 @@ const AttractiveButtonsScreen: React.FC = () => {
         {hasButtons && (
           <View style={styles.buttonsSection}>
             <View style={styles.buttonsGrid}>
-              {firstCategory.actionButtons.slice(0, 4).map(button => renderButton(button, firstCategory))}
+              {firstCategory.actionButtons.map(button => renderButton(button, firstCategory, buttonWidth))}
             </View>
           </View>
         )}
@@ -208,6 +227,7 @@ const AttractiveButtonsScreen: React.FC = () => {
               layoutType: 'enhanced-blog',
             }))}
             onBack={() => navigation.goBack()}
+            hideHeader={true}
           />
         )}
       </ScrollView>
@@ -267,7 +287,6 @@ const styles = StyleSheet.create({
     marginBottom: hp(2),
   },
   gridButton: {
-    width: '48%',
     paddingVertical: hp(2),
     paddingHorizontal: wp(2),
     marginBottom: hp(2),

@@ -7,7 +7,8 @@ import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useGetTrendingQuery } from '../data/redux/services/mediaApi';
 import { wp, hp, normalize, getResponsiveSize } from '../utils/responsive';
-import { GallerySkeleton } from './SkeletonLoader';
+import SkeletonItem from './SkeletonLoader';
+import UnifiedMediaCard from './UnifiedMediaCard';
 
 
 interface GalleryItem {
@@ -20,6 +21,7 @@ interface GalleryItem {
   headerImage?: string;
   streamingUrl?: string;
   downloadUrl?: string;
+  createdAt: string;
 }
 
 interface DailyGyanGalleryProps {
@@ -40,8 +42,8 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
     return () => subscription?.remove();
   }, []);
   
-  const is7Inch = width >= 600 && width < 800;
-  const is10Inch = width >= 800;
+  const is7InchTablet = width >= 600 && width < 800;
+  const is10InchTablet = width >= 800;
   
   // Fetch trending images from API
   const { data: apiResponse, isLoading, error } = useGetTrendingQuery({
@@ -50,79 +52,86 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
     limit: 20
   });
   
-  // Extract image items from the response
-  const data = Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image') : [];
+  console.log('🖼️ Daily Gyan API Response:', {
+    isLoading,
+    error,
+    dataExists: !!apiResponse,
+    dataStructure: apiResponse ? Object.keys(apiResponse) : 'No data',
+    allDataLength: apiResponse?.data?.all?.length || 0,
+    imageItems: Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image').length : 0
+  });
+  
+  // Extract and sort image items by creation date (most recent first)
+  const data = Array.isArray(apiResponse?.data?.all) 
+    ? apiResponse.data.all
+        .filter((item: GalleryItem) => item.type === 'image')
+        .sort((a: GalleryItem, b: GalleryItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    : [];
+  
+  console.log('🖼️ Daily Gyan Filtered Data:', {
+    totalItems: data.length,
+    firstItem: data[0] ? { id: data[0]._id, title: data[0].title, type: data[0].type, createdAt: data[0].createdAt } : 'No items'
+  });
 
 
 
   const renderGalleryItem = ({ item, index }: { item: GalleryItem; index: number }) => {
-    const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
-    const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
-    const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
-    const isLoading = loadingItems.has(item._id);
-    
-    const handlePress = () => {
-      setLoadingItems(prev => new Set(prev).add(item._id));
-      onItemPress(item, index, data);
-      setTimeout(() => {
-        setLoadingItems(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(item._id);
-          return newSet;
-        });
-      }, 1500);
-    };
-    
     return (
-      <TouchableOpacity
-        style={[styles.galleryItem, { 
-          backgroundColor: colors.surface, 
-          width: itemWidth, 
-          height: itemHeight, 
-          marginRight: is10Inch ? 20 : is7Inch ? 14 : wp(2.5),
-          opacity: isLoading ? 0.7 : 1
-        }]}
-        onPress={handlePress}
-        activeOpacity={0.7}
-        delayPressIn={0}
-        disabled={isLoading}
-      >
-        <CustomFastImage
-          imageUrl={imageUrl}
-          style={styles.galleryImage}
-          resizeMode="cover"
-        />
-
-        <View style={styles.imageGradient} />
-        {isLoading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="small" color="#fff" />
-          </View>
-        )}
-        <Text style={[styles.imageTitle, { fontSize: is10Inch ? 14 : is7Inch ? 12 : normalize(11) }]} numberOfLines={2}>{item.title}</Text>
-      </TouchableOpacity>
+      <UnifiedMediaCard
+        item={{
+          ...item,
+          imageUrl: item.streamingUrl || item.imageUrl || item.thumbnailUrl || item.mainImage || item.headerImage,
+          thumbnailUrl: item.streamingUrl || item.imageUrl || item.thumbnailUrl || item.mainImage || item.headerImage,
+          type: 'image'
+        }}
+        type="image"
+        onPress={() => onItemPress(item, index, data)}
+      />
     );
   };
 
   if (isLoading) {
-    return <GallerySkeleton />;
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, is10InchTablet && { paddingHorizontal: 0, marginBottom: 16 }, is7InchTablet && { paddingHorizontal: 0, marginBottom: 12 }]}>
+          <View style={styles.titleContainer}>
+            <MaterialDesignIcons name="image-multiple" size={is10InchTablet ? 32 : is7InchTablet ? 26 : 24} color={colors.primary} />
+            <Text style={[styles.title, { color: colors.onBackground, fontSize: is10InchTablet ? 24 : is7InchTablet ? 20 : 18 }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
+          </View>
+        </View>
+        <View style={[styles.galleryList, { flexDirection: 'row' }]}>
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} style={[styles.skeletonWrapper, { marginRight: 12 }]}>
+              <SkeletonItem width={120} height={140} borderRadius={8} />
+              <View style={{ marginTop: 8, paddingHorizontal: 4 }}>
+                <SkeletonItem width={100} height={12} borderRadius={4} style={{ marginBottom: 4 }} />
+                <SkeletonItem width={80} height={10} borderRadius={4} />
+              </View>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   }
 
   if (data.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, is10InchTablet && { paddingHorizontal: 0, marginBottom: 16 }, is7InchTablet && { paddingHorizontal: 0, marginBottom: 12 }]}>
           <View style={styles.titleContainer}>
-            <MaterialDesignIcons name="image-multiple" size={24} color={colors.primary} />
-            <Text style={[styles.title, { color: colors.onBackground }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
+            <MaterialDesignIcons name="image-multiple" size={is10InchTablet ? 32 : is7InchTablet ? 26 : 24} color={colors.primary} />
+            <Text style={[styles.title, { color: colors.onBackground, fontSize: is10InchTablet ? 24 : is7InchTablet ? 20 : 18 }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
           </View>
           <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-            <Text style={[styles.seeAllText, { color: colors.primary }]}>{t('screens.home.seeAll')}</Text>
-            <MaterialDesignIcons name="chevron-right" size={20} color={colors.primary} />
+            <Text style={[styles.seeAllText, { color: colors.primary, fontSize: is10InchTablet ? 15 : 13 }]}>{t('screens.home.seeAll')}</Text>
+            <MaterialDesignIcons name="chevron-right" size={is10InchTablet ? 24 : 20} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        <View style={[styles.galleryList, { justifyContent: 'center', alignItems: 'center', height: wp(28) }]}>
-          <Text style={[{ color: colors.onBackground, fontSize: normalize(14) }]}>{t('screens.gallery.noImages')}</Text>
+        <View style={[styles.galleryList, { height: wp(28) }]}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <MaterialDesignIcons name="cloud-upload-outline" size={normalize(32)} color={colors.onSurfaceVariant || colors.onBackground} style={{ marginBottom: hp(1) }} />
+            <Text style={[{ color: colors.onSurfaceVariant || colors.onBackground, fontSize: normalize(14), fontWeight: '500' }]}>Not uploaded yet</Text>
+          </View>
         </View>
       </View>
     );
@@ -130,14 +139,14 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, is10InchTablet && { paddingHorizontal: 0, marginBottom: 16 }, is7InchTablet && { paddingHorizontal: 0, marginBottom: 12 }]}>
         <View style={styles.titleContainer}>
-          <MaterialDesignIcons name="image-multiple" size={is10Inch ? 32 : is7Inch ? 26 : 24} color={colors.primary} />
-          <Text style={[styles.title, { color: colors.onBackground, fontSize: is10Inch ? 24 : is7Inch ? 20 : normalize(16) }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
+          <MaterialDesignIcons name="image-multiple" size={is10InchTablet ? 32 : is7InchTablet ? 26 : 24} color={colors.primary} />
+          <Text style={[styles.title, { color: colors.onBackground, fontSize: is10InchTablet ? 24 : is7InchTablet ? 20 : 18 }]}>{t('screens.home.dailyGyan')} {t('screens.gallery.title')}</Text>
         </View>
         <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
-          <Text style={[styles.seeAllText, { color: colors.primary, fontSize: is10Inch ? 15 : normalize(13) }]}>{t('screens.home.seeAll')}</Text>
-          <MaterialDesignIcons name="chevron-right" size={is10Inch ? 24 : 20} color={colors.onSurfaceVariant} />
+          <Text style={[styles.seeAllText, { color: colors.primary, fontSize: is10InchTablet ? 15 : 13 }]}>{t('screens.home.seeAll')}</Text>
+          <MaterialDesignIcons name="chevron-right" size={is10InchTablet ? 24 : 20} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -147,9 +156,10 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         keyExtractor={(item) => item._id}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.galleryList}
+        contentContainerStyle={[styles.galleryList, is10InchTablet && { paddingHorizontal: 0 }, is7InchTablet && { paddingHorizontal: 0 }]}
         scrollEnabled={true}
         nestedScrollEnabled={true}
+        ItemSeparatorComponent={() => <View style={[styles.separator, is10InchTablet && { width: 8 }, is7InchTablet && { width: 6 }]} />}
       />
     </View>
   );
@@ -164,7 +174,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -173,8 +183,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   title: {
+    fontSize: 18,
     fontWeight: '600',
-    marginLeft: wp(2),
+    marginLeft: 8,
     flexShrink: 1,
   },
   seeAllButton: {
@@ -182,64 +193,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   seeAllText: {
-    fontSize: normalize(13),
+    fontSize: 13,
     fontWeight: '500',
+    marginRight: 4,
   },
   galleryList: {
     paddingHorizontal: 16,
   },
-  galleryItem: {
-    borderRadius: normalize(14),
-    overflow: 'hidden',
-    position: 'relative',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
+  separator: {
+    width: 4,
   },
-  galleryImage: {
-    width: '100%',
-    height: '70%',
-    borderTopLeftRadius: normalize(16),
-    borderTopRightRadius: normalize(16),
-  },
-
-
-  imageGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '40%',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  imageTitle: {
-    position: 'absolute',
-    bottom: wp(2),
-    left: wp(2),
-    right: wp(2),
-    color: '#fff',
-    fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  skeletonWrapper: {
+    marginRight: 4,
+    alignItems: 'flex-start',
   },
 });
 

@@ -163,6 +163,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           resizeMode="contain"
           onLoad={({ duration }) => setDuration(duration)}
           onProgress={({ currentTime }) => setCurrentTime(currentTime)}
+          onError={(error) => {
+            console.log('Video Error:', error);
+            Alert.alert('Video Error', 'Failed to load video. Please check your internet connection.');
+          }}
+          playInBackground={false}
+          playWhenInactive={false}
+          ignoreSilentSwitch="ignore"
         />
 
         <TouchableOpacity onPress={toggleFullScreen} style={styles.fullscreenButton}>

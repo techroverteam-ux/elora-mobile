@@ -74,9 +74,9 @@ const MediaListItem: React.FC<MediaListItemProps> = ({ item, onPress, type = 'au
         activeOpacity={0.7}
       >
         <MaterialDesignIcons 
-          name="play" 
-          size={20} 
-          color={colors.primary} 
+          name="chevron-right" 
+          size={24} 
+          color="#F8803B" 
         />
       </TouchableOpacity>
     </TouchableOpacity>

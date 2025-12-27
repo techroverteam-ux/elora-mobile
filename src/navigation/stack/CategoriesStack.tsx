@@ -4,6 +4,7 @@ import { CategoriesStackParamList } from '../types';
 import CategorieDataList from '../../screens/categories/CategorieDataList';
 import BlogPage from '../../screens/categories/BlogPage';
 import SubCategorie from '../../screens/categories/SubCategorie';
+import ContentListView from '../../screens/categories/ContentListView';
 import AttractiveButtonsScreen from '../../screens/categories/AttractiveButtonsScreen';
 import EnhancedAudioPlayer from '../../components/EnhancedAudioPlayer';
 import EnhancedVideoPlayer from '../../components/EnhancedVideoPlayer';
@@ -25,13 +26,14 @@ const CategoriesStack = () => (
     <Stack.Screen name="CategorieDataList" component={CategorieDataList} />
     <Stack.Screen name="BlogPage" component={BlogPage} />
     <Stack.Screen name="SubCategorie" component={SubCategorie} />
+    <Stack.Screen name="ContentListView" component={ContentListView} />
     <Stack.Screen name="AttractiveButtonsScreen" component={AttractiveButtonsScreen} />
     <Stack.Screen name="EnhancedAllVideos" component={EnhancedAllVideos} />
     <Stack.Screen name="AllAudios" component={EnhancedAllAudios} />
     <Stack.Screen name="EnhancedAudioPlayer" component={EnhancedAudioPlayer} />
     <Stack.Screen name="EnhancedVideoPlayer" component={EnhancedVideoPlayer} />
     <Stack.Screen name="PdfViewer" component={PdfViewer} />
-    <Stack.Screen name="ImageViewer" component={ImageGalleryViewer} />
+    <Stack.Screen name="ImageViewer" component={require('../../screens/modals/ImageViewer').default} />
     <Stack.Screen name="GalleryList" component={GalleryListScreen} />
     <Stack.Screen name="AudioCategoryScreen" component={AudioCategoryScreen} />
   </Stack.Navigator>

@@ -53,15 +53,26 @@ export const navigateToPdfViewer = (navigation: NavigationProp<any>, item: any) 
 
 // Helper to determine media type from item
 export const getMediaType = (item: any): 'audio' | 'video' | 'pdf' | 'unknown' => {
-  if (item.audioUrl || item.type === 'audio') return 'audio';
-  if (item.videoUrl || item.videoUri || item.type === 'video') return 'video';
-  if (item.pdfUrl || item.type === 'pdf') return 'pdf';
+  // Check explicit type first
+  if (item.type === 'audio') return 'audio';
+  if (item.type === 'video') return 'video';
+  if (item.type === 'pdf') return 'pdf';
   
-  // Check file extensions
-  const url = item.streamingUrl || item.url || '';
-  if (url.includes('.mp3') || url.includes('.wav') || url.includes('.m4a')) return 'audio';
-  if (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi')) return 'video';
+  // Check for specific URL properties
+  if (item.audioUrl) return 'audio';
+  if (item.videoUrl || item.videoUri) return 'video';
+  if (item.pdfUrl) return 'pdf';
+  
+  // Check file extensions in any URL field
+  const url = item.streamingUrl || item.url || item.downloadUrl || '';
+  if (url.includes('.mp3') || url.includes('.wav') || url.includes('.m4a') || url.includes('.aac') || url.includes('.flac')) return 'audio';
+  if (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || url.includes('.mkv') || url.includes('.webm')) return 'video';
   if (url.includes('.pdf')) return 'pdf';
+  
+  // If no clear indication, check if it's likely an audio item based on context
+  if (item.artist || item.album || (item.title && !item.videoUrl && !item.pdfUrl)) {
+    return 'audio';
+  }
   
   return 'unknown';
 };

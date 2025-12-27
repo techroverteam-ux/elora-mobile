@@ -63,7 +63,7 @@ const MediaHorizontalList: React.FC<MediaHorizontalListProps> = ({
         {onSeeAll && (
           <TouchableOpacity onPress={onSeeAll} style={styles.seeAllButton}>
             <Text style={[styles.seeAll, { color: colors.primary, fontSize: is10InchTablet ? 15 : 13 }]}>{t('screens.home.seeAll')}</Text>
-            <MaterialDesignIcons name="chevron-right" size={is10InchTablet ? 24 : 20} color={colors.onSurfaceVariant} />
+            <MaterialDesignIcons name="chevron-right" size={is10InchTablet ? 24 : 20} color={colors.primary} />
           </TouchableOpacity>
         )}
       </View>

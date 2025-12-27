@@ -316,7 +316,7 @@ const Home: React.FC = () => {
               handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
             } else if (item.type === 'pdf') {
               requireAuth(() => {
-                (navigation as any).navigate('PdfViewer', {
+                (navigation as any).navigate('BookDetailsScreen', {
                   item: {
                     ...item,
                     pdfUrl: item.streamingUrl || item.pdfUrl,

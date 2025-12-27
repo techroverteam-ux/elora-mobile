@@ -175,9 +175,16 @@ const Categories = () => {
         keyExtractor={keyExtractor}
         key={numColumns}
         numColumns={numColumns}
-        columnWrapperStyle={{ justifyContent: 'space-between', marginBottom: 15 }}
-        contentContainerStyle={{ paddingHorizontal: horizontalPadding, paddingTop: isTabletDevice ? 20 : 10, paddingBottom: 20 }}
+        columnWrapperStyle={numColumns > 1 ? { justifyContent: 'space-between' } : undefined}
+        contentContainerStyle={{ 
+          paddingHorizontal: horizontalPadding, 
+          paddingTop: isTabletDevice ? 20 : 10, 
+          paddingBottom: 20,
+          flexGrow: 1
+        }}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={false}
+        scrollEnabled={true}
         refreshControl={
           <RefreshControl
             {...createRefreshControl(refreshing, onRefresh, {
@@ -209,6 +216,15 @@ const CategoryCard = memo(({ item, cardWidth, isTablet }: { item: CategoryItem; 
           navigation.navigate('CategorieDataList', {
             title: item.title || 'Category',
             id: item._id,
+            sectionContentType: item.contentType,
+          });
+        } else if (item.contentType === 'list') {
+          // For list sections, navigate directly to category list without buttons
+          console.log('CategoryCard - List section, navigating directly to CategorieDataList');
+          navigation.navigate('CategorieDataList', {
+            title: item.title || 'Category',
+            id: item._id,
+            sectionContentType: item.contentType,
           });
         } else if (item.contentType === 'attractive') {
           // For attractive sections with action buttons, navigate to buttons screen
@@ -222,6 +238,7 @@ const CategoryCard = memo(({ item, cardWidth, isTablet }: { item: CategoryItem; 
           navigation.navigate('CategorieDataList', {
             title: item.title || 'Category',
             id: item._id,
+            sectionContentType: item.contentType,
           });
         }
       });
@@ -248,6 +265,7 @@ const CategoryCard = memo(({ item, cardWidth, isTablet }: { item: CategoryItem; 
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.1,
         shadowRadius: 6,
+        marginBottom: 15,
       }}
       onPress={handlePress}
       activeOpacity={0.8}

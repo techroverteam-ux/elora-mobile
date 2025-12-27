@@ -36,7 +36,7 @@ export type HomeStackParamList = {
 
 export type CategoriesStackParamList = {
   CategoriesMain: undefined;
-  CategorieDataList: { title: string, id: string };
+  CategorieDataList: { title: string, id: string, sectionContentType?: string };
   BlogPage: { categoryData: any };
   SubCategorie: { 
     categoryData?: any;
@@ -45,8 +45,15 @@ export type CategoriesStackParamList = {
     buttonType?: string;
     title?: string;
     actionButton?: any;
+    isChaptersList?: boolean;
+  };
+  ContentListView: {
+    contentList: any[];
+    title: string;
+    categoryData?: any;
   };
   AttractiveButtonsScreen: { sectionId: string; title: string };
+  BookDetailsScreen: { item: any; title?: string };
   EnhancedAudioPlayer: { item: any; playlist?: any[] };
   EnhancedVideoPlayer: { item: any; playlist?: any[] };
   PdfViewer: { uri?: string; title?: string; item?: any };

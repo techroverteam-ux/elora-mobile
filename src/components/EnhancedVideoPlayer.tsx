@@ -10,6 +10,7 @@ import {
   Alert,
   Share,
   Animated,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +58,11 @@ const EnhancedVideoPlayer = () => {
   const [quality, setQuality] = useState('auto');
   const [volume, setVolume] = useState(1.0);
   const animatedValues = useRef([new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]).current;
+  const [showNextVideo, setShowNextVideo] = useState(false);
+  const [autoPlayTimer, setAutoPlayTimer] = useState<NodeJS.Timeout | null>(null);
+  const [countdown, setCountdown] = useState(5);
+  const [rotation, setRotation] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
 
   // Get video URL - use direct URL if flagged, otherwise process through Azure
   const getValidVideoUrl = () => {
@@ -67,16 +73,37 @@ const EnhancedVideoPlayer = () => {
       return directUrl;
     }
     
-    // Otherwise, process through Azure helpers
     const urls = [
+      currentVideo?.mediaFile,
       currentVideo?.streamingUrl,
+      currentVideo?.downloadUrl,
       currentVideo?.videoUrl,
       currentVideo?.videoUri,
       currentVideo?.url
     ].filter(url => url && typeof url === 'string' && url.trim().length > 0);
     
     console.log('EnhancedVideoPlayer - Available URLs:', urls);
+    console.log('EnhancedVideoPlayer - Platform:', Platform.OS);
     
+    // For iOS, extract direct blob URL from API proxy
+    if (Platform.OS === 'ios') {
+      for (const url of urls) {
+        if (url.includes('/api/azure-blob/file?blobUrl=')) {
+          try {
+            const blobUrlParam = url.split('blobUrl=')[1];
+            if (blobUrlParam) {
+              const directUrl = decodeURIComponent(blobUrlParam);
+              console.log('EnhancedVideoPlayer - Extracted direct URL for iOS:', directUrl);
+              return directUrl;
+            }
+          } catch (error) {
+            console.log('Error extracting blob URL:', error);
+          }
+        }
+      }
+    }
+    
+    // Fallback to processed URL
     for (const url of urls) {
       const processed = processAzureUrl(url.trim());
       console.log('EnhancedVideoPlayer - Processing:', url, '-> Result:', processed);
@@ -88,7 +115,23 @@ const EnhancedVideoPlayer = () => {
     return getStreamingUrl(currentVideo, 'video');
   };
   
-  const videoUrl = getValidVideoUrl();
+  const videoUrl = (() => {
+    const rawUrl = getValidVideoUrl();
+    
+    // iOS-only URL extraction
+    if (Platform.OS === 'ios' && rawUrl && rawUrl.includes('blobUrl=')) {
+      const extracted = decodeURIComponent(rawUrl.split('blobUrl=')[1]);
+      return extracted;
+    }
+    
+    return rawUrl;
+  })();
+  
+  // Force iOS URL extraction test
+  if (Platform.OS === 'ios' && videoUrl && videoUrl.includes('/api/azure-blob/file?blobUrl=')) {
+    console.log('EnhancedVideoPlayer - STILL USING API URL ON iOS:', videoUrl);
+    console.log('EnhancedVideoPlayer - EXTRACTION FAILED - Check getValidVideoUrl function');
+  }
   const videoTitle = currentVideo?.title || 'Video Player';
   const thumbnailUrl = processAzureUrl(currentVideo?.thumbnailUrl) || processAzureUrl(currentVideo?.imageUrl) || getImageUrl(currentVideo);
   
@@ -152,13 +195,13 @@ const EnhancedVideoPlayer = () => {
 
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    if (showControls && !paused) {
+    if (showControls && !paused && !isLocked) {
       timeout = setTimeout(() => {
         setShowControls(false);
       }, 3000);
     }
     return () => clearTimeout(timeout);
-  }, [showControls, paused]);
+  }, [showControls, paused, isLocked]);
 
   const formatTime = (seconds: number): string => {
     const h = Math.floor(seconds / 3600);
@@ -238,6 +281,16 @@ const EnhancedVideoPlayer = () => {
     setShowControls(true);
   };
 
+  const toggleLock = () => {
+    setIsLocked(!isLocked);
+    setShowControls(true);
+  };
+
+  const rotateVideo = () => {
+    setRotation(prev => (prev + 90) % 360);
+    setShowControls(true);
+  };
+
   const startNetflixAnimation = () => {
     const animations = animatedValues.map((value, index) => 
       Animated.loop(
@@ -302,50 +355,70 @@ const EnhancedVideoPlayer = () => {
       {/* Header - only show in portrait mode */}
       {!fullScreen && (
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <MaterialDesignIcons name="arrow-left" size={24} color={colors.onSurface} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.onSurface }]} numberOfLines={1}>{videoTitle}</Text>
           <TouchableOpacity onPress={() => {
-            if (currentVideo) {
-              const videoItem = {
-                ...currentVideo,
-                type: 'video',
-                videoUrl: currentVideo.videoUrl || currentVideo.streamingUrl || currentVideo.videoUri,
-                thumbnailUrl: currentVideo.thumbnailUrl || currentVideo.imageUrl || currentVideo.coverImage,
-                imageUrl: currentVideo.imageUrl || currentVideo.thumbnailUrl || currentVideo.coverImage
-              };
-              if (isLiked) {
-                removeBookmark(currentVideo._id);
-                Alert.alert(t('common.bookmark'), t('screens.bookmarks.removedFromBookmarks'));
-              } else {
-                addBookmark(videoItem);
-                Alert.alert(t('common.bookmark'), t('screens.bookmarks.addedToBookmarks'));
-              }
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              console.log('EnhancedVideoPlayer.tsx:327 Warning: The action \'GO_BACK\' was not handled by any navigator.\n\nIs there any screen to go back to?\n\nThis is a development-only warning and won\'t be shown in production.');
             }
           }} style={styles.headerButton}>
-            <MaterialDesignIcons 
-              name={isLiked ? "bookmark" : "bookmark-outline"} 
-              size={24} 
-              color={isLiked ? "#F8803B" : colors.onSurface} 
-            />
+            <MaterialDesignIcons name="arrow-left" size={24} color="#F8803B" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
-            <MaterialDesignIcons name="share-variant" size={24} color={colors.onSurface} />
-          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.onSurface }]} numberOfLines={1}>{videoTitle}</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => {
+              if (currentVideo) {
+                const videoItem = {
+                  ...currentVideo,
+                  type: 'video',
+                  videoUrl: currentVideo.videoUrl || currentVideo.streamingUrl || currentVideo.videoUri,
+                  thumbnailUrl: currentVideo.thumbnailUrl || currentVideo.imageUrl || currentVideo.coverImage,
+                  imageUrl: currentVideo.imageUrl || currentVideo.thumbnailUrl || currentVideo.coverImage
+                };
+                if (isLiked) {
+                  removeBookmark(currentVideo._id);
+                  Alert.alert(t('common.bookmark'), t('screens.bookmarks.removedFromBookmarks'));
+                } else {
+                  addBookmark(videoItem);
+                  Alert.alert(t('common.bookmark'), t('screens.bookmarks.addedToBookmarks'));
+                }
+              }
+            }} style={styles.headerButton}>
+              <MaterialDesignIcons 
+                name={isLiked ? "bookmark" : "bookmark-outline"} 
+                size={24} 
+                color={isLiked ? "#F8803B" : "#F8803B"} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+              <MaterialDesignIcons name="share-variant" size={24} color="#F8803B" />
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
       {/* Video Player */}
       <TouchableOpacity 
         style={[styles.videoContainer, fullScreen && styles.fullScreenVideo]}
-        onPress={() => setShowControls(!showControls)}
+        onPress={() => {
+          if (isLocked && fullScreen) {
+            return;
+          }
+          console.log('Screen tapped, showControls:', showControls);
+          setShowControls(true);
+        }}
         activeOpacity={1}
       >
         <Video
           ref={videoRef}
-          source={{ uri: videoUrl }}
-          style={styles.video}
+          source={{ uri: (() => {
+            const finalUrl = Platform.OS === 'ios' && videoUrl?.includes('/api/azure-blob/file?blobUrl=') 
+              ? decodeURIComponent(videoUrl.split('blobUrl=')[1]) 
+              : videoUrl;
+            console.log('EnhancedVideoPlayer - Video component using URL:', finalUrl);
+            return finalUrl;
+          })() }}
+          style={[styles.video, rotation !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}
           paused={paused}
           muted={muted}
           resizeMode="contain"
@@ -356,9 +429,38 @@ const EnhancedVideoPlayer = () => {
             setIsBuffering(false);
             stopNetflixAnimation();
           }}
-          onProgress={({ currentTime }) => setCurrentTime(currentTime)}
+          onProgress={({ currentTime }) => {
+            setCurrentTime(currentTime);
+            // Show next video preview when 10 seconds left
+            if (duration > 0 && hasNext && (duration - currentTime) <= 10 && !showNextVideo) {
+              setShowNextVideo(true);
+              setCountdown(5);
+              // Start auto-play countdown
+              const timer = setTimeout(() => {
+                handleNext();
+              }, 5000);
+              setAutoPlayTimer(timer);
+              // Update countdown every second
+              const countdownInterval = setInterval(() => {
+                setCountdown(prev => {
+                  if (prev <= 1) {
+                    clearInterval(countdownInterval);
+                    return 0;
+                  }
+                  return prev - 1;
+                });
+              }, 1000);
+            }
+          }}
           onEnd={() => {
-            console.log('Video ended, playing next');
+            console.log('Video ended');
+            setPaused(true);
+            setShowControls(true);
+            setShowNextVideo(false);
+            if (autoPlayTimer) {
+              clearTimeout(autoPlayTimer);
+              setAutoPlayTimer(null);
+            }
             if (hasNext) {
               handleNext();
             }
@@ -448,13 +550,58 @@ const EnhancedVideoPlayer = () => {
           </View>
         )}
 
+        {/* Next Video Preview */}
+        {showNextVideo && hasNext && (
+          <View style={styles.nextVideoOverlay}>
+            <View style={styles.nextVideoCard}>
+              <Text style={styles.nextVideoTitle}>Next Video</Text>
+              <Text style={styles.nextVideoName} numberOfLines={2}>{nextTrack()?.title || 'Next Video'}</Text>
+              <View style={styles.nextVideoActions}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowNextVideo(false);
+                    if (autoPlayTimer) {
+                      clearTimeout(autoPlayTimer);
+                      setAutoPlayTimer(null);
+                    }
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.playNextButton}
+                  onPress={() => {
+                    if (autoPlayTimer) {
+                      clearTimeout(autoPlayTimer);
+                      setAutoPlayTimer(null);
+                    }
+                    handleNext();
+                  }}
+                >
+                  <MaterialDesignIcons name="play" size={16} color="#fff" />
+                  <Text style={styles.playNextButtonText}>Play Now</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.countdownText}>Auto-play in {countdown}s</Text>
+            </View>
+          </View>
+        )}
+
         {/* Video Controls Overlay */}
-        {showControls && (
+        {(showControls || paused) && !isLocked && (
           <View style={styles.controlsOverlay}>
             {/* Top Controls */}
             <View style={styles.topControls}>
               {fullScreen && (
-                <TouchableOpacity onPress={exitFullScreen} style={styles.overlayButton}>
+                <TouchableOpacity onPress={() => {
+                  if (navigation.canGoBack()) {
+                    exitFullScreen();
+                    navigation.goBack();
+                  } else {
+                    exitFullScreen();
+                  }
+                }} style={styles.overlayButton}>
                   <MaterialDesignIcons name="arrow-left" size={24} color="#fff" />
                 </TouchableOpacity>
               )}
@@ -470,16 +617,72 @@ const EnhancedVideoPlayer = () => {
             <View style={styles.centerControls}>
               {fullScreen && (
                 <>
-                  <TouchableOpacity onPress={() => seekBy(-10)} style={styles.seekButton}>
-                    <MaterialDesignIcons name="rewind-10" size={32} color="#fff" />
+                  <TouchableOpacity onPress={hasPrevious ? handlePrevious : undefined} style={[styles.seekButton, !hasPrevious && styles.disabledButton]}>
+                    <MaterialDesignIcons
+                      name="skip-previous"
+                      size={28}
+                      color={hasPrevious ? "#fff" : "rgba(255,255,255,0.3)"}
+                    />
                   </TouchableOpacity>
                   
-                  <TouchableOpacity onPress={toggleMute} style={styles.seekButton}>
+                  <TouchableOpacity onPress={hasNext ? handleNext : undefined} style={[styles.seekButton, !hasNext && styles.disabledButton]}>
+                    <MaterialDesignIcons
+                      name="skip-next"
+                      size={28}
+                      color={hasNext ? "#fff" : "rgba(255,255,255,0.3)"}
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            {/* Bottom Controls */}
+            {fullScreen && (
+              <View style={styles.bottomControls}>
+                <View style={styles.fullscreenBottomRow}>
+                  <TouchableOpacity onPress={toggleMute} style={styles.bottomControlButton}>
                     <MaterialDesignIcons
                       name={muted ? 'volume-off' : 'volume-high'}
-                      size={28}
+                      size={24}
                       color="#fff"
                     />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={changePlaybackRate} style={styles.bottomControlButton}>
+                    <Text style={styles.speedText}>{playbackRate}x</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={rotateVideo} style={styles.bottomControlButton}>
+                    <MaterialDesignIcons name="rotate-right" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={toggleLock} style={styles.bottomControlButton}>
+                    <MaterialDesignIcons name="lock" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity onPress={toggleFullScreen} style={styles.bottomControlButton}>
+                    <MaterialDesignIcons name="fullscreen-exit" size={24} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.progressContainer}>
+                  <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+                  <Slider
+                    style={styles.progressSlider}
+                    value={duration ? currentTime / duration : 0}
+                    minimumValue={0}
+                    maximumValue={1}
+                    onSlidingComplete={handleSeek}
+                    minimumTrackTintColor="#F8803B"
+                    maximumTrackTintColor="rgba(255,255,255,0.3)"
+                    thumbTintColor="#F8803B"
+                  />
+                  <Text style={styles.timeText}>{formatTime(duration)}</Text>
+                </View>
+                
+                <View style={styles.fullscreenPlayControls}>
+                  <TouchableOpacity onPress={() => seekBy(-10)} style={styles.seekButton}>
+                    <MaterialDesignIcons name="rewind-10" size={32} color="#fff" />
                   </TouchableOpacity>
                   
                   <TouchableOpacity onPress={togglePlayPause} style={styles.playButton}>
@@ -490,18 +693,24 @@ const EnhancedVideoPlayer = () => {
                     />
                   </TouchableOpacity>
                   
-                  <TouchableOpacity onPress={changePlaybackRate} style={styles.seekButton}>
-                    <Text style={styles.speedText}>{playbackRate}x</Text>
-                  </TouchableOpacity>
-                  
                   <TouchableOpacity onPress={() => seekBy(10)} style={styles.seekButton}>
                     <MaterialDesignIcons name="fast-forward-10" size={32} color="#fff" />
                   </TouchableOpacity>
-                </>
-              )}
-            </View>
+                </View>
+              </View>
+            )}
 
 
+          </View>
+        )}
+
+        {/* Lock Screen Overlay */}
+        {isLocked && fullScreen && (
+          <View style={styles.lockOverlay}>
+            <TouchableOpacity onPress={toggleLock} style={styles.unlockButton}>
+              <MaterialDesignIcons name="lock-open" size={32} color="#fff" />
+              <Text style={styles.unlockText}>Tap to unlock</Text>
+            </TouchableOpacity>
           </View>
         )}
       </TouchableOpacity>
@@ -512,7 +721,7 @@ const EnhancedVideoPlayer = () => {
           {/* Enhanced Action Row */}
           <View style={styles.enhancedActionRow}>
             <TouchableOpacity style={styles.enhancedActionButton} onPress={changePlaybackRate}>
-              <MaterialDesignIcons name="speedometer" size={20} color={colors.onSurfaceVariant} />
+              <MaterialDesignIcons name="speedometer" size={20} color="#F8803B" />
               <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Speed ({playbackRate}x)</Text>
             </TouchableOpacity>
             
@@ -522,18 +731,37 @@ const EnhancedVideoPlayer = () => {
               const nextQuality = qualities[(currentIndex + 1) % qualities.length];
               setQuality(nextQuality);
             }}>
-              <MaterialDesignIcons name="high-definition" size={20} color={colors.onSurfaceVariant} />
+              <MaterialDesignIcons name="high-definition" size={20} color="#F8803B" />
               <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Quality ({quality})</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.enhancedActionButton} onPress={() => hasNext && handleNext()}>
-              <MaterialDesignIcons name="skip-next" size={20} color={colors.onSurfaceVariant} />
-              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Next Up</Text>
+            <TouchableOpacity style={styles.enhancedActionButton} onPress={rotateVideo}>
+              <MaterialDesignIcons name="rotate-right" size={20} color="#F8803B" />
+              <Text style={[styles.enhancedActionText, { color: colors.onSurfaceVariant }]}>Rotate</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={[styles.videoTitle, { color: colors.onSurface }]} numberOfLines={2}>{videoTitle}</Text>
           <Text style={[styles.videoSubtitle, { color: colors.onSurfaceVariant }]}>{currentVideo?.subtitle || currentVideo?.artist || 'Video Content'}</Text>
+          
+          {/* Top Controls Row */}
+          <View style={styles.topControlsRow}>
+            <TouchableOpacity onPress={toggleMute} style={[styles.topControlButton, { backgroundColor: colors.surface }]}>
+              <MaterialDesignIcons
+                name={muted ? 'volume-off' : 'volume-high'}
+                size={24}
+                color="#F8803B"
+              />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={toggleFullScreen} style={[styles.topControlButton, { backgroundColor: colors.surface }]}>
+              <MaterialDesignIcons
+                name={fullScreen ? "fullscreen-exit" : "fullscreen"}
+                size={24}
+                color="#F8803B"
+              />
+            </TouchableOpacity>
+          </View>
           
           {/* Progress Bar and Controls */}
           <View style={styles.bottomProgressContainer}>
@@ -555,19 +783,19 @@ const EnhancedVideoPlayer = () => {
           
           {/* Enhanced Control Buttons */}
           <View style={styles.enhancedControls}>
+            <TouchableOpacity onPress={hasPrevious ? handlePrevious : undefined} style={[styles.controlIcon, !hasPrevious && styles.disabledIcon]}>
+              <MaterialDesignIcons
+                name="skip-previous"
+                size={28}
+                color={hasPrevious ? "#F8803B" : colors.outline}
+              />
+            </TouchableOpacity>
+            
             <TouchableOpacity 
               style={styles.controlIcon}
               onPress={() => seekBy(-10)}
             >
               <MaterialDesignIcons name="rewind-10" size={32} color={"#F8803B"} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity onPress={toggleMute} style={styles.controlIcon}>
-              <MaterialDesignIcons
-                name={muted ? 'volume-off' : 'volume-high'}
-                size={28}
-                color={colors.onSurfaceVariant}
-              />
             </TouchableOpacity>
             
             <TouchableOpacity onPress={togglePlayPause} style={[styles.enhancedPlayButton, { backgroundColor: "#F8803B" }]}>
@@ -578,19 +806,19 @@ const EnhancedVideoPlayer = () => {
               />
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={toggleFullScreen} style={styles.controlIcon}>
-              <MaterialDesignIcons
-                name={fullScreen ? 'fullscreen-exit' : 'fullscreen'}
-                size={28}
-                color={colors.onSurfaceVariant}
-              />
-            </TouchableOpacity>
-            
             <TouchableOpacity 
               style={styles.controlIcon}
               onPress={() => seekBy(10)}
             >
               <MaterialDesignIcons name="fast-forward-10" size={32} color={"#F8803B"} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={hasNext ? handleNext : undefined} style={[styles.controlIcon, !hasNext && styles.disabledIcon]}>
+              <MaterialDesignIcons
+                name="skip-next"
+                size={28}
+                color={hasNext ? "#F8803B" : colors.outline}
+              />
             </TouchableOpacity>
           </View>
           
@@ -630,6 +858,10 @@ const styles = StyleSheet.create({
   headerButton: {
     padding: 8,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
     flex: 1,
     fontSize: normalize(16),
@@ -657,12 +889,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'space-between',
+    paddingTop: 40,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
   topControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 0,
+    paddingTop: 0,
   },
   spacer: {
     flex: 1,
@@ -693,6 +928,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 30,
+    flex: 1,
+    paddingVertical: 0,
   },
   seekButton: {
     padding: 12,
@@ -705,8 +942,8 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   bottomControls: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 0,
+    paddingBottom: 0,
   },
   progressContainer: {
     flexDirection: 'row',
@@ -835,6 +1072,126 @@ const styles = StyleSheet.create({
   },
   netflixDot3: {
     animationDelay: '0.4s',
+  },
+  nextVideoOverlay: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    zIndex: 1000,
+  },
+  nextVideoCard: {
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 200,
+    maxWidth: 280,
+  },
+  nextVideoTitle: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    opacity: 0.8,
+  },
+  nextVideoName: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  nextVideoActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  playNextButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#F8803B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  playNextButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.3,
+  },
+  disabledIcon: {
+    opacity: 0.3,
+  },
+  fullscreenBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  bottomControlButton: {
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+  },
+  topControlsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: hp(1),
+    gap: wp(8),
+  },
+  fullscreenPlayControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 30,
+    marginTop: 20,
+  },
+  topControlButton: {
+    padding: wp(2),
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unlockButton: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  unlockText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 10,
+    fontWeight: '500',
   },
 });
 

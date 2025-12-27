@@ -12,6 +12,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
@@ -31,19 +32,34 @@ import { wp, hp, normalize, isSmallScreen, getResponsiveSize } from '../utils/re
 import { useMediaPlayerManager } from '../context/MediaPlayerManager';
 import { useGetFeaturedQuery } from '../data/redux/services/mediaApi';
 import { useBookmarks } from '../context/BookmarkContext';
+import SkeletonItem from './SkeletonLoader';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
 
 const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onTrackSelect }: any) => {
   const { t } = useTranslation();
   const { data: apiResponse, isLoading } = useGetFeaturedQuery({ type: 'audio', limit: 50 });
+  const { recentItems } = useRecentlyPlayed();
+  
+  // Filter recent items to only show audio items
+  const recentAudios = recentItems.filter((item: any) => item.type === 'audio');
   const apiAudios = Array.isArray(apiResponse?.data?.audios) ? apiResponse.data.audios.filter((item: any) => item.type === 'audio') : [];
-  const displayData = currentPlaylist && currentPlaylist.length > 0 ? currentPlaylist.filter((item: any) => item.type === 'audio') : apiAudios;
+  
+  // Use recent audios first, then fallback to current playlist or API audios
+  const displayData = recentAudios.length > 0 ? recentAudios : 
+                     (currentPlaylist && currentPlaylist.length > 0 ? currentPlaylist.filter((item: any) => item.type === 'audio') : apiAudios);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.onBackground, marginTop: 10 }}>{t('common.loading')}</Text>
+      <View style={{ flex: 1, paddingHorizontal: 20 }}>
+        {[...Array(5)].map((_, i) => (
+          <View key={i} style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <SkeletonItem width={50} height={50} borderRadius={8} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <SkeletonItem width="80%" height={16} borderRadius={4} style={{ marginBottom: 6 }} />
+              <SkeletonItem width="60%" height={14} borderRadius={4} />
+            </View>
+          </View>
+        ))}
       </View>
     );
   }
@@ -77,7 +93,22 @@ const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onT
               />
             ) : (
               <View style={[{ width: 50, height: 50, borderRadius: 8, marginRight: 12, justifyContent: 'center', alignItems: 'center' }, { backgroundColor: colors.surfaceVariant }]}>
-                <MaterialDesignIcons name="music-note" size={20} color={colors.onSurfaceVariant} />
+                {index === currentIndex && isPlaying ? (
+                  <Animated.View
+                    style={{
+                      transform: [{
+                        rotate: musicNoteRotation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        })
+                      }]
+                    }}
+                  >
+                    <MaterialDesignIcons name="music-note" size={20} color={colors.primary} />
+                  </Animated.View>
+                ) : (
+                  <MaterialDesignIcons name="music-note" size={20} color={colors.onSurfaceVariant} />
+                )}
               </View>
             )}
             
@@ -172,9 +203,19 @@ const EnhancedAudioPlayer = () => {
   const [currentTrack, setCurrentTrack] = useState(item);
   const [hasUserStartedPlayback, setHasUserStartedPlayback] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [bufferProgress, setBufferProgress] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [volume, setVolume] = useState(1.0);
   const [showSpeedControl, setShowSpeedControl] = useState(false);
+  const [sleepTimer, setSleepTimer] = useState(0);
+  const [repeatMode, setRepeatMode] = useState('off');
+  const [shuffleMode, setShuffleMode] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Animation values for music icons
+  const musicNoteScale = new Animated.Value(1);
+  const musicNoteRotation = new Animated.Value(0);
+  const playButtonScale = new Animated.Value(1);
 
   const { resourceUrls } = useAzureAssets(currentTrack || {});
   const isLiked = isBookmarked(currentTrack?._id || '');
@@ -195,29 +236,42 @@ const EnhancedAudioPlayer = () => {
   } = audioPlayerContext;
   
   const play = () => {
+    console.log('🎵 Play button pressed');
+    console.log('🎵 Audio URL:', audioUrl);
+    console.log('🎵 Duration:', duration);
+    console.log('🎵 Current track:', currentTrack?.title);
+    
+    if (!proxyAudioUrl) {
+      console.error('❌ No proxy audio URL available');
+      setErrorMessage('No audio URL available');
+      return;
+    }
+    
     stopAllVideo();
     setHasUserStartedPlayback(true);
+    
     if (currentTrack) {
       addRecentItem(currentTrack);
     }
+    
     originalPlay();
   };
 
   const progress = duration ? currentTime / duration : 0;
   
-  const audioUrl = resourceUrls?.streamingUrl || processAzureUrl(currentTrack?.streamingUrl) || processAzureUrl(currentTrack?.audioUrl) || getStreamingUrl(currentTrack || {}, 'audio');
+  const audioUrl = getStreamingUrl(currentTrack, 'audio');
+  const proxyAudioUrl = audioUrl;
+  const displayImageUrl = processAzureUrl(currentTrack?.thumbnailUrl) || processAzureUrl(currentTrack?.imageUrl) || processAzureUrl(currentTrack?.headerImage) || processAzureUrl(currentTrack?.mainImage);
   
-  const displayImageUrl = resourceUrls?.thumbnailImage || resourceUrls?.mainImage || processAzureUrl(currentTrack?.thumbnailUrl) || processAzureUrl(currentTrack?.imageUrl) || getImageUrl(currentTrack || {});
-  
-  console.log('Enhanced Audio Player - Final Audio URL:', audioUrl);
-  console.log('Enhanced Audio Player - Processed Image URL:', displayImageUrl);
-  console.log('Enhanced Audio Player - Resource URLs:', resourceUrls);
-  console.log('Enhanced Audio Player - Current Track Data:', {
-    id: currentTrack?._id,
-    title: currentTrack?.title,
-    streamingUrl: currentTrack?.streamingUrl,
-    audioUrl: currentTrack?.audioUrl,
-    thumbnailUrl: currentTrack?.thumbnailUrl
+  console.log('🎵 Enhanced Audio Player Debug:', {
+    audioUrl,
+    displayImageUrl,
+    isLoading,
+    isBuffering,
+    duration,
+    currentTime,
+    isPlaying,
+    trackTitle: currentTrack?.title
   });
   
   // Debug all available URLs
@@ -254,51 +308,112 @@ const EnhancedAudioPlayer = () => {
       setPlaylist(playlist, startIndex >= 0 ? startIndex : 0);
     }
 
-    setOnPositionChanged(() => {});
-
     return () => {
       StatusBar.setBarStyle('dark-content');
       if (Platform.OS === 'android') {
         StatusBar.setBackgroundColor('#ffffff');
       }
+      // Keep audio playing when minimizing, don't stop it
+      setAudioPlayerVisible(true);
     };
-  }, []); // Empty dependency array for one-time setup
+  }, []); // Empty dependency array
   
-  // Separate effect for audio loading
+  // Animation effect for playing state
+  useEffect(() => {
+    if (isPlaying) {
+      // Music note pulsing animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(musicNoteScale, {
+            toValue: 1.3,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(musicNoteScale, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+      
+      // Music note rotation animation
+      Animated.loop(
+        Animated.timing(musicNoteRotation, {
+          toValue: 1,
+          duration: 4000,
+          useNativeDriver: true,
+        })
+      ).start();
+      
+      // Play button pulse
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(playButtonScale, {
+            toValue: 1.05,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(playButtonScale, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      // Stop all animations
+      musicNoteScale.stopAnimation();
+      musicNoteRotation.stopAnimation();
+      playButtonScale.stopAnimation();
+      
+      // Reset to default values
+      musicNoteScale.setValue(1);
+      musicNoteRotation.setValue(0);
+      playButtonScale.setValue(1);
+    }
+  }, [isPlaying]);
+  
+  // Simplified loading logic - just check if we have audio URL
   useEffect(() => {
     if (audioUrl && currentTrack?._id) {
-      setIsLoading(true);
-      setIsBuffering(true);
-      console.log('Enhanced Audio Player - Loading new track:', currentTrack.title);
-      console.log('Enhanced Audio Player - Audio URL:', audioUrl);
-      
-      // Reset audio state before loading new track
-      reset();
-      
-      loadBuffer(audioUrl).then(() => {
-        setIsBuffering(false);
-      }).catch(error => {
-        console.error('Enhanced Audio Player - Error loading audio:', error);
-        setIsLoading(false);
-        setIsBuffering(false);
-      });
-    }
-  }, [currentTrack?._id, audioUrl]); // Depend on both track ID and audio URL
-  
-  // Separate effect for duration changes
-  useEffect(() => {
-    if (duration > 0) {
+      console.log('🎵 Audio URL available, stopping loading');
       setIsLoading(false);
       setIsBuffering(false);
-      // Don't auto-play - let user control playback completely
+    } else {
+      console.log('❌ No audio URL, keeping loading state');
     }
-  }, [duration]);
+  }, [audioUrl, currentTrack?._id]);
+  
+  // Load audio when proxy URL is available
+  useEffect(() => {
+    if (proxyAudioUrl && !isLoading) {
+      console.log('🎵 Loading audio buffer via proxy:', proxyAudioUrl);
+      loadBuffer(proxyAudioUrl).then(() => {
+        console.log('✅ Audio buffer loaded successfully');
+      }).catch(error => {
+        console.error('❌ Audio load error:', error);
+        setErrorMessage('Failed to load audio');
+      });
+    }
+  }, [proxyAudioUrl, isLoading]);
 
   const changePlaybackRate = () => {
     const rates = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
     const currentIndex = rates.indexOf(playbackRate);
     const nextRate = rates[(currentIndex + 1) % rates.length];
     setPlaybackRate(nextRate);
+  };
+  
+  const handleShuffle = () => {
+    setShuffleMode(!shuffleMode);
+  };
+
+  const handleRepeat = () => {
+    const modes = ['off', 'all', 'one'];
+    const currentIndex = modes.indexOf(repeatMode);
+    const nextMode = modes[(currentIndex + 1) % modes.length];
+    setRepeatMode(nextMode);
   };
   
   const switchTrack = (newTrack: any) => {
@@ -341,152 +456,213 @@ const EnhancedAudioPlayer = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={goBackWithMiniPlayer} style={styles.headerButton}>
-          <MaterialDesignIcons name="chevron-down" size={28} color={colors.onBackground} />
+      {/* Spotify-style Header */}
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <TouchableOpacity onPress={goBackWithMiniPlayer} style={styles.backBtn}>
+          <MaterialDesignIcons name="chevron-down" size={28} color={colors.primary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.onBackground }]}>{t('screens.audioPlayer.nowPlaying')}</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleLike} style={styles.headerButton}>
+        <View style={styles.headerInfo}>
+          <Text style={[styles.playingFrom, { color: colors.onSurfaceVariant }]}>PLAYING FROM PLAYLIST</Text>
+          <Text style={[styles.playlistName, { color: colors.onBackground }]}>{currentTrack?.categoryName || currentTrack?.sectionName || 'Audio Playlist'}</Text>
+        </View>
+        <TouchableOpacity style={styles.moreBtn}>
+          <MaterialDesignIcons name="dots-vertical" size={24} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Album Art Section */}
+      <View style={styles.artSection}>
+        {isLoading ? (
+          <View style={styles.artSkeleton}>
+            <SkeletonItem width={width - 60} height={width - 60} borderRadius={12} />
+          </View>
+        ) : (
+          <View style={[styles.artContainer, { shadowColor: colors.primary }]}>
+            {displayImageUrl ? (
+              <View style={styles.albumImageContainer}>
+                <CustomFastImage style={styles.albumImage} imageUrl={displayImageUrl} />
+                {isPlaying && (
+                  <View style={styles.albumImageOverlay}>
+                    <Animated.View
+                      style={{
+                        transform: [
+                          { scale: musicNoteScale },
+                          { 
+                            rotate: musicNoteRotation.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0deg', '360deg'],
+                            })
+                          }
+                        ]
+                      }}
+                    >
+                      <MaterialDesignIcons 
+                        name="music-note" 
+                        size={60} 
+                        color={colors.primary + '80'} 
+                      />
+                    </Animated.View>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={[styles.placeholderImage, { backgroundColor: colors.surfaceVariant }]}>
+                <Animated.View
+                  style={{
+                    transform: [
+                      { scale: musicNoteScale },
+                      { 
+                        rotate: musicNoteRotation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '360deg'],
+                        })
+                      }
+                    ]
+                  }}
+                >
+                  <MaterialDesignIcons 
+                    name="music-note" 
+                    size={80} 
+                    color={isPlaying ? colors.primary : colors.onSurfaceVariant} 
+                  />
+                </Animated.View>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Track Info */}
+      <View style={styles.trackSection}>
+        <View style={styles.trackInfo}>
+          {isLoading ? (
+            <>
+              <SkeletonItem width="90%" height={28} borderRadius={4} style={{ marginBottom: 8 }} />
+              <SkeletonItem width="70%" height={20} borderRadius={4} />
+            </>
+          ) : (
+            <>
+              <Text style={[styles.trackTitle, { color: colors.onBackground }]} numberOfLines={2}>
+                {currentTrack.title}
+              </Text>
+              <Text style={[styles.trackArtist, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+                {currentTrack.artist || 'Unknown Artist'}
+              </Text>
+            </>
+          )}
+        </View>
+        <View style={styles.trackActions}>
+          <TouchableOpacity onPress={handleLike} style={styles.heartBtn}>
             <MaterialDesignIcons 
-              name={isLiked ? "bookmark" : "bookmark-outline"} 
-              size={24} 
-              color={isLiked ? "#F8803B" : colors.onBackground} 
+              name={isLiked ? "heart" : "heart-outline"} 
+              size={28} 
+              color={isLiked ? colors.primary : colors.onSurfaceVariant} 
             />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
-            <MaterialDesignIcons name="share-variant" size={24} color={colors.onBackground} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setShowPlaylist(!showPlaylist)} style={styles.headerButton}>
-            <MaterialDesignIcons name="playlist-music" size={24} color={colors.onBackground} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Album Art */}
-      <View style={styles.albumContainer}>
-        <View style={styles.albumArtWrapper}>
-          {displayImageUrl ? (
-            <CustomFastImage style={styles.albumArt} imageUrl={displayImageUrl} />
+      {/* Progress Section */}
+      <View style={styles.progressSection}>
+        {isLoading ? (
+          <SkeletonItem width="100%" height={4} borderRadius={2} style={{ marginBottom: 16 }} />
+        ) : (
+          <Slider
+            style={styles.progressSlider}
+            value={progress}
+            minimumValue={0}
+            maximumValue={1}
+            onSlidingComplete={(val) => {
+              if (duration) seekTo(val * duration);
+            }}
+            minimumTrackTintColor={colors.primary}
+            maximumTrackTintColor={colors.outline}
+            thumbTintColor={colors.primary}
+          />
+        )}
+        <View style={styles.timeRow}>
+          {isLoading ? (
+            <>
+              <SkeletonItem width={35} height={12} borderRadius={6} />
+              <SkeletonItem width={35} height={12} borderRadius={6} />
+            </>
           ) : (
-            <View style={styles.placeholderArt}>
-              <MaterialDesignIcons name="music-note" size={80} color={colors.onSurfaceVariant} />
-            </View>
+            <>
+              <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>
+                {formatTime(currentTime)}
+              </Text>
+              <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>
+                {formatTime(duration ?? 0)}
+              </Text>
+            </>
           )}
         </View>
       </View>
 
-      {/* Song Info */}
-      <View style={styles.songInfo}>
-        <Text style={[styles.songTitle, { color: colors.onBackground }]} numberOfLines={2}>{currentTrack.title}</Text>
-        <Text style={[styles.artistName, { color: colors.onSurfaceVariant }]} numberOfLines={1}>{currentTrack.artist || t('screens.audioPlayer.unknownArtist')}</Text>
-      </View>
-
-      {/* Buffering Indicator */}
-      {isBuffering && (
-        <View style={styles.bufferingContainer}>
-          <View style={styles.spotifySpinner}>
-            <View style={[styles.spotifyDot, styles.spotifyDot1]} />
-            <View style={[styles.spotifyDot, styles.spotifyDot2]} />
-            <View style={[styles.spotifyDot, styles.spotifyDot3]} />
-          </View>
-          <Text style={[styles.bufferingText, { color: colors.onSurfaceVariant }]}>Loading...</Text>
+      {/* Controls Section */}
+      <View style={styles.controlsSection}>
+        <View style={styles.topControls}>
+          <TouchableOpacity onPress={handleShuffle} style={styles.smallBtn}>
+            <MaterialDesignIcons 
+              name="shuffle" 
+              size={20} 
+              color={shuffleMode ? colors.primary : colors.onSurfaceVariant} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare} style={styles.smallBtn}>
+            <MaterialDesignIcons name="share-variant" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowPlaylist(!showPlaylist)} style={styles.smallBtn}>
+            <MaterialDesignIcons name="playlist-music" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleRepeat} style={styles.smallBtn}>
+            <MaterialDesignIcons 
+              name={repeatMode === 'one' ? 'repeat-once' : 'repeat'} 
+              size={20} 
+              color={repeatMode !== 'off' ? colors.primary : colors.onSurfaceVariant} 
+            />
+          </TouchableOpacity>
         </View>
-      )}
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <Slider
-          style={styles.slider}
-          value={progress}
-          minimumValue={0}
-          maximumValue={1}
-          onSlidingComplete={(val) => {
-            if (duration) {
-              setIsBuffering(true);
-              seekTo(val * duration);
-              setTimeout(() => setIsBuffering(false), 500);
-            }
-          }}
-          minimumTrackTintColor="#F8803B"
-          maximumTrackTintColor={colors.outline}
-          thumbTintColor="#F8803B"
-        />
-        <View style={styles.timeContainer}>
-          <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>{formatTime(currentTime)}</Text>
-          <Text style={[styles.timeText, { color: colors.onSurfaceVariant }]}>{formatTime(duration ?? 0)}</Text>
-        </View>
-      </View>
-
-      {/* Enhanced Controls Row */}
-      <View style={styles.enhancedControlsRow}>
-        <TouchableOpacity onPress={changePlaybackRate} style={styles.speedButton}>
-          <Text style={[styles.speedText, { color: colors.onSurfaceVariant }]}>{playbackRate}x</Text>
-        </TouchableOpacity>
         
-        <TouchableOpacity style={styles.volumeButton}>
-          <MaterialDesignIcons name="volume-high" size={20} color={colors.onSurfaceVariant} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.repeatButton}>
-          <MaterialDesignIcons name="repeat" size={20} color={colors.onSurfaceVariant} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.shuffleButton}>
-          <MaterialDesignIcons name="shuffle" size={20} color={colors.onSurfaceVariant} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Controls */}
-      <View style={styles.controlsContainer}>
-        <TouchableOpacity 
-          onPress={() => seekBy(-10)} 
-          style={styles.actionButton}
-        >
-          <MaterialDesignIcons name="rewind-10" size={28} color={"#F8803B"} />
-        </TouchableOpacity>
-
-        <View style={styles.mainControls}>
+        <View style={styles.mainPlayControls}>
           <TouchableOpacity 
             onPress={handlePrevious} 
-            style={[styles.controlButton, { opacity: hasPrevious ? 1 : 0.5 }]}
+            style={[styles.skipBtn, { opacity: hasPrevious ? 1 : 0.3 }]}
             disabled={!hasPrevious}
           >
-            <MaterialDesignIcons name="skip-previous" size={32} color={"#F8803B"} />
+            <MaterialDesignIcons name="skip-previous" size={36} color={colors.onBackground} />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={isPlaying ? pause : play}
-            style={styles.playButton}
+            style={[styles.playBtn, { backgroundColor: colors.primary }]}
             disabled={isLoading}
           >
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#fff" />
-            ) : (
-              <MaterialDesignIcons
-                name={isPlaying ? 'pause' : 'play'}
-                size={40}
-                color="#fff"
-              />
-            )}
+            <Animated.View style={{ transform: [{ scale: playButtonScale }] }}>
+              {isLoading ? (
+                <ActivityIndicator size="large" color={colors.background} />
+              ) : (
+                <MaterialDesignIcons
+                  name={isPlaying ? 'pause' : 'play'}
+                  size={28}
+                  color={colors.onPrimary}
+                />
+              )}
+            </Animated.View>
           </TouchableOpacity>
 
           <TouchableOpacity 
             onPress={handleNext} 
-            style={[styles.controlButton, { opacity: hasNext ? 1 : 0.5 }]}
+            style={[styles.skipBtn, { opacity: hasNext ? 1 : 0.3 }]}
             disabled={!hasNext}
           >
-            <MaterialDesignIcons name="skip-next" size={32} color={"#F8803B"} />
+            <MaterialDesignIcons name="skip-next" size={36} color={colors.onBackground} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        <TouchableOpacity 
-          onPress={() => seekBy(10)} 
-          style={styles.actionButton}
-        >
-          <MaterialDesignIcons name="fast-forward-10" size={28} color={"#F8803B"} />
-        </TouchableOpacity>
+      {/* Bottom Actions */}
+      <View style={styles.bottomActions}>
       </View>
 
 
@@ -528,7 +704,7 @@ const EnhancedAudioPlayer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: StatusBar.currentHeight || 0,
+    paddingTop: Platform.OS === 'ios' ? 20 : 0,
   },
   errorContainer: {
     flex: 1,
@@ -540,10 +716,174 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerInfo: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  playingFrom: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  playlistName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  moreBtn: {
+    padding: 8,
+  },
+  artSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  artContainer: {
+    elevation: 24,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+  },
+  albumImage: {
+    width: width - 60,
+    height: width - 60,
+    borderRadius: 12,
+  },
+  albumImageContainer: {
+    position: 'relative',
+    width: width - 60,
+    height: width - 60,
+  },
+  albumImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+  },
+  placeholderImage: {
+    width: width - 60,
+    height: width - 60,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trackSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  trackInfo: {
+    flex: 1,
+  },
+  trackTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  trackArtist: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  trackActions: {
+    paddingLeft: 16,
+  },
+  heartBtn: {
+    padding: 8,
+  },
+  progressSection: {
+    paddingHorizontal: 24,
+    marginBottom: 32,
+  },
+  progressContainer: {
+    position: 'relative',
+  },
+  bufferTrack: {
+    position: 'absolute',
+    top: 18,
+    left: 16,
+    right: 16,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+  },
+  bufferFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressSlider: {
+    width: '100%',
+    height: 40,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: -8,
+  },
+  timeText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  controlsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 40,
+  },
+  topControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  smallBtn: {
+    padding: 8,
+  },
+  mainPlayControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipBtn: {
+    padding: 12,
+    marginHorizontal: 24,
+  },
+  playBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    gap: 40,
+  },
+  bottomBtn: {
+    padding: 12,
+  },
+  header: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: wp(4),
-    paddingVertical: hp(1.5),
+    paddingVertical: hp(2),
+    minHeight: 60,
   },
   headerButton: {
     padding: 8,
@@ -559,12 +899,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerButton: {
+    padding: 12,
+    borderRadius: 20,
+  },
   albumContainer: {
     flex: 0.6,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(6),
-    paddingVertical: hp(1),
+    paddingVertical: hp(3),
   },
   albumArtWrapper: {
     width: getResponsiveSize(width - 100, width - 80, width - 60),
@@ -589,10 +933,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   songInfo: {
-    paddingHorizontal: wp(6),
-    paddingVertical: hp(1),
-    paddingTop: hp(2),
+    paddingHorizontal: wp(8),
+    paddingVertical: hp(1.5),
     alignItems: 'center',
+    minHeight: hp(8),
   },
   songTitle: {
     fontSize: normalize(isSmallScreen() ? 20 : 24),
@@ -608,9 +952,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(2),
   },
   progressContainer: {
-    paddingHorizontal: wp(6),
-    marginTop: hp(1.5),
-    marginBottom: hp(1),
+    paddingHorizontal: wp(8),
+    marginTop: hp(2),
+    marginBottom: hp(2),
+    minHeight: 60,
   },
   slider: {
     width: '100%',
@@ -633,8 +978,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: wp(6),
-    marginBottom: hp(3),
+    paddingHorizontal: wp(8),
+    marginBottom: hp(4),
+    minHeight: 80,
   },
   actionButton: {
     padding: wp(2),
@@ -805,6 +1151,38 @@ const styles = StyleSheet.create({
   },
   shuffleButton: {
     padding: wp(2),
+  },
+  sleepTimerDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: hp(0.5),
+    paddingHorizontal: wp(4),
+    backgroundColor: 'rgba(248, 128, 59, 0.1)',
+    marginHorizontal: wp(6),
+    borderRadius: 20,
+    marginBottom: hp(1),
+  },
+  sleepTimerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: hp(1),
+    paddingHorizontal: wp(4),
+    backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    marginHorizontal: wp(6),
+    borderRadius: 8,
+    marginBottom: hp(1),
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '500',
+    flex: 1,
   },
 });
 
