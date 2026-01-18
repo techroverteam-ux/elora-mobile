@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, View, Dimensions, Linking, FlatList, TouchableOpacity, StatusBar, Platform } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Dimensions, Linking, FlatList, TouchableOpacity, StatusBar, Platform, RefreshControl } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import AppBarHeader from '../../components/AppBarHeader';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -61,6 +61,7 @@ const BlogPage = () => {
   const { colors } = useTheme();
   const [isGridView, setIsGridView] = useState(true);
   const [readingTime, setReadingTime] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const { azureData, resourceUrls } = useAzureAssets(categoryData);
   const {
@@ -69,6 +70,17 @@ const BlogPage = () => {
   } = resourceUrls;
 
   const [getSubcategoriesRequest, { data: subcategoriesData, error: subcategoriesError, isLoading: subcategoriesLoading }] = useGetSubcategoriesMutation();
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (categoryData?._id) {
+        await getSubcategoriesRequest(categoryData._id);
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (categoryData?._id) {
@@ -160,6 +172,8 @@ const BlogPage = () => {
           category={processedCategory} 
           onBack={() => navigation.goBack()}
           hideHeader={categoryData?.sectionId?.contentType === 'attractive'}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       </View>
     );
@@ -176,6 +190,17 @@ const BlogPage = () => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         bounces={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F8803B', '#FF6B35', '#F7931E']}
+            tintColor="#F8803B"
+            progressBackgroundColor="#FFFFFF"
+            title="Pull to refresh"
+            titleColor="#666666"
+          />
+        }
       >
         {/* Hero Section */}
         <View style={styles.heroSection}>

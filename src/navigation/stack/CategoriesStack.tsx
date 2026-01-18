@@ -9,6 +9,7 @@ import AttractiveButtonsScreen from '../../screens/categories/AttractiveButtonsS
 import EnhancedAudioPlayer from '../../components/EnhancedAudioPlayer';
 import EnhancedVideoPlayer from '../../components/EnhancedVideoPlayer';
 import PdfViewer from '../../components/PdfViewer';
+import SimplePdfViewer from '../../components/SimplePdfViewer';
 import ImageGalleryViewer from '../../components/ImageGalleryViewer';
 import GalleryListScreen from '../../screens/GalleryListScreen';
 import AudioCategoryScreen from '../../screens/home/AudioCategoryScreen';
@@ -33,6 +34,7 @@ const CategoriesStack = () => (
     <Stack.Screen name="EnhancedAudioPlayer" component={EnhancedAudioPlayer} />
     <Stack.Screen name="EnhancedVideoPlayer" component={EnhancedVideoPlayer} />
     <Stack.Screen name="PdfViewer" component={PdfViewer} />
+    <Stack.Screen name="SimplePdfViewer" component={SimplePdfViewer} />
     <Stack.Screen name="ImageViewer" component={require('../../screens/modals/ImageViewer').default} />
     <Stack.Screen name="GalleryList" component={GalleryListScreen} />
     <Stack.Screen name="AudioCategoryScreen" component={AudioCategoryScreen} />

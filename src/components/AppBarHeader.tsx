@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
+import { shareContent, ShareableContent } from '../utils/deepLinkHelper';
 
 // Props interface
 interface AppBarHeaderProps {
@@ -14,12 +15,13 @@ interface AppBarHeaderProps {
   onToggleView?: () => void;
   showDownload?: boolean;
   subtitle?: string;
+  shareContent?: ShareableContent;
 }
 
 // Use correct type if you have a typed stack param list
 type RootStackParamList = any; // Replace 'any' with your actual param list if using TypeScript navigation
 
-const AppBarHeader: React.FC<AppBarHeaderProps> = ({ title, onBack, icon, showViewToggle = false, isGridView = true, onToggleView, showDownload = true, subtitle }) => {
+const AppBarHeader: React.FC<AppBarHeaderProps> = ({ title, onBack, icon, showViewToggle = false, isGridView = true, onToggleView, showDownload = true, subtitle, shareContent: shareableContent }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
 
@@ -57,7 +59,14 @@ const AppBarHeader: React.FC<AppBarHeaderProps> = ({ title, onBack, icon, showVi
             <MaterialDesignIcons name="tray-arrow-down" size={24} color={colors.primary} />
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={() => { }} style={styles.iconButton}>
+        <TouchableOpacity 
+          onPress={async () => {
+            if (shareableContent) {
+              await shareContent(shareableContent);
+            }
+          }} 
+          style={styles.iconButton}
+        >
           <MaterialDesignIcons name="share-variant-outline" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>

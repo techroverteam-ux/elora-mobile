@@ -310,21 +310,28 @@ const Home: React.FC = () => {
         <MediaHorizontalList
           title={t('screens.home.recentUploads')}
           data={displayRecentUploads}
-          type="audio"
+          type="mixed"
           onItemPress={(item) => {
-            if (item.type === 'video') {
+            if (item.type === 'image') {
+              const imageUrl = processAzureUrl(item.streamingUrl) || processAzureUrl(item.imageUrl) || processAzureUrl(item.thumbnailUrl) || processAzureUrl(item.mainImage) || processAzureUrl(item.headerImage);
+              (navigation as any).navigate('ImageViewer', {
+                images: [imageUrl].filter(url => url),
+                initialIndex: 0,
+                title: item.title || 'Image'
+              });
+            } else if (item.type === 'video') {
               handleVideoPress(item, displayRecentUploads.filter(i => i.type === 'video'));
             } else if (item.type === 'pdf') {
               requireAuth(() => {
-                (navigation as any).navigate('BookDetailsScreen', {
-                  item: {
-                    ...item,
-                    pdfUrl: item.streamingUrl || item.pdfUrl,
-                  }
+                (navigation as any).navigate('PdfViewer', {
+                  uri: item.streamingUrl || item.pdfUrl || item.downloadUrl,
+                  title: item.title,
+                  description: item.description,
+                  item: item
                 });
               });
             } else {
-              handleAudioPress(item, displayRecentUploads.filter(i => i.type !== 'video' && i.type !== 'pdf'));
+              handleAudioPress(item, displayRecentUploads.filter(i => i.type === 'audio'));
             }
           }}
           isLoading={isLoading}

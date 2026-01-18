@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Linking,
 } from 'react-native';
-import SimplePullToRefresh from '../../components/SimplePullToRefresh';
 import React, { useEffect, useMemo } from 'react';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -117,7 +116,21 @@ const CategorieDataList = () => {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={{ flex: 1 }} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#F8803B', '#FF6B35', '#F7931E']}
+              tintColor="#F8803B"
+              progressBackgroundColor="#FFFFFF"
+              title="Pull to refresh"
+              titleColor="#666666"
+            />
+          }
+        >
           {translatedCategories.length === 0 ? (
             <View style={styles.loaderContainer}>
               <Text style={styles.errorText}>No categories found for this section</Text>
@@ -134,7 +147,7 @@ const CategorieDataList = () => {
               data={translatedCategories}
               imageUrl={(item) => item.headerImage}
               scrollEnabled={false}
-              nestedScrollEnabled={false}
+              nestedScrollEnabled={true}
               isGridView={isGridView}
               onItemPress={async (item) => {
                   if (isListType) {

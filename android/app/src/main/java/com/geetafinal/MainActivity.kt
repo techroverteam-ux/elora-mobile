@@ -1,6 +1,8 @@
 package com.geetabalsanskar
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -22,6 +24,8 @@ class MainActivity : ReactActivity() {
           DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    // Enable edge-to-edge for Android 15+ compatibility
+    enableEdgeToEdge()
     super.onCreate(null)
   }
 }

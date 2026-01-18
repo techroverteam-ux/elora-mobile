@@ -211,7 +211,17 @@ const AttractiveButtonsScreen: React.FC = () => {
       <AppBarHeader title={title} onBack={() => navigation.goBack()} showDownload={false} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#F8803B', '#FF6B35', '#F7931E']}
+            tintColor="#F8803B"
+            progressBackgroundColor="#FFFFFF"
+            title="Pull to refresh"
+            titleColor="#666666"
+          />
+        }
       >
         {hasButtons && (
           <View style={styles.buttonsSection}>

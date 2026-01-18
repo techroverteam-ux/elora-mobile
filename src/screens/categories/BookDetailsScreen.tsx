@@ -7,6 +7,7 @@ import CustomFastImage from '../../components/CustomFastImage';
 import AppBarHeader from '../../components/AppBarHeader';
 import { wp, hp, normalize } from '../../utils/responsive';
 import { processAzureUrl } from '../../utils/azureUrlHelper';
+import { shareContent, ShareableContent } from '../../utils/deepLinkHelper';
 
 const BookDetailsScreen = () => {
   const route = useRoute();
@@ -15,14 +16,22 @@ const BookDetailsScreen = () => {
   const { item, title } = route.params as any;
 
   const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Check out this book: ${item.title}`,
-        title: item.title,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+    if (!item) return;
+    
+    const shareableContent: ShareableContent = {
+      _id: item._id,
+      title: item.title || 'Book',
+      type: 'pdf',
+      pdfUrl: item.pdfUrl || item.streamingUrl,
+      streamingUrl: item.streamingUrl,
+      thumbnailUrl: item.headerImage || item.mainImage || item.imageUrl,
+      author: item.author || item.subtitle,
+      description: item.description1,
+      categoryId: item.categoryId,
+      sectionId: item.sectionId,
+    };
+    
+    await shareContent(shareableContent);
   };
 
   const handleReadNow = () => {

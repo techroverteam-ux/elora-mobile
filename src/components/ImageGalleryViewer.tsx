@@ -16,6 +16,7 @@ import CustomFastImage from './CustomFastImage';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { wp, hp, normalize } from '../utils/responsive';
 import { useBookmarks } from '../context/BookmarkContext';
+import { shareContent, ShareableContent } from '../utils/deepLinkHelper';
 
 
 
@@ -208,7 +209,24 @@ const ImageGalleryViewer: React.FC<ImageGalleryViewerProps> = ({
               <Text style={styles.controlText}>Rotate</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.controlButton}>
+            <TouchableOpacity 
+              style={styles.controlButton}
+              onPress={async () => {
+                if (!currentImage) return;
+                
+                const shareableContent: ShareableContent = {
+                  _id: currentImage._id,
+                  title: currentImage.title || 'Daily Gyan Image',
+                  type: 'image',
+                  imageUrl: imageUrl,
+                  streamingUrl: currentImage.streamingUrl,
+                  thumbnailUrl: currentImage.thumbnailUrl,
+                  description: currentImage.title,
+                };
+                
+                await shareContent(shareableContent);
+              }}
+            >
               <MaterialDesignIcons name="share-variant" size={24} color="#fff" />
               <Text style={styles.controlText}>Share</Text>
             </TouchableOpacity>

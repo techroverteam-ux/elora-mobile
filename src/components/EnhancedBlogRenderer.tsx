@@ -9,6 +9,7 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
@@ -50,12 +51,16 @@ interface EnhancedBlogRendererProps {
   category: BlogCategory;
   onBack?: () => void;
   hideHeader?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
   category,
   onBack,
   hideHeader = false,
+  refreshing = false,
+  onRefresh,
 }) => {
   const navigation = useNavigation();
   const { colors } = useTheme();
@@ -488,6 +493,19 @@ const EnhancedBlogRenderer: React.FC<EnhancedBlogRendererProps> = ({
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#F8803B', '#FF6B35', '#F7931E']}
+              tintColor="#F8803B"
+              progressBackgroundColor="#FFFFFF"
+              title="Pull to refresh"
+              titleColor="#666666"
+            />
+          ) : undefined
+        }
       >
         {/* Hero Section */}
         {!hideHeader && (

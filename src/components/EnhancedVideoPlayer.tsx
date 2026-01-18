@@ -26,6 +26,7 @@ import { wp, hp, normalize } from '../utils/responsive';
 import { useMediaPlayerManager } from '../context/MediaPlayerManager';
 import { useBookmarks } from '../context/BookmarkContext';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
+import { shareContent, ShareableContent } from '../utils/deepLinkHelper';
 import SafeBottomArea from './SafeBottomArea';
 
 const { width, height } = Dimensions.get('window');
@@ -64,74 +65,24 @@ const EnhancedVideoPlayer = () => {
   const [rotation, setRotation] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
 
-  // Get video URL - use direct URL if flagged, otherwise process through Azure
-  const getValidVideoUrl = () => {
-    // If this is a direct URL (like from BlogVideo), use it as-is
-    if (currentVideo?.isDirectUrl) {
-      const directUrl = currentVideo?.streamingUrl || currentVideo?.videoUrl || currentVideo?.videoUri;
-      console.log('EnhancedVideoPlayer - Using direct URL:', directUrl);
-      return directUrl;
-    }
+  // Get video URL - check iOS compatibility
+  const getVideoUrl = () => {
+    const url = getStreamingUrl(currentVideo, 'video');
     
-    const urls = [
-      currentVideo?.mediaFile,
-      currentVideo?.streamingUrl,
-      currentVideo?.downloadUrl,
-      currentVideo?.videoUrl,
-      currentVideo?.videoUri,
-      currentVideo?.url
-    ].filter(url => url && typeof url === 'string' && url.trim().length > 0);
-    
-    console.log('EnhancedVideoPlayer - Available URLs:', urls);
-    console.log('EnhancedVideoPlayer - Platform:', Platform.OS);
-    
-    // For iOS, extract direct blob URL from API proxy
-    if (Platform.OS === 'ios') {
-      for (const url of urls) {
-        if (url.includes('/api/azure-blob/file?blobUrl=')) {
-          try {
-            const blobUrlParam = url.split('blobUrl=')[1];
-            if (blobUrlParam) {
-              const directUrl = decodeURIComponent(blobUrlParam);
-              console.log('EnhancedVideoPlayer - Extracted direct URL for iOS:', directUrl);
-              return directUrl;
-            }
-          } catch (error) {
-            console.log('Error extracting blob URL:', error);
-          }
-        }
+    // Check if video is iOS compatible
+    if (Platform.OS === 'ios' && currentVideo?.fileName) {
+      const fileName = currentVideo.fileName.toLowerCase();
+      const isCompatible = fileName.endsWith('.mp4') || fileName.endsWith('.mov') || fileName.endsWith('.m4v');
+      
+      if (!isCompatible) {
+        console.warn('⚠️ Video may not be compatible with iOS:', fileName);
       }
     }
     
-    // Fallback to processed URL
-    for (const url of urls) {
-      const processed = processAzureUrl(url.trim());
-      console.log('EnhancedVideoPlayer - Processing:', url, '-> Result:', processed);
-      if (processed && (processed.startsWith('http://') || processed.startsWith('https://'))) {
-        return processed;
-      }
-    }
-    
-    return getStreamingUrl(currentVideo, 'video');
+    return url;
   };
   
-  const videoUrl = (() => {
-    const rawUrl = getValidVideoUrl();
-    
-    // iOS-only URL extraction
-    if (Platform.OS === 'ios' && rawUrl && rawUrl.includes('blobUrl=')) {
-      const extracted = decodeURIComponent(rawUrl.split('blobUrl=')[1]);
-      return extracted;
-    }
-    
-    return rawUrl;
-  })();
-  
-  // Force iOS URL extraction test
-  if (Platform.OS === 'ios' && videoUrl && videoUrl.includes('/api/azure-blob/file?blobUrl=')) {
-    console.log('EnhancedVideoPlayer - STILL USING API URL ON iOS:', videoUrl);
-    console.log('EnhancedVideoPlayer - EXTRACTION FAILED - Check getValidVideoUrl function');
-  }
+  const videoUrl = getVideoUrl();
   const videoTitle = currentVideo?.title || 'Video Player';
   const thumbnailUrl = processAzureUrl(currentVideo?.thumbnailUrl) || processAzureUrl(currentVideo?.imageUrl) || getImageUrl(currentVideo);
   
@@ -329,15 +280,21 @@ const EnhancedVideoPlayer = () => {
 
   // Handle share functionality
   const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Check out this video: ${videoTitle}`,
-        url: videoUrl,
-        title: videoTitle,
-      });
-    } catch (error) {
-      Alert.alert(t('common.error'), t('screens.videoPlayer.shareError'));
-    }
+    if (!currentVideo) return;
+    
+    const shareableContent: ShareableContent = {
+      _id: currentVideo._id,
+      title: currentVideo.title || 'Video',
+      type: 'video',
+      videoUrl: currentVideo.videoUrl || currentVideo.streamingUrl,
+      streamingUrl: currentVideo.streamingUrl,
+      thumbnailUrl: currentVideo.thumbnailUrl || currentVideo.imageUrl,
+      description: currentVideo.description || currentVideo.subtitle,
+      categoryId: currentVideo.categoryId,
+      sectionId: currentVideo.sectionId,
+    };
+    
+    await shareContent(shareableContent);
   };
 
 
@@ -411,18 +368,14 @@ const EnhancedVideoPlayer = () => {
       >
         <Video
           ref={videoRef}
-          source={{ uri: (() => {
-            const finalUrl = Platform.OS === 'ios' && videoUrl?.includes('/api/azure-blob/file?blobUrl=') 
-              ? decodeURIComponent(videoUrl.split('blobUrl=')[1]) 
-              : videoUrl;
-            console.log('EnhancedVideoPlayer - Video component using URL:', finalUrl);
-            return finalUrl;
-          })() }}
+          source={{ uri: videoUrl }}
           style={[styles.video, rotation !== 0 && { transform: [{ rotate: `${rotation}deg` }] }]}
           paused={paused}
           muted={muted}
-          resizeMode="contain"
+          resizeMode={Platform.OS === 'ios' ? 'cover' : 'contain'}
           rate={playbackRate}
+          poster={thumbnailUrl}
+          posterResizeMode="contain"
           onLoad={({ duration }) => {
             console.log('Video loaded, duration:', duration);
             setDuration(duration);
@@ -482,11 +435,20 @@ const EnhancedVideoPlayer = () => {
                   { text: 'OK' }
                 ]
               );
-            } else if (errorCode === -11800) {
+            } else if (errorCode === -11850 || errorCode === -11800) {
+              // Check if it's a format issue
+              const fileName = currentVideo?.fileName?.toLowerCase() || '';
+              const isIncompatibleFormat = !fileName.endsWith('.mp4') && !fileName.endsWith('.mov') && !fileName.endsWith('.m4v');
+              
               Alert.alert(
-                'Network Error', 
-                'Cannot load video. Please check your internet connection.',
-                [{ text: 'OK' }]
+                'iOS Video Format', 
+                isIncompatibleFormat 
+                  ? `This ${fileName.split('.').pop()?.toUpperCase()} format is not supported on iOS. Only MP4, MOV, and M4V formats work on iOS devices.`
+                  : 'This video format is not supported on iOS. Please try on Android device.',
+                [
+                  { text: 'Try Next', onPress: () => hasNext && handleNext() },
+                  { text: 'OK' }
+                ]
               );
             } else {
               Alert.alert(
@@ -514,15 +476,18 @@ const EnhancedVideoPlayer = () => {
             stopNetflixAnimation();
           }}
           bufferConfig={{
-            minBufferMs: 15000,
-            maxBufferMs: 50000,
-            bufferForPlaybackMs: 2500,
-            bufferForPlaybackAfterRebufferMs: 5000,
+            minBufferMs: Platform.OS === 'ios' ? 5000 : 15000,
+            maxBufferMs: Platform.OS === 'ios' ? 25000 : 50000,
+            bufferForPlaybackMs: Platform.OS === 'ios' ? 1000 : 2500,
+            bufferForPlaybackAfterRebufferMs: Platform.OS === 'ios' ? 2000 : 5000,
           }}
           volume={volume}
           playInBackground={false}
           playWhenInactive={false}
-          ignoreSilentSwitch={'ignore'}
+          ignoreSilentSwitch={Platform.OS === 'ios' ? 'obey' : 'ignore'}
+          allowsExternalPlayback={Platform.OS === 'ios'}
+          pictureInPicture={false}
+          mixWithOthers={'duck'}
         />
 
         {/* Netflix-style Buffering Indicator */}

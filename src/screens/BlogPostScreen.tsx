@@ -10,7 +10,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import EnhancedBlogRenderer from '../components/EnhancedBlogRenderer';
 import EnhancedBlogSkeleton from '../components/EnhancedBlogSkeleton';
-import { useThemeContext } from '../context/ThemeContext';
+import { useTheme } from 'react-native-paper';
 
 // Mock API service - replace with your actual API
 const mockApiService = {
@@ -225,8 +225,7 @@ interface BlogPostScreenProps {}
 const BlogPostScreen: React.FC<BlogPostScreenProps> = () => {
   const route = useRoute<BlogPostScreenRouteProp>();
   const navigation = useNavigation();
-  const { theme } = useThemeContext();
-  const isDark = theme === 'dark';
+  const { colors } = useTheme();
   
   const [category, setCategory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -278,10 +277,10 @@ const BlogPostScreen: React.FC<BlogPostScreenProps> = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar
-          barStyle={isDark ? 'light-content' : 'dark-content'}
-          backgroundColor={isDark ? '#121212' : '#fff'}
+          barStyle={colors.background === '#121212' ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.background}
         />
         <EnhancedBlogSkeleton sectionsCount={8} />
       </SafeAreaView>
@@ -290,23 +289,23 @@ const BlogPostScreen: React.FC<BlogPostScreenProps> = () => {
 
   if (error || !category) {
     return (
-      <SafeAreaView style={[styles.container, styles.errorContainer, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+      <SafeAreaView style={[styles.container, styles.errorContainer, { backgroundColor: colors.background }]}>
         <StatusBar
-          barStyle={isDark ? 'light-content' : 'dark-content'}
-          backgroundColor={isDark ? '#121212' : '#fff'}
+          barStyle={colors.background === '#121212' ? 'light-content' : 'dark-content'}
+          backgroundColor={colors.background}
         />
         <View style={styles.errorContent}>
-          <Text style={[styles.errorTitle, { color: isDark ? '#fff' : '#333' }]}>
+          <Text style={[styles.errorTitle, { color: colors.onBackground }]}>
             Oops! Something went wrong
           </Text>
-          <Text style={[styles.errorMessage, { color: isDark ? '#ccc' : '#666' }]}>
+          <Text style={[styles.errorMessage, { color: colors.onSurfaceVariant }]}>
             {error || 'Failed to load blog post'}
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={[styles.backButtonText, { color: isDark ? '#ccc' : '#666' }]}>
+            <Text style={[styles.backButtonText, { color: colors.onSurfaceVariant }]}>
               Go Back
             </Text>
           </TouchableOpacity>
@@ -316,10 +315,10 @@ const BlogPostScreen: React.FC<BlogPostScreenProps> = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={isDark ? '#121212' : '#fff'}
+        barStyle={colors.background === '#121212' ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
       />
       <EnhancedBlogRenderer
         category={category}

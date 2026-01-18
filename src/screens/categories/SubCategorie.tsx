@@ -322,7 +322,11 @@ const SubCategorie = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
+              colors={['#F8803B', '#FF6B35', '#F7931E']}
+              tintColor="#F8803B"
+              progressBackgroundColor="#FFFFFF"
+              title="Pull to refresh"
+              titleColor="#666666"
             />
           }
           nestedScrollEnabled={false}
@@ -333,8 +337,8 @@ const SubCategorie = () => {
               data={subcategories}
               renderItem={renderSubcategoryItem}
               keyExtractor={(item) => item._id}
-              numColumns={isGridView ? 2 : 1}
-              key={isGridView ? 'grid' : 'list'}
+              numColumns={isGridView ? 3 : 1}
+              key={isGridView ? 'grid-3' : 'list'}
               columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
               scrollEnabled={false}
               nestedScrollEnabled={false}
@@ -606,13 +610,25 @@ const SubCategorie = () => {
   }
 
   if (error) {
+    const isAzureError = error?.data?.azureError || error?.data?.message?.includes('Azure');
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
         <AppBarHeader title={title || 'Subcategories'} onBack={() => navigation.goBack()} showDownload={false} />
         <View style={styles.errorContainer}>
-          <MaterialDesignIcons name="alert-circle" size={64} color={colors.error} />
-          <Text style={[styles.errorText, { color: colors.error }]}>Failed to load subcategories</Text>
+          <MaterialDesignIcons 
+            name={isAzureError ? 'cloud-off' : 'alert-circle'} 
+            size={64} 
+            color={colors.error} 
+          />
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            {isAzureError ? 'Content not available' : 'Failed to load subcategories'}
+          </Text>
+          <Text style={[styles.errorSubtext, { color: colors.onSurfaceVariant }]}>
+            {isAzureError 
+              ? 'This content is being prepared. Please try again later.' 
+              : 'Please check your connection and try again.'}
+          </Text>
           <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={fetchSubcategories}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
@@ -664,70 +680,104 @@ const SubCategorie = () => {
             isGridView={isGridView} 
             onToggleView={() => setIsGridView(!isGridView)} 
           />
-          <ScrollView>
+          <ScrollView
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#F8803B', '#FF6B35', '#F7931E']}
+                tintColor="#F8803B"
+                progressBackgroundColor="#FFFFFF"
+                title="Pull to refresh"
+                titleColor="#666666"
+              />
+            }
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.listContainer}>
               <FlatList
                 data={selectedSubcategory.mediaType === 'audio-list' ? (selectedSubcategory.audios || audioList || []) : (selectedSubcategory.videos || selectedSubcategory.audios || [])}
-                renderItem={({ item }) => {
+                renderItem={({ item, index }) => {
                   const isAudio = selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos);
+                  const numColumns = isGridView ? 3 : 1;
                   
                   if (isGridView) {
+                    const screenWidth = require('react-native').Dimensions.get('window').width;
+                    const containerPadding = 32; // 16 * 2
+                    const itemSpacing = 6;
+                    const totalSpacing = containerPadding + itemSpacing * (numColumns - 1);
+                    const itemWidth = Math.floor((screenWidth - totalSpacing) / numColumns);
+                    const isLastInRow = (index + 1) % numColumns === 0;
+                    
                     return (
-                      <TouchableOpacity
-                        style={styles.gridItem}
-                        onPress={() => {
-                          const mediaList = selectedSubcategory.videos || selectedSubcategory.audios || []
-                          const processedMediaFile = processAzureUrl(item.mediaFile)
-                          const finalMediaFile = processedMediaFile || item.mediaFile
-                          
-                          if (!finalMediaFile || finalMediaFile.trim() === '') {
-                            console.error('❌ No valid media URL found for:', item.title)
-                            return
-                          }
-                          
-                          const processedItem = {
-                            ...item,
-                            mediaFile: finalMediaFile,
-                            videoUrl: finalMediaFile,
-                            audioUrl: finalMediaFile,
-                            streamingUrl: finalMediaFile
-                          }
-                          
-                          if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
-                            navigation.navigate('EnhancedVideoPlayer', { item: processedItem, playlist: [] })
-                          } else {
-                            navigation.navigate('EnhancedAudioPlayer', { item: processedItem, playlist: [] })
-                          }
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <View style={styles.gridImageContainer}>
-                          {item.headerImage || item.mainImage || item.imageUrl ? (
-                            <CustomFastImage
-                              style={styles.gridImage}
-                              imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View style={[styles.gridPlaceholder, { backgroundColor: isAudio ? '#4ECDC420' : '#FF6B6B20' }]}>
-                              <MaterialDesignIcons 
-                                name={isAudio ? 'music-note' : 'play-circle'} 
-                                size={32} 
-                                color={isAudio ? '#4ECDC4' : '#FF6B6B'} 
+                      <View style={{ 
+                        width: itemWidth, 
+                        marginRight: isLastInRow ? 0 : itemSpacing,
+                        marginBottom: 8
+                      }}>
+                        <TouchableOpacity
+                          style={[styles.gridItem, { 
+                            backgroundColor: colors.surface || '#fff',
+                            shadowColor: colors.shadow || '#000',
+                            flex: 1,
+                            margin: 0,
+                          }]}
+                          onPress={() => {
+                            console.log('🎬 Grid item pressed:', item.title);
+                            const processedMediaFile = processAzureUrl(item.mediaFile)
+                            const finalMediaFile = processedMediaFile || item.mediaFile
+                            
+                            if (!finalMediaFile || finalMediaFile.trim() === '') {
+                              console.error('❌ No valid media URL found for:', item.title)
+                              return
+                            }
+                            
+                            const processedItem = {
+                              ...item,
+                              mediaFile: finalMediaFile,
+                              videoUrl: finalMediaFile,
+                              audioUrl: finalMediaFile,
+                              streamingUrl: finalMediaFile
+                            }
+                            
+                            if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                              console.log('🎬 Navigating to video player');
+                              navigation.navigate('EnhancedVideoPlayer', { item: processedItem, playlist: [] })
+                            } else {
+                              console.log('🎵 Navigating to audio player');
+                              navigation.navigate('EnhancedAudioPlayer', { item: processedItem, playlist: [] })
+                            }
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <View style={styles.gridImageContainer}>
+                            {item.headerImage || item.mainImage || item.imageUrl ? (
+                              <CustomFastImage
+                                style={styles.gridImage}
+                                imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
+                                resizeMode="cover"
                               />
-                            </View>
-                          )}
-                        </View>
-                        
-                        <View style={styles.gridContent}>
-                          <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
-                            {item.title}
-                          </Text>
-                          <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
-                            {item.description || item.duration || (isAudio ? 'Audio' : 'Video')}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
+                            ) : (
+                              <View style={[styles.gridPlaceholder, { backgroundColor: isAudio ? '#4ECDC420' : '#FF6B6B20' }]}>
+                                <MaterialDesignIcons 
+                                  name={isAudio ? 'music-note' : 'play-circle'} 
+                                  size={32} 
+                                  color={isAudio ? '#4ECDC4' : '#FF6B6B'} 
+                                />
+                              </View>
+                            )}
+                          </View>
+                          
+                          <View style={styles.gridContent}>
+                            <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+                              {item.title}
+                            </Text>
+                            <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
+                              {item.description || item.duration || (isAudio ? 'Audio' : 'Video')}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
                     );
                   }
                   
@@ -736,12 +786,11 @@ const SubCategorie = () => {
                     <TouchableOpacity
                       style={styles.listRow}
                       onPress={() => {
-                        const mediaList = selectedSubcategory.videos || selectedSubcategory.audios || []
+                        console.log('🎬 List item pressed:', item.title);
                         const processedMediaFile = processAzureUrl(item.mediaFile)
                         console.log('🎬 Raw mediaFile:', item.mediaFile)
                         console.log('🎬 Processed mediaFile:', processedMediaFile)
                         
-                        // Use original URL if processed URL is empty or if it's a .mov file
                         const finalMediaFile = processedMediaFile || item.mediaFile
                         
                         if (!finalMediaFile || finalMediaFile.trim() === '') {
@@ -764,6 +813,7 @@ const SubCategorie = () => {
                         console.log('🎬 Playing media:', processedItem.title, 'Final URL:', processedItem.mediaFile)
                         
                         if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                          console.log('🎬 Navigating to video player');
                           navigation.navigate('EnhancedVideoPlayer', { 
                             item: processedItem, 
                             playlist: selectedSubcategory.videos.map(media => {
@@ -780,7 +830,7 @@ const SubCategorie = () => {
                             })
                           })
                         } else {
-                          // Handle audio from either subcategory.audios or audioList
+                          console.log('🎵 Navigating to audio player');
                           const currentAudioList = selectedSubcategory.audios || audioList || []
                           navigation.navigate('EnhancedAudioPlayer', { 
                             item: processedItem, 
@@ -834,8 +884,12 @@ const SubCategorie = () => {
                   }
                 }
                 keyExtractor={(item) => item._id}
-                numColumns={isGridView ? 2 : 1}
-                key={isGridView ? 'grid' : 'list'}
+                numColumns={isGridView ? 3 : 1}
+                key={isGridView ? 'grid-3' : 'list'}
+                contentContainerStyle={[
+                  isGridView ? { paddingTop: 12 } : {},
+                  { flexGrow: 1 }
+                ]}
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
@@ -848,7 +902,11 @@ const SubCategorie = () => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
+              colors={['#F8803B', '#FF6B35', '#F7931E']}
+              tintColor="#F8803B"
+              progressBackgroundColor="#FFFFFF"
+              title="Pull to refresh"
+              titleColor="#666666"
             />
           }
           nestedScrollEnabled={false}
@@ -859,8 +917,8 @@ const SubCategorie = () => {
               data={subcategories}
               renderItem={renderSubcategoryItem}
               keyExtractor={(item) => item._id}
-              numColumns={isGridView ? 2 : 1}
-              key={isGridView ? 'grid' : 'list'}
+              numColumns={isGridView ? 3 : 1}
+              key={isGridView ? 'grid-3' : 'list'}
               columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
               scrollEnabled={false}
               nestedScrollEnabled={false}
@@ -945,8 +1003,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   listContainer: {
-    width: '90%',
-    alignSelf: 'center',
+    flex: 1,
+    width: '100%',
+    paddingHorizontal: 16,
   },
   listRow: {
     flexDirection: 'row',
@@ -1044,6 +1103,13 @@ const styles = StyleSheet.create({
     fontSize: normalize(14),
     textAlign: 'center',
     marginTop: hp(1),
+  },
+  errorSubtext: {
+    fontSize: normalize(14),
+    textAlign: 'center',
+    marginTop: hp(1),
+    marginBottom: hp(2),
+    paddingHorizontal: wp(4),
   },
   gridItem: {
     flex: 1,

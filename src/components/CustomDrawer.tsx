@@ -104,7 +104,7 @@ const CustomDrawer = (props: any) => {
             translateContent('Would you like to rate our app on the store?'),
             [
               { text: translateContent('Cancel'), style: 'cancel' },
-              { text: translateContent('Rate Now'), onPress: () => Linking.openURL('market://details?id=com.geetafinal') },
+              { text: translateContent('Rate Now'), onPress: () => Linking.openURL('https://play.google.com/store/apps/details?id=com.geetabalsanskar') },
             ]
           );
         });
@@ -112,8 +112,9 @@ const CustomDrawer = (props: any) => {
       case 'share':
         import('react-native').then(({ Alert, Share }) => {
           Share.share({
-            message: translateContent('Share Geeta Bal Sanskaar app with your friends and family!'),
-            url: 'https://play.google.com/store/apps/details?id=com.geetafinal',
+            message: `${translateContent('Share Geeta Bal Sanskaar app with your friends and family!')}\n\nDownload: https://play.google.com/store/apps/details?id=com.geetabalsanskar`,
+            url: 'https://play.google.com/store/apps/details?id=com.geetabalsanskar',
+            title: translateContent('Geeta Bal Sanskar App'),
           });
         });
         break;

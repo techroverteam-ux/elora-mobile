@@ -5,12 +5,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Dimensions,
 } from 'react-native';
 import CustomFastImage from './CustomFastImage';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import { useTheme } from 'react-native-paper';
 import { processAzureUrl } from '../utils/azureUrlHelper';
 import { useNavigation } from '@react-navigation/native';
+import { useThemeContext } from '../context/ThemeContext';
 
 interface CustomVerticalFlatlistProps {
   title?: string;
@@ -19,6 +21,7 @@ interface CustomVerticalFlatlistProps {
   scrollEnabled?: boolean;
   imageUrl?: string | ((item: any) => string | undefined);
   isGridView?: boolean;
+  nestedScrollEnabled?: boolean;
 }
 
 // ✅ Subcomponent for each row
@@ -34,7 +37,9 @@ const VerticalListItem = ({
   isGridView?: boolean;
 }) => {
   const { colors } = useTheme();
+  const { theme } = useThemeContext();
   const navigation = useNavigation();
+  const isDark = theme === 'dark';
 
   // Get the raw image URL - check contentFields for images if no direct image
   let rawImageUrl =
@@ -52,25 +57,17 @@ const VerticalListItem = ({
       rawImageUrl = firstImageField.azureFiles[0];
     }
   }
-  
-  console.log('🔍 Category image processing:', {
-    itemTitle: item.title,
-    headerImage: item.headerImage,
-    mainImage: item.mainImage,
-    contentFieldsCount: item.contentFields?.length || 0,
-    firstImageFromContentFields: item.contentFields?.find(f => f.type === 'image')?.azureFiles?.[0],
-    finalRawUrl: rawImageUrl
-  });
       
   // Process Azure URL using the same method as Daily Gyan Gallery
   const finalImageUrl = processAzureUrl(rawImageUrl);
-      
-  console.log('🖼️ Final image URL (processed):', finalImageUrl);
 
   if (isGridView) {
     return (
       <TouchableOpacity
-        style={styles.gridItem}
+        style={[styles.gridItem, { 
+          backgroundColor: isDark ? '#2D2D2D' : '#FFFFFF',
+          shadowColor: isDark ? '#FFFFFF' : '#000000',
+        }]}
         onPress={() => onItemPress?.(item)}
         activeOpacity={0.8}
       >
@@ -82,7 +79,9 @@ const VerticalListItem = ({
               resizeMode="cover"
             />
           ) : (
-            <View style={[styles.gridPlaceholder, { backgroundColor: colors.surfaceVariant }]}>
+            <View style={[styles.gridPlaceholder, { 
+              backgroundColor: isDark ? '#404040' : colors.surfaceVariant 
+            }]}>
               <MaterialDesignIcons 
                 name="folder-outline" 
                 size={32} 
@@ -93,10 +92,14 @@ const VerticalListItem = ({
         </View>
         
         <View style={styles.gridContent}>
-          <Text style={[styles.gridTitle, { color: colors.onSurface }]} numberOfLines={2}>
+          <Text style={[styles.gridTitle, { 
+            color: isDark ? '#FFFFFF' : colors.onSurface 
+          }]} numberOfLines={2}>
             {item.title}
           </Text>
-          <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+          <Text style={[styles.gridSubtitle, { 
+            color: isDark ? '#CCCCCC' : colors.onSurfaceVariant 
+          }]} numberOfLines={1}>
             {item.subtitle || 'Category'}
           </Text>
         </View>
@@ -166,8 +169,47 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
   scrollEnabled = true,
   imageUrl,
   isGridView = false,
+  nestedScrollEnabled = false,
 }) => {
   const { colors } = useTheme();
+  const screenWidth = Dimensions.get('window').width;
+  const numColumns = isGridView ? 3 : 1;
+  
+  // Calculate item width for 3 columns with proper spacing for all devices
+  const containerPadding = 16;
+  const itemSpacing = 6;
+  const totalSpacing = containerPadding * 2 + itemSpacing * (numColumns - 1);
+  const itemWidth = isGridView 
+    ? Math.floor((screenWidth - totalSpacing) / numColumns)
+    : screenWidth;
+
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
+    if (isGridView) {
+      const isLastInRow = (index + 1) % numColumns === 0;
+      return (
+        <View style={{ 
+          width: itemWidth, 
+          marginRight: isLastInRow ? 0 : itemSpacing,
+          marginBottom: 8
+        }}>
+          <VerticalListItem 
+            item={item} 
+            onItemPress={onItemPress} 
+            imageUrl={imageUrl} 
+            isGridView={isGridView} 
+          />
+        </View>
+      );
+    }
+    return (
+      <VerticalListItem 
+        item={item} 
+        onItemPress={onItemPress} 
+        imageUrl={imageUrl} 
+        isGridView={isGridView} 
+      />
+    );
+  };
 
   return (
     <View style={styles.itemContainer}>
@@ -177,18 +219,18 @@ const CustomVerticalFlatlist: React.FC<CustomVerticalFlatlistProps> = ({
 
       <FlatList
         data={data}
-        renderItem={({ item }) => (
-          <VerticalListItem item={item} onItemPress={onItemPress} imageUrl={imageUrl} isGridView={isGridView} />
-        )}
+        renderItem={renderItem}
         keyExtractor={(item, index) =>
           item?._id?.toString() || item?.id?.toString() || index.toString()
         }
-        numColumns={isGridView ? 2 : 1}
-        key={isGridView ? 'grid' : 'list'}
-        contentContainerStyle={isGridView ? styles.gridContainer : styles.listContent}
-        columnWrapperStyle={isGridView ? styles.gridRow : undefined}
+        numColumns={numColumns}
+        key={isGridView ? 'grid-3' : 'list'}
+        contentContainerStyle={[
+          isGridView ? styles.gridContainer : styles.listContent,
+          { paddingTop: isGridView ? 12 : 0 }
+        ]}
         scrollEnabled={scrollEnabled}
-        nestedScrollEnabled={false}
+        nestedScrollEnabled={nestedScrollEnabled}
       />
     </View>
   );
@@ -204,20 +246,18 @@ const styles = StyleSheet.create({
   },
   listContent: {},
   gridContainer: {
-    paddingHorizontal: 4,
-  },
-  gridRow: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   itemContainer: {
-    width: '90%',
-    alignSelf: 'center',
+    flex: 1,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   image: {
     width: 70,
@@ -242,10 +282,9 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: '#E5E5E5',
+    marginHorizontal: 16,
   },
   gridItem: {
-    flex: 1,
-    margin: 6,
     backgroundColor: '#fff',
     borderRadius: 8,
     elevation: 2,
@@ -253,13 +292,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    marginBottom: 12,
+    overflow: 'hidden',
+    flex: 1,
   },
   gridImageContainer: {
     width: '100%',
     aspectRatio: 1,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
     overflow: 'hidden',
   },
   gridImage: {
@@ -274,14 +312,17 @@ const styles = StyleSheet.create({
   },
   gridContent: {
     padding: 8,
+    minHeight: 50,
   },
   gridTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     marginBottom: 2,
+    lineHeight: 16,
   },
   gridSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     opacity: 0.7,
+    lineHeight: 14,
   },
 });

@@ -34,6 +34,7 @@ import { useGetFeaturedQuery } from '../data/redux/services/mediaApi';
 import { useBookmarks } from '../context/BookmarkContext';
 import SkeletonItem from './SkeletonLoader';
 import { useRecentlyPlayed } from '../context/RecentlyPlayedContext';
+import { shareContent, ShareableContent } from '../utils/deepLinkHelper';
 
 const PlaylistContent = ({ colors, currentIndex, currentPlaylist, isPlaying, onTrackSelect }: any) => {
   const { t } = useTranslation();
@@ -161,15 +162,22 @@ const EnhancedAudioPlayer = () => {
 
   // Handle share functionality
   const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Check out this audio: ${currentTrack?.title || 'Audio'} - ${currentTrack?.artist || 'Unknown Artist'}`,
-        url: audioUrl,
-        title: currentTrack?.title || 'Audio',
-      });
-    } catch (error) {
-      Alert.alert(t('common.error'), t('screens.audioPlayer.shareError'));
-    }
+    if (!currentTrack) return;
+    
+    const shareableContent: ShareableContent = {
+      _id: currentTrack._id,
+      title: currentTrack.title || 'Audio',
+      type: 'audio',
+      audioUrl: currentTrack.audioUrl || currentTrack.streamingUrl || audioUrl,
+      streamingUrl: currentTrack.streamingUrl || currentTrack.audioUrl || audioUrl,
+      thumbnailUrl: currentTrack.thumbnailUrl || currentTrack.imageUrl,
+      artist: currentTrack.artist,
+      description: currentTrack.description,
+      categoryId: currentTrack.categoryId,
+      sectionId: currentTrack.sectionId,
+    };
+    
+    await shareContent(shareableContent);
   };
 
 
@@ -704,7 +712,7 @@ const EnhancedAudioPlayer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 20 : 0,
+    paddingTop: 0,
   },
   errorContainer: {
     flex: 1,
@@ -718,7 +726,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 16,
     paddingBottom: 8,
   },
   backBtn: {

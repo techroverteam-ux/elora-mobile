@@ -14,6 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import CustomFastImage from './CustomFastImage';
 import { wp, hp, normalize } from '../utils/responsive';
+import { shareContent, ShareableContent } from '../utils/deepLinkHelper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -121,7 +122,23 @@ const BlogImageViewer = () => {
       {/* Bottom Controls */}
       {showControls && (
         <View style={styles.bottomControls}>
-          <TouchableOpacity style={styles.controlButton}>
+          <TouchableOpacity 
+            style={styles.controlButton}
+            onPress={async () => {
+              if (!currentImageUrl) return;
+              
+              const shareableContent: ShareableContent = {
+                _id: `blog-image-${currentIndex}`,
+                title: title || 'Blog Image',
+                type: 'image',
+                imageUrl: currentImageUrl,
+                streamingUrl: currentImageUrl,
+                description: `Image ${currentIndex + 1} from ${title}`,
+              };
+              
+              await shareContent(shareableContent);
+            }}
+          >
             <MaterialDesignIcons name="share-variant" size={24} color="#fff" />
             <Text style={styles.controlText}>Share</Text>
           </TouchableOpacity>
