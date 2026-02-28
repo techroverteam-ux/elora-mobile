@@ -1,307 +1,93 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Animated, Dimensions } from 'react-native';
-import { useTheme } from 'react-native-paper';
-import { wp, hp, normalize } from '../utils/responsive';
+import React from 'react';
+import './SkeletonLoader.css';
 
 interface SkeletonProps {
-  width?: number | string;
-  height?: number | string;
-  borderRadius?: number;
-  style?: any;
+  width?: string | number;
+  height?: string | number;
+  borderRadius?: string | number;
+  className?: string;
 }
 
-const SkeletonItem: React.FC<SkeletonProps> = ({ 
-  width = '100%', 
-  height = 20, 
-  borderRadius = 4, 
-  style 
+export const Skeleton: React.FC<SkeletonProps> = ({
+  width = '100%',
+  height = '16px',
+  borderRadius = '4px',
+  className = '',
 }) => {
-  const { colors } = useTheme();
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const style = {
+    width: typeof width === 'number' ? `${width}px` : width,
+    height: typeof height === 'number' ? `${height}px` : height,
+    borderRadius: typeof borderRadius === 'number' ? `${borderRadius}px` : borderRadius,
+  };
 
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.timing(animatedValue, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: false,
-      })
-    );
-    animation.start();
-    return () => animation.stop();
-  }, []);
+  return <div className={`skeleton ${className}`} style={style} />;
+};
 
-  const translateX = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-200, 200],
-  });
+export const SkeletonAvatar: React.FC<{ size?: number }> = ({ size = 40 }) => (
+  <Skeleton width={size} height={size} borderRadius="50%" />
+);
 
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.2, 0.8, 0.2],
-  });
-
-  return (
-    <View
-      style={[
-        {
-          width,
-          height,
-          borderRadius,
-          backgroundColor: '#E8E8E8',
-          overflow: 'hidden',
-        },
-        style,
-      ]}
-    >
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          opacity,
-          transform: [{ translateX }],
-        }}
+export const SkeletonText: React.FC<{ lines?: number; width?: string }> = ({ 
+  lines = 1, 
+  width = '100%' 
+}) => (
+  <div className="skeleton-text">
+    {Array.from({ length: lines }).map((_, index) => (
+      <Skeleton
+        key={index}
+        width={index === lines - 1 ? '75%' : width}
+        height="16px"
+        className="skeleton-text-line"
       />
-    </View>
-  );
-};
+    ))}
+  </div>
+);
 
-export const CarouselSkeleton: React.FC = () => {
-  return (
-    <View style={styles.carouselContainer}>
-      <SkeletonItem 
-        width="100%" 
-        height={200} 
-        borderRadius={20} 
-        style={styles.carouselSkeleton}
-      />
-      <View style={styles.dotsContainer}>
-        {[...Array(3)].map((_, index) => (
-          <SkeletonItem 
-            key={index}
-            width={8} 
-            height={8} 
-            borderRadius={4} 
-            style={styles.dotSkeleton}
-          />
-        ))}
-      </View>
-    </View>
-  );
-};
+export const SkeletonCard: React.FC = () => (
+  <div className="skeleton-card">
+    <div className="skeleton-card-header">
+      <SkeletonAvatar size={48} />
+      <div className="skeleton-card-info">
+        <Skeleton width="120px" height="18px" />
+        <Skeleton width="80px" height="14px" />
+      </div>
+    </div>
+    <div className="skeleton-card-content">
+      <SkeletonText lines={3} />
+    </div>
+  </div>
+);
 
-export const GallerySkeleton: React.FC = () => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  
-  useEffect(() => {
-    const { width, height } = Dimensions.get('window');
-    setDimensions({ width, height });
-    
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-    return () => subscription?.remove();
-  }, []);
-  
-  const is7Inch = dimensions.width >= 600 && dimensions.width < 800;
-  const is10Inch = dimensions.width >= 800;
-  const itemWidth = is10Inch ? 200 : is7Inch ? 160 : wp(30);
-  const itemHeight = is10Inch ? 240 : is7Inch ? 192 : wp(36);
-  const spacing = is10Inch ? 20 : is7Inch ? 14 : wp(2.5);
-  
-  return (
-    <View style={styles.galleryContainer}>
-      <View style={styles.galleryHeader}>
-        <View style={styles.titleRow}>
-          <SkeletonItem width={is10Inch ? 32 : is7Inch ? 26 : 24} height={is10Inch ? 32 : is7Inch ? 26 : 24} borderRadius={12} />
-          <SkeletonItem width={wp(40)} height={is10Inch ? 24 : is7Inch ? 20 : 16} borderRadius={8} style={{ marginLeft: 8 }} />
-        </View>
-        <SkeletonItem width={wp(20)} height={is10Inch ? 15 : 13} borderRadius={8} />
-      </View>
-      <View style={styles.galleryItems}>
-        {[...Array(4)].map((_, index) => (
-          <View key={index} style={[styles.galleryItemSkeleton, { marginRight: index < 3 ? spacing : 0 }]}>
-            <SkeletonItem 
-              width={itemWidth} 
-              height={itemHeight} 
-              borderRadius={14} 
-            />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
+export const SkeletonList: React.FC<{ items?: number }> = ({ items = 5 }) => (
+  <div className="skeleton-list">
+    {Array.from({ length: items }).map((_, index) => (
+      <div key={index} className="skeleton-list-item">
+        <SkeletonAvatar size={32} />
+        <div className="skeleton-list-content">
+          <Skeleton width="140px" height="16px" />
+          <Skeleton width="200px" height="14px" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
-export const MediaListSkeleton: React.FC = () => {
-  return (
-    <View style={styles.mediaListContainer}>
-      <View style={styles.mediaListHeader}>
-        <View style={styles.titleRow}>
-          <SkeletonItem width={24} height={24} borderRadius={12} />
-          <SkeletonItem width={wp(35)} height={18} borderRadius={9} style={{ marginLeft: 8 }} />
-        </View>
-        <SkeletonItem width={wp(18)} height={16} borderRadius={8} />
-      </View>
-      <View style={styles.mediaListItems}>
-        {[...Array(3)].map((_, index) => (
-          <View key={index} style={styles.mediaItemSkeleton}>
-            <SkeletonItem 
-              width={wp(32)} 
-              height={wp(40)} 
-              borderRadius={12} 
-            />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-export const ListViewSkeleton: React.FC = () => {
-  return (
-    <View style={styles.listViewContainer}>
-      {[...Array(8)].map((_, index) => (
-        <View key={index}>
-          <View style={styles.listItemRow}>
-            <SkeletonItem width={70} height={70} borderRadius={10} />
-            <View style={styles.listItemTextContainer}>
-              <SkeletonItem width={wp(50)} height={16} borderRadius={8} />
-              <SkeletonItem width={wp(35)} height={14} borderRadius={7} style={{ marginTop: 4 }} />
-            </View>
-            <SkeletonItem width={24} height={24} borderRadius={12} />
-          </View>
-          <View style={styles.listSeparator} />
-        </View>
+export const SkeletonTable: React.FC<{ rows?: number; columns?: number }> = ({ 
+  rows = 5, 
+  columns = 4 
+}) => (
+  <div className="skeleton-table">
+    <div className="skeleton-table-header">
+      {Array.from({ length: columns }).map((_, index) => (
+        <Skeleton key={index} width="100px" height="20px" />
       ))}
-    </View>
-  );
-};
-
-export const GridViewSkeleton: React.FC = () => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  
-  useEffect(() => {
-    const { width, height } = Dimensions.get('window');
-    setDimensions({ width, height });
-    
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-    return () => subscription?.remove();
-  }, []);
-  
-  const is10Inch = dimensions.width >= 800;
-  const numColumns = 3;
-  const itemWidth = (dimensions.width - (16 * 2) - (8 * (numColumns - 1))) / numColumns;
-  
-  return (
-    <View style={styles.gridViewContainer}>
-      {[...Array(12)].map((_, index) => {
-        const isLastInRow = (index + 1) % numColumns === 0;
-        return (
-          <View key={index} style={[styles.gridItemSkeleton, { width: itemWidth, marginRight: isLastInRow ? 0 : 8 }]}>
-            <SkeletonItem width={itemWidth} height={itemWidth * 0.75} borderRadius={12} />
-            <View style={styles.gridItemContent}>
-              <SkeletonItem width={itemWidth * 0.8} height={14} borderRadius={7} style={{ marginTop: 8 }} />
-              <SkeletonItem width={itemWidth * 0.6} height={12} borderRadius={6} style={{ marginTop: 4 }} />
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  carouselContainer: {
-    marginBottom: 6,
-  },
-  carouselSkeleton: {
-    marginHorizontal: 10,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 10,
-  },
-  dotSkeleton: {
-    marginHorizontal: 5,
-  },
-  galleryContainer: {
-    marginBottom: 12,
-  },
-  galleryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  galleryItems: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-  },
-  galleryItemSkeleton: {
-    marginRight: wp(2.5),
-  },
-  mediaListContainer: {
-    marginBottom: 12,
-  },
-  mediaListHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  mediaListItems: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-  },
-  mediaItemSkeleton: {
-    marginRight: 10,
-  },
-  listViewContainer: {
-    width: '90%',
-    alignSelf: 'center',
-  },
-  listItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  listItemTextContainer: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  listSeparator: {
-    height: 1,
-    backgroundColor: '#E5E5E5',
-  },
-  gridViewContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 16,
-    justifyContent: 'flex-start',
-  },
-  gridItemSkeleton: {
-    marginBottom: 16,
-    marginHorizontal: 4,
-  },
-  gridItemContent: {
-    alignItems: 'flex-start',
-  },
-});
-
-export default SkeletonItem;
+    </div>
+    {Array.from({ length: rows }).map((_, rowIndex) => (
+      <div key={rowIndex} className="skeleton-table-row">
+        {Array.from({ length: columns }).map((_, colIndex) => (
+          <Skeleton key={colIndex} width="80px" height="16px" />
+        ))}
+      </div>
+    ))}
+  </div>
+);

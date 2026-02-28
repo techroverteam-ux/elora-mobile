@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Dimensions
 import PagerView from 'react-native-pager-view'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
 import CustomFastImage from './CustomFastImage'
-import { useGetRecentCategoriesQuery } from '../data/redux/services/categoriesApi'
+import { useGetRecentCategoriesForMobileQuery } from '../data/redux/services/categoriesApi'
 import { useTheme } from 'react-native-paper'
 import { useNavigation } from '@react-navigation/native'
 import { getImageUrl, processAzureUrl } from '../utils/azureUrlHelper'
@@ -116,8 +116,16 @@ const CardCarousel: React.FC = () => {
   const is10Inch = width >= 800
   const carouselHeight = is10Inch ? 280 : is7Inch ? 240 : 200
 
-  // Fetch top 6 recently added categories
-  const { data: categories = [], isLoading, error } = useGetRecentCategoriesQuery({ limit: 6 })
+  // Fetch categories from mobile endpoint (no auth required)
+  const { data: categories = [], isLoading, error } = useGetRecentCategoriesForMobileQuery({ limit: 6 })
+
+  // Debug logging
+  console.log('CardCarousel - Debug Info:', {
+    isLoading,
+    error: error ? JSON.stringify(error) : null,
+    categoriesCount: categories.length,
+    categories: categories.map(cat => ({ id: cat._id, title: cat.title, hasImage: !!(cat.headerImage || cat.mainImage) }))
+  })
 
   const handleItemPress = (item: Category) => {
     requireAuth(() => {
@@ -167,11 +175,52 @@ const CardCarousel: React.FC = () => {
     )
   }
 
-  if (categories.length === 0) {
+  if (categories.length === 0 && !isLoading) {
+    // Show fallback categories for testing
+    const fallbackCategories = [
+      {
+        _id: 'fallback-1',
+        title: 'Bhagavad Gita',
+        subtitle: 'Sacred Text',
+        description1: 'Ancient wisdom for modern life',
+        headerImage: '',
+        mainImage: ''
+      },
+      {
+        _id: 'fallback-2', 
+        title: 'Daily Satsang',
+        subtitle: 'Spiritual Discourse',
+        description1: 'Daily spiritual teachings',
+        headerImage: '',
+        mainImage: ''
+      }
+    ]
+    
     return (
-      <View style={{ height: carouselHeight, marginBottom: 6, justifyContent: 'center', alignItems: 'center' }}>
-        <MaterialDesignIcons name="folder-outline" size={40} color={colors.onSurfaceVariant} />
-        <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>No categories available</Text>
+      <View>
+        <PagerView
+          style={{ height: carouselHeight, marginBottom: 6 }}
+          initialPage={0}
+          onPageSelected={(e) => setCurrentPage(e.nativeEvent.position)}
+        >
+          {fallbackCategories.map((item) => (
+            <CardItem key={item._id} item={item} onPress={handleItemPress} onReadMore={handleReadMorePress} />
+          ))}
+        </PagerView>
+        <View style={styles.dotsContainer}>
+          {fallbackCategories.map((_, index) => (
+            <View
+              key={index}
+              style={{
+                width: is10Inch ? 10 : 8,
+                height: is10Inch ? 10 : 8,
+                borderRadius: is10Inch ? 5 : 4,
+                marginHorizontal: 5,
+                backgroundColor: index === currentPage ? colors.primary : colors.outlineVariant,
+              }}
+            />
+          ))}
+        </View>
       </View>
     )
   }

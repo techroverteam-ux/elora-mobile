@@ -1,96 +1,64 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from 'react';
-import { Appearance, ColorSchemeName } from 'react-native';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Types
-type ThemePreference = 'light' | 'dark' | 'system';
-type ThemeType = 'light' | 'dark';
+import { lightTheme, darkTheme } from '../theme/colors';
 
 interface ThemeContextType {
-  theme: ThemeType;
-  preference: ThemePreference;
-  setPreference: (pref: ThemePreference) => void;
-  isThemeLoaded: boolean;
+  theme: typeof lightTheme;
+  colors: typeof lightTheme.colors;
+  darkMode: boolean;
+  toggleTheme: () => void;
+  toggleDarkMode: () => void;
 }
 
-// Context
-const ThemeContext = createContext<ThemeContextType>({
-  theme: 'light',
-  preference: 'system',
-  setPreference: () => { },
-  isThemeLoaded: false,
-});
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Hook to access context
-export const useThemeContext = () => useContext(ThemeContext);
-
-const STORAGE_KEY = 'user-theme-preference';
-
-// Provider
-export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
-  const [theme, setTheme] = useState<ThemeType>('light');
-  const [isThemeLoaded, setIsThemeLoaded] = useState(false);
-
-  const resolveTheme = (pref: ThemePreference, systemScheme?: ColorSchemeName) => {
-    if (pref === 'system') {
-      const system = systemScheme || Appearance.getColorScheme();
-      setTheme(system === 'dark' ? 'dark' : 'light');
-    } else {
-      setTheme(pref);
-    }
-  };
+export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const loadTheme = async () => {
-      try {
-        const storedPref = (await AsyncStorage.getItem(STORAGE_KEY)) as ThemePreference | null;
-        const finalPref: ThemePreference = storedPref || 'system';
-        setPreferenceState(finalPref);
-        resolveTheme(finalPref);
-      } catch (e) {
-        console.log('Failed to load theme preference', e);
-      } finally {
-        setIsThemeLoaded(true);
-      }
-    };
-
     loadTheme();
+  }, []);
 
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (preference === 'system') {
-        resolveTheme('system', colorScheme);
-      }
-    });
-
-    return () => subscription.remove();
-  }, [preference]);
-
-  const setPreference = async (pref: ThemePreference) => {
+  const loadTheme = async () => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, pref);
-      setPreferenceState(pref);
-      resolveTheme(pref);
-    } catch (e) {
-      console.log('Failed to save theme preference', e);
+      const theme = await AsyncStorage.getItem('theme');
+      setDarkMode(theme === 'dark');
+    } catch (error) {
+      console.error('Error loading theme:', error);
     }
   };
 
+  const toggleTheme = async () => {
+    try {
+      const newTheme = !darkMode;
+      setDarkMode(newTheme);
+      await AsyncStorage.setItem('theme', newTheme ? 'dark' : 'light');
+    } catch (error) {
+      console.error('Error saving theme:', error);
+    }
+  };
+
+  const theme = darkMode ? darkTheme : lightTheme;
+
   return (
-    <ThemeContext.Provider value={{ theme, preference, setPreference, isThemeLoaded }}>
+    <ThemeContext.Provider
+      value={{
+        theme,
+        colors: theme.colors,
+        darkMode,
+        toggleTheme,
+        toggleDarkMode: toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 };
 
-// ✅ New hook to export isDarkMode directly
-export const useIsDarkMode = (): boolean => {
-  const { theme } = useThemeContext();
-  return theme === 'dark';
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  return context;
 };

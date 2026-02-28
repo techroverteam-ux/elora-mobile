@@ -1,203 +1,177 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-} from 'react-native';
-import { DrawerContentScrollView } from '@react-navigation/drawer';
-import { useTheme } from 'react-native-paper';
-import { useTranslation } from 'react-i18next';
-import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { translateContent } from '../utils/contentTranslator';
+import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'react-native-linear-gradient';
+import Svg, {Path, G} from 'react-native-svg';
+import {
+  Home,
+  Users,
+  Shield,
+  Store,
+  Search,
+  Wrench,
+  Map,
+  UserCheck,
+  FileText,
+  HelpCircle,
+  BarChart3,
+  TrendingUp,
+  Bell,
+  Sun,
+  Moon
+} from 'lucide-react-native';
 
 const CustomDrawer = (props: any) => {
-  const { user, logout } = useAuth();
-  const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { logout, user } = useAuth();
+  const { darkMode, toggleTheme } = useTheme();
 
-  const menuItems = [
-    { icon: 'home', label: t('drawer.home'), screen: 'Home' },
-    { icon: 'view-dashboard', label: t('drawer.categories'), screen: 'Categories' },
-    { icon: 'headphones', label: t('drawer.audioLibrary'), screen: 'AudioLibrary' },
-    { icon: 'play-circle', label: t('drawer.videoLibrary'), screen: 'VideoLibrary' },
-    { icon: 'book-open-variant', label: t('drawer.books'), screen: 'Books' },
-    { icon: 'image-multiple', label: t('drawer.imageLibrary'), screen: 'ImageLibrary' },
-    { icon: 'bookmark', label: t('drawer.bookmarks'), screen: 'Bookmarks' },
-    { icon: 'history', label: t('drawer.recentlyPlayed'), screen: 'RecentlyPlayed' },
-  ];
-
-  const settingsItems = [
-    { icon: 'cog', label: t('drawer.settings'), screen: 'Settings' },
-    { icon: 'translate', label: t('drawer.language'), screen: 'Language' },
-    { icon: 'theme-light-dark', label: t('drawer.theme'), screen: 'Theme' },
-    { icon: 'information', label: t('drawer.about'), screen: 'About' },
-    { icon: 'help-circle', label: t('drawer.helpSupport'), screen: 'Help' },
-    { icon: 'star', label: t('drawer.rateApp'), action: 'rate' },
-    { icon: 'share-variant', label: t('drawer.shareApp'), action: 'share' },
-  ];
-
-  const handleNavigation = (screen: string) => {
-    // Map drawer items to actual navigation screens
-    const screenMapping: Record<string, string> = {
-      'Home': 'MainTabs',
-      'Categories': 'MainTabs',
-      'AudioLibrary': 'MainTabs',
-      'VideoLibrary': 'MainTabs',
-      'ImageLibrary': 'GalleryList',
-      'Books': 'MainTabs',
-      'Bookmarks': 'BookmarksScreen',
-      'RecentlyPlayed': 'RecentlyPlayedScreen',
-      'Account': 'MainTabs',
-      'Settings': 'Settings',
-      'About': 'About',
-      'Help': 'HelpSupport',
-      'Language': 'MainTabs',
-      'Theme': 'MainTabs',
-    };
+  // Check permissions dynamically like web portal
+  const canView = (moduleName: string) => {
+    console.log('=== PERMISSION CHECK ===');
+    console.log('Module:', moduleName);
+    console.log('User:', user);
+    console.log('User roles:', user?.roles);
     
-    const targetScreen = screenMapping[screen] || screen;
-    
-    if (screen === 'Categories') {
-      props.navigation.navigate('MainTabs', { screen: 'Categories', params: { screen: 'CategoriesMain' } });
-    } else if (screen === 'AudioLibrary') {
-      props.navigation.navigate('MainTabs', { 
-        screen: 'Home',
-        params: { screen: 'AllAudios' }
-      });
-    } else if (screen === 'VideoLibrary') {
-      props.navigation.navigate('MainTabs', { 
-        screen: 'Home',
-        params: { screen: 'AllVideos' }
-      });
-    } else if (screen === 'ImageLibrary') {
-      props.navigation.navigate('GalleryList');
-    } else if (screen === 'Books') {
-      props.navigation.navigate('MainTabs', { 
-        screen: 'Home',
-        params: { screen: 'AllPDFs' }
-      });
-    } else if (screen === 'Language') {
-      props.navigation.navigate('MainTabs', {
-        screen: 'Account',
-        params: { screen: 'SelectLanguage' }
-      });
-    } else if (screen === 'Theme') {
-      props.navigation.navigate('MainTabs', {
-        screen: 'Account',
-        params: { screen: 'Appearence' }
-      });
-    } else {
-      props.navigation.navigate(targetScreen);
+    if (!user || !user.roles || !Array.isArray(user.roles)) {
+      console.log('No user or roles found');
+      return false;
     }
+
+    // SUPER_ADMIN bypass: They see everything
+    if (user.roles.some((r: any) => r.code === "SUPER_ADMIN")) {
+      console.log('SUPER_ADMIN access granted');
+      return true;
+    }
+
+    // Check if ANY assigned role has 'view' permission for this module
+    const hasPermission = user.roles.some((role: any) => {
+      console.log('Checking role:', role.name, 'permissions:', role.permissions);
+      const perms = role.permissions;
+      if (!perms) {
+        console.log('No permissions found for role');
+        return false;
+      }
+      const modulePermission = perms[moduleName]?.view === true;
+      console.log(`Module ${moduleName} permission:`, modulePermission);
+      return modulePermission;
+    });
+    
+    console.log('Final permission result:', hasPermission);
+    console.log('========================');
+    return hasPermission;
   };
 
-  const handleAction = (action: string) => {
-    switch (action) {
-      case 'rate':
-        import('react-native').then(({ Alert, Linking }) => {
-          Alert.alert(
-            translateContent('Rate App'),
-            translateContent('Would you like to rate our app on the store?'),
-            [
-              { text: translateContent('Cancel'), style: 'cancel' },
-              { text: translateContent('Rate Now'), onPress: () => Linking.openURL('https://play.google.com/store/apps/details?id=com.geetabalsanskar') },
-            ]
-          );
-        });
-        break;
-      case 'share':
-        import('react-native').then(({ Alert, Share }) => {
-          Share.share({
-            message: `${translateContent('Share Geeta Bal Sanskaar app with your friends and family!')}\n\nDownload: https://play.google.com/store/apps/details?id=com.geetabalsanskar`,
-            url: 'https://play.google.com/store/apps/details?id=com.geetabalsanskar',
-            title: translateContent('Geeta Bal Sanskar App'),
-          });
-        });
-        break;
-      case 'logout':
-        logout();
-        break;
-    }
+  // Navigation items with permission modules
+  const navigation = [
+    { name: 'Dashboard', href: 'Dashboard', icon: Home, module: 'dashboard', alwaysShow: true },
+    { name: 'User Management', href: 'Users', icon: Users, module: 'users' },
+    { name: 'Role Management', href: 'Roles', icon: Shield, module: 'roles' },
+    { name: 'Store Operations', href: 'Stores', icon: Store, module: 'stores' },
+    { name: 'Recce', href: 'Recce', icon: Search, module: 'recce' },
+    { name: 'Installation', href: 'Installation', icon: Wrench, module: 'installation' },
+    { name: 'Element Mapping', href: 'Elements', icon: Map, module: 'elements' },
+    { name: 'Client Management', href: 'Clients', icon: UserCheck, module: 'clients' },
+    { name: 'RFQ Generation', href: 'RFQ', icon: FileText, module: 'stores' },
+    { name: 'Enquiries', href: 'Enquiries', icon: HelpCircle, module: 'enquiries' },
+    { name: 'Reports', href: 'Reports', icon: BarChart3, module: 'reports', alwaysShow: true },
+    { name: 'Analytics', href: 'Analytics', icon: TrendingUp, module: 'reports' },
+    { name: 'Notifications', href: 'Notifications', icon: Bell, module: 'dashboard' },
+  ];
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: logout },
+      ]
+    );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Sticky Header */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../assets/images/logo1234.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-        </View>
-        <Text style={styles.appName}>{translateContent('Geeta Bal Sanskar')}</Text>
-        <Text style={styles.tagline}>{translateContent('Spiritual Wisdom & Guidance')}</Text>
-        {user && (
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{t('drawer.welcome')}, {user.name || 'User'}</Text>
-            <Text style={styles.userEmail}>{user.email}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Scrollable Menu */}
-      <ScrollView style={styles.menuScrollView} showsVerticalScrollIndicator={false}>
-        {/* Main Menu */}
-        <View style={[styles.section, styles.firstSection]}>
-          <Text style={styles.sectionTitle}>{t('drawer.mainMenu')}</Text>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.menuItem, { borderBottomColor: colors.outline + '30' }]}
-              onPress={() => handleNavigation(item.screen)}
+    <View style={[styles.container, { backgroundColor: darkMode ? '#1F2937' : '#fff' }]}>
+          <LinearGradient
+            colors={['#F6B21C', '#FECC00']}
+            style={styles.header}
+          >
+            <Svg width={120} height={30} viewBox="0 0 5053.18 1243.33">
+              <G>
+                <Path
+                  d="M298.73 534.54c-2.3,-105.32 -13.79,-202.98 66.64,-247.03 55.15,-30.64 225.2,-19.15 298.73,-19.15 75.83,0 241.29,-11.49 298.74,19.15 78.13,42.13 68.94,147.45 66.64,248.94l-730.74 -1.91zm928.37 706.62l0 -266.18c-195.33,0 -392.95,0 -588.28,0 -153.96,0 -301.03,28.72 -333.2,-105.32 -9.19,-28.72 -11.49,-109.15 -6.89,-139.79l1031.78 0c0,-95.75 0,-189.58 0,-283.41 0,-256.61 -108,-423.2 -404.44,-442.35 -80.43,-5.75 -489.46,-5.75 -563,1.91 -172.35,21.06 -280.35,97.66 -333.2,233.63 -27.57,78.51 -29.87,160.85 -29.87,248.94 0,93.83 0,187.67 0,281.5 0,199.16 41.37,319.8 165.45,400.22 130.98,86.17 321.71,70.85 496.36,70.85 188.43,0 376.86,0 565.3,0z"
+                  fill="#FFFFFF"
+                />
+                <Path
+                  d="M2408.24 1235.41c9.19,-36.39 0,-155.11 2.3,-201.07 -167.75,0 -333.2,0 -498.65,0 -73.54,0 -160.86,5.74 -213.71,-32.56 -52.85,-38.3 -39.07,-128.3 -41.37,-208.73 0,-36.39 -2.3,-86.17 2.3,-120.64 13.79,-139.79 170.05,-114.9 259.67,-114.9l494.06 0c4.59,-36.39 9.19,-172.35 0,-197.24 -29.87,-11.49 -622.74,-9.57 -687.09,0 -98.81,11.49 -174.65,42.13 -225.2,124.47 -50.56,82.34 -41.36,204.9 -41.36,308.31 -2.3,212.56 -9.19,404.06 259.67,442.35 101.11,13.41 241.28,5.74 344.69,5.74 52.85,0 321.71,5.74 344.69,-5.74z"
+                  fill="#FFFFFF"
+                />
+                <Path
+                  d="M1608.56 205.17c78.13,5.75 174.65,1.92 255.07,1.92l507.84 0c94.22,-1.92 149.37,0 188.43,63.19 22.98,34.47 18.38,63.19 18.38,109.15 0,42.13 0,84.26 0,126.39l0 631.94c0,70.85 -11.49,101.49 25.28,101.49 55.15,0 135.58,5.74 186.13,-3.83 4.59,-11.49 2.3,-783.22 2.3,-861.73 -4.6,-292.99 -202.22,-371.5 -489.46,-371.5l-693.98 0 0 202.98z"
+                  fill="#FFFFFF"
+                />
+              </G>
+            </Svg>
+            <Text style={[styles.userText, { color: darkMode ? '#F9FAFB' : '#fff' }]}>Welcome, {user?.name || 'User'}</Text>
+            <Text style={[styles.roleText, { color: darkMode ? 'rgba(249,250,251,0.8)' : 'rgba(255,255,255,0.8)' }]}>
+              {user?.roles?.[0]?.name || user?.roles?.[0]?.code || 'Member'}
+            </Text>
+          </LinearGradient>
+      
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {navigation.map((item, index) => {
+          // Check permissions - only show if user has access or it's always shown
+          const hasAccess = item.alwaysShow || canView(item.module);
+          if (!hasAccess) return null;
+          
+          const IconComponent = item.icon;
+          return (
+            <TouchableOpacity 
+              key={`${item.name}-${index}`}
+              style={[styles.menuItem, { borderBottomColor: darkMode ? '#374151' : '#f0f0f0' }]}
+              onPress={() => {
+                try {
+                  console.log('Navigating to:', item.href);
+                  if (props.navigation?.navigate) {
+                    props.navigation.navigate(item.href);
+                  }
+                  if (props.navigation?.closeDrawer) {
+                    props.navigation.closeDrawer();
+                  }
+                } catch (error) {
+                  console.error('Navigation error:', error);
+                }
+              }}
             >
-              <MaterialDesignIcons name={item.icon} size={20} color={colors.primary} />
-              <Text style={[styles.menuText, { color: colors.onBackground }]}>{item.label}</Text>
+              <IconComponent 
+                size={20} 
+                color={darkMode ? '#F9FAFB' : '#666'} 
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuText, { color: darkMode ? '#F9FAFB' : '#333' }]}>{item.name}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Settings & Support */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('drawer.settingsSupport')}</Text>
-          {settingsItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.menuItem, { borderBottomColor: colors.outline + '30' }]}
-              onPress={() => item.action ? handleAction(item.action) : handleNavigation(item.screen)}
-            >
-              <MaterialDesignIcons name={item.icon} size={20} color={colors.primary} />
-              <Text style={[styles.menuText, { color: colors.onBackground }]}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          );
+        })}
+        
+        <TouchableOpacity 
+          style={[styles.menuItem, { borderBottomColor: darkMode ? '#374151' : '#f0f0f0' }]}
+          onPress={toggleTheme}
+        >
+          {darkMode ? (
+            <Sun size={20} color="#F9FAFB" style={styles.menuIcon} />
+          ) : (
+            <Moon size={20} color="#666" style={styles.menuIcon} />
+          )}
+          <Text style={[styles.menuText, { color: darkMode ? '#F9FAFB' : '#333' }]}>
+            {darkMode ? 'Light Mode' : 'Dark Mode'}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
-
-      {/* Sticky Footer */}
-      <View style={styles.footer}>
-        {user ? (
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={() => handleAction('logout')}
-          >
-            <MaterialDesignIcons name="logout" size={24} color="#FF6B6B" />
-            <Text style={styles.logoutText}>{t('drawer.logout')}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={() => props.navigation.navigate('AuthModal')}
-          >
-            <MaterialDesignIcons name="login" size={24} color="#4CAF50" />
-            <Text style={styles.loginText}>{t('drawer.login')}</Text>
-          </TouchableOpacity>
-        )}
-        <Text style={styles.version}>{t('drawer.version')} 1.0.0</Text>
+      
+      <View style={[styles.footer, { borderTopColor: darkMode ? '#374151' : '#f0f0f0' }]}>
+        <TouchableOpacity style={[styles.logoutButton, { backgroundColor: darkMode ? '#374151' : '#F6B21C' }]} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -209,132 +183,80 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#F8803B',
-    paddingTop: 50,
-    paddingBottom: 25,
-    paddingHorizontal: 0,
+    backgroundColor: '#F6B21C',
+    padding: 20,
     alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    paddingTop: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 12,
   },
-  menuScrollView: {
-    flex: 1,
-    paddingHorizontal: 0,
-  },
-  logoContainer: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  logoImage: {
-    width: 50,
-    height: 50,
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-    letterSpacing: 0.3,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  tagline: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '500',
-    marginBottom: 8,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1,
-  },
-  userInfo: {
-    alignItems: 'center',
-    marginTop: 6,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-  },
-  userName: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  section: {
-    paddingVertical: 5,
-    marginTop: 10,
-  },
-  firstSection: {
-    marginTop: 0,
-  },
-  sectionTitle: {
-    fontSize: 14,
+  logoText: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
+    color: '#fff',
+    letterSpacing: 3,
+  },
+  userText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 10,
+    letterSpacing: 0.3,
+  },
+  roleText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  content: {
+    flex: 1,
+    paddingTop: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 0.5,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: 'transparent',
+  },
+  menuIcon: {
+    marginRight: 12,
+    width: 24,
   },
   menuText: {
     fontSize: 15,
-    marginLeft: 12,
-    fontWeight: '500',
+    color: '#333',
+    fontWeight: '600',
+    flex: 1,
+    letterSpacing: 0.2,
   },
   footer: {
+    padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    padding: 16,
+    borderTopColor: '#f0f0f0',
   },
   logoutButton: {
-    flexDirection: 'row',
+    backgroundColor: '#F6B21C',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   logoutText: {
-    fontSize: 16,
-    color: '#FF6B6B',
-    marginLeft: 15,
-    fontWeight: '600',
-  },
-  loginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  loginText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    marginLeft: 15,
-    fontWeight: '600',
-  },
-  version: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 10,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 

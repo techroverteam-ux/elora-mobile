@@ -44,8 +44,6 @@ const Home: React.FC = () => {
   const is7InchTablet = width >= 600 && width < 800;
   const is10InchTablet = width >= 800;
 
-  // Debug recent items
-  console.log('Home - Recent items:', recentItems?.length || 0, recentItems);
 
   const { data, isLoading, isError, refetch } = useGetDashboardQuery();
   const [refreshing, setRefreshing] = useState(false);

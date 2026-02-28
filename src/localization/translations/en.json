@@ -25,7 +25,18 @@
     "bookmarks": "Bookmarks",
     "recentlyPlayed": "Recently Played",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "dashboard": "Dashboard",
+    "users": "User Management",
+    "roles": "Role Management",
+    "stores": "Store Operations",
+    "recce": "Recce",
+    "installation": "Installation",
+    "elements": "Element Mapping",
+    "clients": "Client Management",
+    "rfq": "RFQ Generation",
+    "enquiries": "Enquiries",
+    "reports": "Reports"
   },
   "screens": {
     "intro": {

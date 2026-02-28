@@ -25,7 +25,18 @@
     "bookmarks": "पुस्तक चिह्न",
     "recentlyPlayed": "हाल ही में चलाया गया",
     "settings": "सेटिंग्स",
-    "language": "भाषा"
+    "language": "भाषा",
+    "dashboard": "डैशबोर्ड",
+    "users": "उपयोगकर्ता प्रबंधन",
+    "roles": "भूमिका प्रबंधन",
+    "stores": "स्टोर संचालन",
+    "recce": "रेकी",
+    "installation": "स्थापना",
+    "elements": "तत्व मैपिंग",
+    "clients": "ग्राहक प्रबंधन",
+    "rfq": "RFQ जेनरेशन",
+    "enquiries": "पूछताछ",
+    "reports": "रिपोर्ट"
   },
   "screens": {
     "bookmarks": {

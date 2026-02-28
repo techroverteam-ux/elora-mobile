@@ -18,7 +18,7 @@ interface ActionButton {
   title: string;
   icon: string;
   color: string;
-  navigationType: 'video-list' | 'audio-list' | 'chapter-list' | 'single-video' | 'gallery';
+  navigationType: 'video-list' | 'audio-list' | 'chapter-list' | 'single-video' | 'gallery' | 'books-list';
 }
 
 interface Category {
@@ -63,6 +63,7 @@ const AttractiveButtonsScreen: React.FC = () => {
       case 'video-list': return 'play-circle';
       case 'audio-list': return 'music-note';
       case 'gallery': return 'image-multiple';
+      case 'books-list': return 'book-open-variant';
       case 'chapter-list': return 'book-open-variant';
       case 'single-video': return 'video';
       default: return 'star-circle';
@@ -75,6 +76,7 @@ const AttractiveButtonsScreen: React.FC = () => {
       case 'single-video': return '#FF6B6B';
       case 'audio-list': return '#4ECDC4';
       case 'gallery': return '#95E1D3';
+      case 'books-list': return '#8E44AD';
       case 'chapter-list': return '#F8803B';
       default: return colors.primary;
     }
@@ -98,8 +100,24 @@ const AttractiveButtonsScreen: React.FC = () => {
     
     // Handle gallery navigation type
     if (button.navigationType === 'gallery') {
-      navigation.navigate('GalleryList', {
-        initialIndex: 0
+      navigation.navigate('SubCategorie', {
+        sectionId: sectionId,
+        categoryId: category._id,
+        buttonType: button.navigationType,
+        title: button.title,
+        actionButton: button
+      });
+      return;
+    }
+    
+    // Handle books-list navigation type
+    if (button.navigationType === 'books-list') {
+      navigation.navigate('SubCategorie', {
+        sectionId: sectionId,
+        categoryId: category._id,
+        buttonType: button.navigationType,
+        title: button.title,
+        actionButton: button
       });
       return;
     }

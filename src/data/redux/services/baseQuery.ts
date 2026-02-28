@@ -4,7 +4,9 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { _log, colorLog } from '../../../utils/logger'
+import { USER_KEY } from '../../../constants/storageKeys'
 
 const BASE_URL = __DEV__ 
   ? 'https://gbs-api.thankfulflower-dcee2acb.centralindia.azurecontainerapps.io/api'
@@ -12,11 +14,18 @@ const BASE_URL = __DEV__
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
-  timeout: 30000, // 30 second timeout
-  prepareHeaders: (headers, { getState }) => {
-    const token = (getState() as any)?.auth?.token
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
+  timeout: 120000, // 2 minute timeout
+  prepareHeaders: async (headers) => {
+    try {
+      const storedUser = await AsyncStorage.getItem(USER_KEY)
+      if (storedUser) {
+        const user = JSON.parse(storedUser)
+        if (user.token) {
+          headers.set('Authorization', `Bearer ${user.token}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error getting token from storage:', error)
     }
     headers.set('Content-Type', 'application/json')
     headers.set('Accept', 'application/json')
@@ -59,14 +68,14 @@ export const baseQuery: BaseQueryFn<
 
   // ✅ Log requests/responses in development
   if (__DEV__) {
-    // colorLog('cyan', '[API CALL] --->', { url: fullUrl, method, body })
+    colorLog('cyan', '[API CALL] --->', { url: fullUrl, method, body })
 
-    // if (result.error) {
-    //   const message = getErrorMessage(result.error)
-    //   colorLog('red', '[API ERROR] <---', { status: result.error.status, message })
-    // } else {
-    //   colorLog('green', '[API RESPONSE] <---', result.data)
-    // }
+    if (result.error) {
+      const message = getErrorMessage(result.error)
+      colorLog('red', '[API ERROR] <---', { status: result.error.status, message, fullError: result.error })
+    } else {
+      colorLog('green', '[API RESPONSE] <---', result.data)
+    }
 
     _log(result, body)
   }

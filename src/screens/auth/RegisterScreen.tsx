@@ -12,6 +12,7 @@ import {
   Image,
   KeyboardAvoidingView,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -53,6 +54,7 @@ const RegisterScreen = () => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [generalError, setGeneralError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [registerUser, { isLoading }] = useGetRegisterUserMutation();
 
@@ -127,9 +129,7 @@ const RegisterScreen = () => {
       }).unwrap();
       console.log('Registered:', result);
 
-      Alert.alert(t('auth.register.success'), t('auth.register.registrationSuccess'), [
-        { text: t('auth.register.ok'), onPress: () => navigation.goBack() },
-      ]);
+      setShowSuccessModal(true);
     } catch (err: any) {
       console.error('Register failed:', err);
       const message = err?.data?.message ||
@@ -256,6 +256,36 @@ const RegisterScreen = () => {
         </TouchableOpacity>
           </View>
         </ScrollView>
+        
+        {/* Success Modal */}
+        <Modal
+          visible={showSuccessModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => {
+            setShowSuccessModal(false);
+            navigation.goBack();
+          }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.successIconContainer}>
+                <MaterialDesignIcons name="check-circle" size={60} color="#4CAF50" />
+              </View>
+              <Text style={styles.modalTitle}>{t('auth.register.success')}</Text>
+              <Text style={styles.modalMessage}>{t('auth.register.registrationSuccess')}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.modalButtonText}>{t('auth.register.ok')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
     </KeyboardAvoidingView>
   );
@@ -401,5 +431,55 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#f44336',
     borderWidth: 1.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(8),
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: wp(8),
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  successIconContainer: {
+    marginBottom: hp(2),
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: hp(1),
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: hp(3),
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: '#F8803B',
+    borderRadius: 15,
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(8),
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

@@ -1,134 +1,117 @@
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  StatusBar,
-  Animated,
-  Image,
-  Platform,
-} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
-import { useTranslation } from 'react-i18next';
-import { translateContent } from '../utils/contentTranslator';
-import { AppColors } from '../theme/colors';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, StatusBar, Text, Animated } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import EloraLogo from '../components/EloraLogo';
 
-const { width, height } = Dimensions.get('window');
-
-interface SplashScreenProps {
-  onFinish: () => void;
-}
-
-const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
-  const { t } = useTranslation();
+const SplashScreen = () => {
+  const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  
+  const line1Anim = useRef(new Animated.Value(0)).current;
+  const line2Anim = useRef(new Animated.Value(0)).current;
+  const line3Anim = useRef(new Animated.Value(0)).current;
+  
+  const line1Scale = useRef(new Animated.Value(0.5)).current;
+  const line2Scale = useRef(new Animated.Value(0.5)).current;
+  const line3Scale = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
-    StatusBar.setBarStyle('light-content');
-    if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(AppColors.primary);
-    }
+    // Enhanced staggered text animation with more dynamic effects
+    const startTextAnimation = () => {
+      // Line 1 - Slide from left with rotation
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(line1Anim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.spring(line1Scale, {
+            toValue: 1,
+            tension: 120,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 800);
+      
+      // Line 2 - Bounce from right
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(line2Anim, {
+            toValue: 1,
+            duration: 700,
+            useNativeDriver: true,
+          }),
+          Animated.spring(line2Scale, {
+            toValue: 1,
+            tension: 150,
+            friction: 5,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 1200);
+      
+      // Line 3 - Scale up from center
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(line3Anim, {
+            toValue: 1,
+            duration: 900,
+            useNativeDriver: true,
+          }),
+          Animated.spring(line3Scale, {
+            toValue: 1,
+            tension: 80,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 1600);
+    };
 
-    // Animation sequence
-    Animated.sequence([
-      // Logo animation
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Text slide up
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    startTextAnimation();
 
-    // Auto finish after 2.5 seconds
-    const timer = setTimeout(() => {
-      onFinish();
-    }, 2500);
+    const navigationTimer = setTimeout(() => {
+      navigation.navigate('Login' as never);
+    }, 4800);
 
     return () => {
-      clearTimeout(timer);
-      StatusBar.setBarStyle('dark-content');
-      if (Platform.OS === 'android') {
-        StatusBar.setBackgroundColor('#ffffff');
-      }
+      clearTimeout(navigationTimer);
     };
-  }, [fadeAnim, scaleAnim, slideAnim, onFinish]);
+  }, [navigation]);
 
   return (
-    <LinearGradient
-      colors={['#FF9933', '#F8803B', '#FF6600']} // Saffron gradient
-      style={styles.container}
-    >
-      <StatusBar backgroundColor="#FF9933" barStyle="light-content" />
-
-      {/* Logo Container */}
-      <View style={styles.logoContainer}>
-        <Animated.View
-          style={[
-            styles.logoWrapper,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <View style={styles.iconContainer}>
-            <Image
-              source={require('../assets/images/logo1234.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
+    <View style={styles.container}>
+      <StatusBar backgroundColor="#F6B21C" barStyle="light-content" />
+      <EloraLogo width={300} height={100} />
+      
+      <View style={styles.textContainer}>
+        <Animated.View style={{
+          opacity: line1Anim,
+          transform: [{ scale: line1Scale }, { translateX: -50 }, { rotate: '2deg' }]
+        }}>
+          <Text style={[styles.taglineText, styles.line1]}>WE DON'T JUST PRINT.</Text>
         </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.textContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <Text style={styles.appName}>{translateContent('Geeta Bal Sanskar')}</Text>
-          <Text style={styles.tagline}>{translateContent('Spiritual Wisdom & Guidance')}</Text>
+        
+        <Animated.View style={{
+          opacity: line2Anim,
+          transform: [{ scale: line2Scale }, { translateX: 30 }]
+        }}>
+          <Text style={[styles.taglineText, styles.line2]}>WE INSTALL YOUR BRAND</Text>
+        </Animated.View>
+        
+        <Animated.View style={{
+          opacity: line3Anim,
+          transform: [{ scale: line3Scale }]
+        }}>
+          <Text style={[styles.taglineText, styles.line3]}>INTO THE REAL WORLD</Text>
         </Animated.View>
       </View>
-
-      {/* Bottom Section */}
-      <Animated.View
-        style={[
-          styles.bottomSection,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <View style={styles.loadingContainer}>
-          <View style={styles.loadingDot} />
-          <View style={styles.loadingDot} />
-          <View style={styles.loadingDot} />
-        </View>
-        <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
-      </Animated.View>
-    </LinearGradient>
+    </View>
   );
 };
 
@@ -137,67 +120,42 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  logoWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-  iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#ffffff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  logoImage: {
-    width: 100,
-    height: 100,
+    backgroundColor: '#F6B21C',
   },
   textContainer: {
+    marginTop: 30,
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  appName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  tagline: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+  taglineText: {
+    fontSize: 22,
+    fontWeight: '900',
     textAlign: 'center',
+    lineHeight: 32,
+    marginVertical: 6,
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.4)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 3,
+    fontFamily: 'System',
+    textTransform: 'uppercase',
   },
-  bottomSection: {
-    position: 'absolute',
-    bottom: 80,
-    alignItems: 'center',
+  line1: {
+    color: '#1A202C',
+    fontSize: 20,
+    fontStyle: 'italic',
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
+  line2: {
+    color: '#2D3748',
+    fontSize: 24,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
   },
-  loadingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    marginHorizontal: 4,
-  },
-  loadingText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: '500',
+  line3: {
+    color: '#1A202C',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
 });
 

@@ -66,7 +66,7 @@ const ContentListView = () => {
       case 'video': return 'play-circle';
       case 'audio': return 'music-note';
       case 'image': return 'image';
-      case 'file': return mediaTypes.some(type => type === 'file') ? 'file-pdf-box' : 'file-document';
+      case 'file': return mediaTypes.some(type => type === 'file') ? 'book-open-variant' : 'file-document';
       default: return 'file-document';
     }
   };

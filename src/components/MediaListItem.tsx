@@ -16,7 +16,7 @@ const MediaListItem: React.FC<MediaListItemProps> = ({ item, onPress, type = 'au
   const getIcon = () => {
     switch (type) {
       case 'video': return 'play-circle';
-      case 'pdf': return 'file-pdf-box';
+      case 'pdf': return 'book-open-variant';
       default: return 'music-circle';
     }
   };

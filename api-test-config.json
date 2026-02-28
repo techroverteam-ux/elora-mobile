@@ -1,0 +1,30 @@
+{
+  "environments": {
+    "development": {
+      "baseUrl": "http://localhost:3000",
+      "timeout": 5000
+    },
+    "staging": {
+      "baseUrl": "https://staging-api.yourdomain.com",
+      "timeout": 10000
+    },
+    "production": {
+      "baseUrl": "https://api.yourdomain.com",
+      "timeout": 15000
+    }
+  },
+  "testData": {
+    "sampleSectionIds": [1, 2, 3],
+    "sampleCategoryIds": [1, 2, 3],
+    "sampleBlobUrls": [
+      "https://yourstorageaccount.blob.core.windows.net/container/sample.pdf",
+      "https://yourstorageaccount.blob.core.windows.net/container/sample.mp3",
+      "https://yourstorageaccount.blob.core.windows.net/container/sample.mp4"
+    ],
+    "buttonTypes": ["read", "listen", "watch"]
+  },
+  "headers": {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  }
+}

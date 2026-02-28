@@ -7,9 +7,17 @@ export const sectionsApi = createApi({
   endpoints: (builder) => ({
     getSections: builder.mutation<any, any>({
       query: () => ({
-        url: '/sections',
+        url: '/mobile/sections',
         method: 'GET',
       }),
+      transformResponse: (response: any) => {
+        if (response?.data) {
+          // Sort sections by order field (ascending)
+          const sortedData = [...response.data].sort((a, b) => (a.order || 0) - (b.order || 0));
+          return { ...response, data: sortedData };
+        }
+        return response;
+      },
     }),
     getCategories: builder.mutation<any, any>({
       query: (id) => ({
@@ -25,19 +33,25 @@ export const sectionsApi = createApi({
     }),
     getSubcategoriesByActionButton: builder.mutation<any, any>({
       query: ({ sectionId, categoryId, buttonType }) => ({
-        url: `/subcategories/by-action-button?sectionId=${sectionId}&categoryId=${categoryId}&buttonType=${buttonType}`,
+        url: `/mobile/subcategories/by-action-button?sectionId=${sectionId}&categoryId=${categoryId}&buttonType=${buttonType}`,
         method: 'GET',
       }),
     }),
     getCategoryDetails: builder.mutation<any, any>({
       query: (categoryId) => ({
-        url: `/categories/${categoryId}`,
+        url: `/mobile/categories/${categoryId}`,
         method: 'GET',
       }),
     }),
     getAzureBlob: builder.mutation<any, any>({
       query: (url) => ({
-        url: `/azure-blob/file?blobUrl=${url}`,
+        url: `/mobile/azure-blob/file?blobUrl=${url}`,
+        method: 'GET',
+      }),
+    }),
+    getDashboard: builder.mutation<any, any>({
+      query: () => ({
+        url: '/mobile/dashboard',
         method: 'GET',
       }),
     })
@@ -50,5 +64,6 @@ export const {
   useGetSubcategoriesMutation,
   useGetSubcategoriesByActionButtonMutation,
   useGetCategoryDetailsMutation,
-  useGetAzureBlobMutation
+  useGetAzureBlobMutation,
+  useGetDashboardMutation
 } = sectionsApi;

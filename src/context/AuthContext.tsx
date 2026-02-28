@@ -1,75 +1,109 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { fetchAndFormatStorage } from '../utils/storageLogger';
-import { AUTH_KEY, USER_KEY } from '../constants/storageKeys';
+import api from '../lib/api';
 
-export interface UserType {
-  id?: string;
-  name: string;
+interface User {
+  _id: string;
   email: string;
-  role?: string;
-  token?: string;
+  name: string;
+  roles: any[];
 }
 
-export interface AuthContextType {
+interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  user: UserType | null;
-  login: (userData: UserType) => void;
-  logout: () => void;
-  loading: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: React.PropsWithChildren) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<UserType | null>(null);
-  const [loading, setLoading] = useState(true);
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const checkAuth = async () => {
+    try {
+      setIsLoading(true);
+      console.log('AuthContext: Checking authentication...');
+      
+      // Use same endpoint as web portal
+      const response = await api.get('/auth/me');
+      console.log('AuthContext: Auth response:', response.data);
+      
+      if (response.data) {
+        setUser(response.data);
+        console.log('AuthContext: User authenticated', response.data.name);
+      } else {
+        setUser(null);
+        console.log('AuthContext: No user data received');
+      }
+    } catch (error) {
+      console.error('AuthContext: Auth check failed', error);
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadAuthState = async () => {
-      try {
-        const storedAuth = await AsyncStorage.getItem(AUTH_KEY);
-        const storedUser = await AsyncStorage.getItem(USER_KEY);
-        if (storedAuth === 'true' && storedUser) {
-          setIsAuthenticated(true);
-          setUser(JSON.parse(storedUser));
-        }
-        setLoading(false); // add delay
-      } catch (e) {
-        console.log("Failed to load auth state", e); // add delay
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAuthState();
+    checkAuth();
   }, []);
 
-  const login = async (userData: UserType) => {
+  const login = async (email: string, password: string) => {
     try {
-      await AsyncStorage.setItem(AUTH_KEY, 'true');
-      await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
-      setUser(userData);
-      setIsAuthenticated(true);
-    } catch (e) {
-      console.log("Failed to persist login", e);
+      setIsLoading(true);
+      console.log('AuthContext: Attempting login for', email);
+      
+      // Use same login approach as web portal
+      const response = await api.post('/auth/login', { email, password });
+      console.log('AuthContext: Login response data:', response.data);
+      
+      // After successful login, fetch user data like web portal
+      const userResponse = await api.get('/auth/me');
+      if (userResponse.data) {
+        setUser(userResponse.data);
+        console.log('AuthContext: Login successful for', userResponse.data.name);
+        return { success: true };
+      } else {
+        throw new Error('Login failed - no user data received');
+      }
+    } catch (error: any) {
+      console.error('AuthContext: Login failed', error);
+      const message = error.response?.data?.message || error.message || 'Login failed';
+      return { success: false, message };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.multiRemove([AUTH_KEY, USER_KEY, 'recentlyPlayed']);
+      console.log('AuthContext: Logging out user');
+      // Call logout API to clear server-side session
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('AuthContext: Logout API call failed:', error);
+    } finally {
+      // Clear local data
       setUser(null);
-      setIsAuthenticated(false);
-      await fetchAndFormatStorage();
-    } catch (e) {
-      console.log("Failed to persist logout", e);
+      console.log('AuthContext: User logged out');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+        checkAuth,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -77,8 +111,8 @@ export const AuthProvider = ({ children }: React.PropsWithChildren) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };

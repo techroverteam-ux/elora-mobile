@@ -52,6 +52,22 @@ interface Subcategory {
     mediaFile: string;
     order: number;
   }>;
+  books?: Array<{
+    _id: string;
+    title: string;
+    subtitle?: string;
+    description: string;
+    mediaFile?: string;
+    order: number;
+  }>;
+  gallery?: Array<{
+    _id: string;
+    title: string;
+    subtitle?: string;
+    description: string;
+    mediaFile?: string;
+    order: number;
+  }>;
   chapters?: Array<{
     _id: string;
     title: string;
@@ -178,6 +194,30 @@ const SubCategorie = () => {
     console.log('📱 Videos available:', subcategory.videos?.length || 0)
     console.log('📱 Audios available:', subcategory.audios?.length || 0)
     console.log('📱 Chapters available:', subcategory.chapters?.length || 0)
+    
+    // Check if subcategory has books - navigate to books list
+    if (subcategory.books && subcategory.books.length > 0) {
+      console.log('📚 Books found, navigating to books list')
+      setMediaListLoading(true)
+      setSelectedSubcategory(subcategory)
+      setTimeout(() => {
+        setShowMediaList(true)
+        setMediaListLoading(false)
+      }, 500)
+      return
+    }
+    
+    // Check if subcategory has gallery - navigate to gallery list
+    if (subcategory.gallery && subcategory.gallery.length > 0) {
+      console.log('🖼️ Gallery found, navigating to gallery list')
+      setMediaListLoading(true)
+      setSelectedSubcategory(subcategory)
+      setTimeout(() => {
+        setShowMediaList(true)
+        setMediaListLoading(false)
+      }, 500)
+      return
+    }
     
     // Check if subcategory has chapters - navigate to chapters list
     if (subcategory.chapters && subcategory.chapters.length > 0) {
@@ -696,9 +736,14 @@ const SubCategorie = () => {
           >
             <View style={styles.listContainer}>
               <FlatList
-                data={selectedSubcategory.mediaType === 'audio-list' ? (selectedSubcategory.audios || audioList || []) : (selectedSubcategory.videos || selectedSubcategory.audios || [])}
+                data={selectedSubcategory.mediaType === 'audio-list' ? (selectedSubcategory.audios || audioList || []) : 
+                      selectedSubcategory.mediaType === 'books-list' ? (selectedSubcategory.books || []) :
+                      selectedSubcategory.mediaType === 'gallery' ? (selectedSubcategory.gallery || []) :
+                      (selectedSubcategory.videos || selectedSubcategory.audios || [])}
                 renderItem={({ item, index }) => {
                   const isAudio = selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos);
+                  const isBook = selectedSubcategory.mediaType === 'books-list';
+                  const isGallery = selectedSubcategory.mediaType === 'gallery';
                   const numColumns = isGridView ? 3 : 1;
                   
                   if (isGridView) {
@@ -740,7 +785,21 @@ const SubCategorie = () => {
                               streamingUrl: finalMediaFile
                             }
                             
-                            if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                            if (isBook && finalMediaFile) {
+                              console.log('📚 Navigating to PDF viewer for book');
+                              navigation.navigate('PdfViewer', { 
+                                uri: finalMediaFile,
+                                title: item.title,
+                                item: processedItem
+                              })
+                            } else if (isGallery && finalMediaFile) {
+                              console.log('🖼️ Navigating to image viewer for gallery');
+                              navigation.navigate('ImageViewer', {
+                                images: [finalMediaFile],
+                                initialIndex: 0,
+                                title: item.title
+                              })
+                            } else if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
                               console.log('🎬 Navigating to video player');
                               navigation.navigate('EnhancedVideoPlayer', { item: processedItem, playlist: [] })
                             } else {
@@ -751,18 +810,18 @@ const SubCategorie = () => {
                           activeOpacity={0.8}
                         >
                           <View style={styles.gridImageContainer}>
-                            {item.headerImage || item.mainImage || item.imageUrl ? (
+                            {(isGallery && item.mediaFile) || item.headerImage || item.mainImage || item.imageUrl ? (
                               <CustomFastImage
                                 style={styles.gridImage}
-                                imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
+                                imageUrl={processAzureUrl(isGallery ? item.mediaFile : (item.headerImage || item.mainImage || item.imageUrl))}
                                 resizeMode="cover"
                               />
                             ) : (
-                              <View style={[styles.gridPlaceholder, { backgroundColor: isAudio ? '#4ECDC420' : '#FF6B6B20' }]}>
+                              <View style={[styles.gridPlaceholder, { backgroundColor: isAudio ? '#4ECDC420' : isBook ? '#8E44AD20' : isGallery ? '#95E1D320' : '#FF6B6B20' }]}>
                                 <MaterialDesignIcons 
-                                  name={isAudio ? 'music-note' : 'play-circle'} 
+                                  name={isAudio ? 'music-note' : isBook ? 'book-open-variant' : isGallery ? 'image-multiple' : 'play-circle'} 
                                   size={32} 
-                                  color={isAudio ? '#4ECDC4' : '#FF6B6B'} 
+                                  color={isAudio ? '#4ECDC4' : isBook ? '#8E44AD' : isGallery ? '#95E1D3' : '#FF6B6B'} 
                                 />
                               </View>
                             )}
@@ -773,7 +832,7 @@ const SubCategorie = () => {
                               {item.title}
                             </Text>
                             <Text style={[styles.gridSubtitle, { color: colors.onSurfaceVariant || colors.onSurface }]} numberOfLines={1}>
-                              {item.description || item.duration || (isAudio ? 'Audio' : 'Video')}
+                              {item.description || item.duration || (isAudio ? 'Audio' : isBook ? 'Book' : isGallery ? 'Image' : 'Video')}
                             </Text>
                           </View>
                         </TouchableOpacity>
@@ -787,6 +846,13 @@ const SubCategorie = () => {
                       style={styles.listRow}
                       onPress={() => {
                         console.log('🎬 List item pressed:', item.title);
+                        
+                        // For books without mediaFile, skip processing
+                        if (isBook && !item.mediaFile) {
+                          console.log('📚 Book item has no mediaFile, skipping');
+                          return;
+                        }
+                        
                         const processedMediaFile = processAzureUrl(item.mediaFile)
                         console.log('🎬 Raw mediaFile:', item.mediaFile)
                         console.log('🎬 Processed mediaFile:', processedMediaFile)
@@ -812,7 +878,21 @@ const SubCategorie = () => {
                         }
                         console.log('🎬 Playing media:', processedItem.title, 'Final URL:', processedItem.mediaFile)
                         
-                        if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
+                        if (isBook && finalMediaFile) {
+                          console.log('📚 Navigating to PDF viewer for book');
+                          navigation.navigate('PdfViewer', { 
+                            uri: finalMediaFile,
+                            title: item.title,
+                            item: processedItem
+                          })
+                        } else if (isGallery && finalMediaFile) {
+                          console.log('🖼️ Navigating to image viewer for gallery');
+                          navigation.navigate('ImageViewer', {
+                            images: [finalMediaFile],
+                            initialIndex: 0,
+                            title: item.title
+                          })
+                        } else if (selectedSubcategory.videos && selectedSubcategory.videos.find(v => v._id === item._id)) {
                           console.log('🎬 Navigating to video player');
                           navigation.navigate('EnhancedVideoPlayer', { 
                             item: processedItem, 
@@ -851,20 +931,20 @@ const SubCategorie = () => {
                       }}
                       activeOpacity={0.8}
                     >
-                      {item.headerImage || item.mainImage || item.imageUrl ? (
+                      {(isGallery && item.mediaFile) || item.headerImage || item.mainImage || item.imageUrl ? (
                         <CustomFastImage
                           style={styles.listImage}
-                          imageUrl={processAzureUrl(item.headerImage || item.mainImage || item.imageUrl)}
+                          imageUrl={processAzureUrl(isGallery ? item.mediaFile : (item.headerImage || item.mainImage || item.imageUrl))}
                           resizeMode="cover"
                         />
                       ) : (
                         <View style={[styles.mediaIcon, { 
-                          backgroundColor: (selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC420' : '#FF6B6B20' 
+                          backgroundColor: isBook ? '#8E44AD20' : isGallery ? '#95E1D320' : (selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC420' : '#FF6B6B20' 
                         }]}>
                           <MaterialDesignIcons 
-                            name={(selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? 'music-note' : 'play-circle'} 
+                            name={isBook ? 'book-open-variant' : isGallery ? 'image-multiple' : (selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? 'music-note' : 'play-circle'} 
                             size={24} 
-                            color={(selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC4' : '#FF6B6B'} 
+                            color={isBook ? '#8E44AD' : isGallery ? '#95E1D3' : (selectedSubcategory.mediaType === 'audio-list' || (selectedSubcategory.audios && !selectedSubcategory.videos)) ? '#4ECDC4' : '#FF6B6B'} 
                           />
                         </View>
                       )}

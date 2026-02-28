@@ -52,15 +52,7 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
     limit: 20
   });
   
-  console.log('🖼️ Daily Gyan API Response:', {
-    isLoading,
-    error,
-    dataExists: !!apiResponse,
-    dataStructure: apiResponse ? Object.keys(apiResponse) : 'No data',
-    allDataLength: apiResponse?.data?.all?.length || 0,
-    imageItems: Array.isArray(apiResponse?.data?.all) ? apiResponse.data.all.filter((item: GalleryItem) => item.type === 'image').length : 0
-  });
-  
+
   // Extract and sort image items by creation date (most recent first)
   const data = Array.isArray(apiResponse?.data?.all) 
     ? apiResponse.data.all
@@ -68,10 +60,6 @@ const DailyGyanGallery: React.FC<DailyGyanGalleryProps> = ({ onItemPress, onSeeA
         .sort((a: GalleryItem, b: GalleryItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     : [];
   
-  console.log('🖼️ Daily Gyan Filtered Data:', {
-    totalItems: data.length,
-    firstItem: data[0] ? { id: data[0]._id, title: data[0].title, type: data[0].type, createdAt: data[0].createdAt } : 'No items'
-  });
 
 
 

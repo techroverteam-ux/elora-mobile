@@ -75,6 +75,32 @@ export const categoriesApi = createApi({
       providesTags: ['Categories'],
     }),
     
+    // Get recent categories for mobile (public access)
+    getRecentCategoriesForMobile: builder.query<Category[], { limit?: number }>({
+      query: ({ limit = 6 } = {}) => ({
+        url: '/mobile/categories/recent',
+        method: 'GET',
+      }),
+      transformResponse: (response: CategoriesResponse) => {
+        if (response.success && response.data) {
+          return response.data
+            .filter(category => category.title && category._id)
+            .slice(0, 6);
+        }
+        return [];
+      },
+      providesTags: ['Categories'],
+    }),
+    
+    // Get all categories for mobile (public access)
+    getAllCategoriesForMobile: builder.query<CategoriesResponse, void>({
+      query: () => ({
+        url: '/mobile/categories/list/all',
+        method: 'GET',
+      }),
+      providesTags: ['Categories'],
+    }),
+    
     // Get category by ID
     getCategoryById: builder.query<Category, string>({
       query: (id) => ({
@@ -89,5 +115,7 @@ export const categoriesApi = createApi({
 export const {
   useGetAllCategoriesQuery,
   useGetRecentCategoriesQuery,
+  useGetRecentCategoriesForMobileQuery,
+  useGetAllCategoriesForMobileQuery,
   useGetCategoryByIdQuery,
 } = categoriesApi;

@@ -125,7 +125,5 @@ export const createAzureProxyUrl = (blobUrl: string): string => {
   const encodedBlobUrl = encodeURIComponent(blobUrl);
   const proxyUrl = `${baseApiUrl}/azure-blob/file?blobUrl=${encodedBlobUrl}`;
 
-  console.log('createAzureProxyUrl: Original blob URL:', blobUrl);
-  console.log('createAzureProxyUrl: Created proxy URL:', proxyUrl);
   return proxyUrl;
 };

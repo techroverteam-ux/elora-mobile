@@ -104,12 +104,6 @@ const EnhancedVideoPlayer = () => {
       setCurrentVideoItem(currentVideo);
     }
     
-    // Set playlist if provided
-    if (playlist && playlist.length > 0) {
-      const startIndex = playlist.findIndex((video: any) => video._id === item._id);
-      setPlaylist(playlist, startIndex >= 0 ? startIndex : 0);
-    }
-    
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (fullScreen) {
         exitFullScreen();
@@ -122,7 +116,15 @@ const EnhancedVideoPlayer = () => {
       backHandler.remove();
       Orientation.lockToPortrait();
     };
-  }, [fullScreen, currentVideo, setCurrentVideoItem, playlist, item, setPlaylist, saveAudioState, stopAllAudio, registerVideoPlayer]);
+  }, [fullScreen, currentVideo, setCurrentVideoItem, saveAudioState, stopAllAudio, registerVideoPlayer]);
+  
+  // Separate useEffect for playlist setup to avoid setState during render
+  useEffect(() => {
+    if (playlist && playlist.length > 0) {
+      const startIndex = playlist.findIndex((video: any) => video._id === item._id);
+      setPlaylist(playlist, startIndex >= 0 ? startIndex : 0);
+    }
+  }, [playlist, item, setPlaylist]);
   
   const handleNext = () => {
     const next = nextTrack();
@@ -385,23 +387,30 @@ const EnhancedVideoPlayer = () => {
           onProgress={({ currentTime }) => {
             setCurrentTime(currentTime);
             // Show next video preview when 10 seconds left
-            if (duration > 0 && hasNext && (duration - currentTime) <= 10 && !showNextVideo) {
+            if (duration > 0 && hasNext && (duration - currentTime) <= 10 && !showNextVideo && !paused) {
               setShowNextVideo(true);
               setCountdown(5);
+              
+              // Clear any existing timer
+              if (autoPlayTimer) {
+                clearTimeout(autoPlayTimer);
+              }
+              
               // Start auto-play countdown
               const timer = setTimeout(() => {
+                setShowNextVideo(false);
                 handleNext();
               }, 5000);
               setAutoPlayTimer(timer);
+              
               // Update countdown every second
+              let currentCountdown = 5;
               const countdownInterval = setInterval(() => {
-                setCountdown(prev => {
-                  if (prev <= 1) {
-                    clearInterval(countdownInterval);
-                    return 0;
-                  }
-                  return prev - 1;
-                });
+                currentCountdown -= 1;
+                setCountdown(currentCountdown);
+                if (currentCountdown <= 0) {
+                  clearInterval(countdownInterval);
+                }
               }, 1000);
             }
           }}
@@ -414,9 +423,12 @@ const EnhancedVideoPlayer = () => {
               clearTimeout(autoPlayTimer);
               setAutoPlayTimer(null);
             }
-            if (hasNext) {
-              handleNext();
-            }
+            // Small delay before auto-playing next video
+            setTimeout(() => {
+              if (hasNext) {
+                handleNext();
+              }
+            }, 500);
           }}
           onError={(error) => {
             console.error('EnhancedVideoPlayer - Video Error:', error);
@@ -520,7 +532,7 @@ const EnhancedVideoPlayer = () => {
           <View style={styles.nextVideoOverlay}>
             <View style={styles.nextVideoCard}>
               <Text style={styles.nextVideoTitle}>Next Video</Text>
-              <Text style={styles.nextVideoName} numberOfLines={2}>{nextTrack()?.title || 'Next Video'}</Text>
+              <Text style={styles.nextVideoName} numberOfLines={2}>{playlist && playlist[playlist.findIndex((v: any) => v._id === currentVideo._id) + 1]?.title || 'Next Video'}</Text>
               <View style={styles.nextVideoActions}>
                 <TouchableOpacity 
                   style={styles.cancelButton}
@@ -1040,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   nextVideoOverlay: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 10,
     right: 20,
     zIndex: 1000,
   },

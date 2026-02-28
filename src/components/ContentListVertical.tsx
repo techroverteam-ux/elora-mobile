@@ -128,8 +128,8 @@ const ContentListVertical: React.FC<ContentListVerticalProps> = ({
         case 'video': return 'play-circle';
         case 'audio': return 'music-note';
         case 'image': return 'image';
-        case 'file': return 'file-document';
-        default: return 'file-document';
+        case 'file': return 'book-open-variant';
+        default: return 'book-open-variant';
       }
     };
 
