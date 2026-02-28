@@ -51,7 +51,7 @@ const MainAppHeader: React.FC<MainAppHeaderProps> = ({ username }) => {
       <View style={styles.welcomeSection}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../assets/images/logo1234.png')}
+            source={require('../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
