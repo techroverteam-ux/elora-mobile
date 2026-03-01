@@ -140,6 +140,12 @@ export const storeAPI = {
   // Submit recce
   submitRecce: (id: string, recceData: any) => api.post(`/stores/${id}/recce`, recceData),
 
+  // Submit installation (matches web portal API)
+  submitInstallation: (id: string, formData: FormData) => 
+    api.post(`/stores/${id}/installation`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+
   // Complete installation
   completeInstallation: (id: string, installationData?: any) => {
     if (installationData) {

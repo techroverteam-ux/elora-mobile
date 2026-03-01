@@ -306,6 +306,15 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
               <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Start Installation</Text>
             </TouchableOpacity>
           )}
+          
+          {(item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED') && (
+            <TouchableOpacity 
+              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <CheckSquare size={16} color="#10B981" />
+              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Installation Complete</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );

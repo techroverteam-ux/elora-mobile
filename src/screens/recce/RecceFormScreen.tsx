@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
-import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw, Plus, Ruler } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeAPI } from '../../lib/api';
 import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
+import CustomModal from '../../components/CustomModal';
 import { locationService } from '../../services/locationService';
 
 interface RecceFormProps {
@@ -26,21 +27,30 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [currentPhotoType, setCurrentPhotoType] = useState<'front' | 'side' | 'closeUp'>('front');
+  const [currentRecceIndex, setCurrentRecceIndex] = useState<number | null>(null);
   const [currentLocation, setCurrentLocation] = useState<any>(null);
   const [storeImage, setStoreImage] = useState<string | null>(null);
   const [storeData, setStoreData] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: '',
+    message: '',
+    type: 'info' as 'error' | 'success' | 'warning' | 'info',
+    buttons: [] as Array<{ text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }>
+  });
+  
+  const [notes, setNotes] = useState('');
+  const [initialPhotos, setInitialPhotos] = useState<string[]>([]);
+  const [reccePhotos, setReccePhotos] = useState([{
+    photo: null as string | null,
     width: '',
     height: '',
-    notes: '',
+    unit: 'ft'
+  }]);
+  const [formData, setFormData] = useState({
     address: '',
     originalAddress: '',
-    updatedAddress: '',
-    photos: {
-      front: null as string | null,
-      side: null as string | null,
-      closeUp: null as string | null,
-    }
+    updatedAddress: ''
   });
 
   useEffect(() => {
@@ -100,29 +110,54 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     }
   };
 
+  const showModal = (title: string, message: string, type: 'error' | 'success' | 'warning' | 'info' = 'info', buttons?: Array<{ text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }>) => {
+    setModalConfig({
+      title,
+      message,
+      type,
+      buttons: buttons || [{ text: 'OK', onPress: () => setModalVisible(false) }]
+    });
+    setModalVisible(true);
+  };
+
   const handleSubmit = async () => {
-    if (!formData.width || !formData.height || !formData.address) {
-      Alert.alert('Error', 'Please fill in all required fields including address');
+    if (!formData.address) {
+      showModal('Error', 'Please enter store address', 'error');
       return;
+    }
+
+    if (reccePhotos.length === 0) {
+      showModal('Error', 'At least one recce photo is required', 'error');
+      return;
+    }
+
+    for (let i = 0; i < reccePhotos.length; i++) {
+      if (!reccePhotos[i].photo) {
+        showModal('Error', `Please capture photo for board ${i + 1}`, 'error');
+        return;
+      }
+      if (!reccePhotos[i].width || !reccePhotos[i].height) {
+        showModal('Error', `Please enter measurements for board ${i + 1}`, 'error');
+        return;
+      }
     }
 
     try {
       setLoading(true);
       
       const submitData = {
-        width: parseFloat(formData.width),
-        height: parseFloat(formData.height),
-        unit: 'ft',
-        notes: formData.notes,
+        notes,
         address: formData.address,
         originalAddress: formData.originalAddress,
         coordinates: currentLocation,
         addressCorrected: formData.address !== formData.originalAddress,
-        photos: {
-          front: formData.photos.front || null,
-          side: formData.photos.side || null,
-          closeUp: formData.photos.closeUp || null
-        }
+        initialPhotos,
+        reccePhotos: reccePhotos.map(rp => ({
+          photo: rp.photo,
+          width: parseFloat(rp.width),
+          height: parseFloat(rp.height),
+          unit: rp.unit
+        }))
       };
 
       await storeAPI.submitRecce(storeId || recceId, submitData);
@@ -145,25 +180,56 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     }
   };
 
-  const capturePhoto = (type: 'front' | 'side' | 'closeUp') => {
-    if (!formData.width || !formData.height) {
-      Alert.alert('Measurements Required', 'Please enter width and height measurements before taking photos. This will help show the measurement overlay on camera.');
+  const captureInitialPhoto = () => {
+    if (initialPhotos.length >= 4) {
+      showModal('Limit Reached', 'Maximum 4 initial photos allowed', 'warning');
       return;
     }
-    
-    setCurrentPhotoType(type);
+    setCurrentRecceIndex(null);
+    setCurrentPhotoType('front');
+    setCameraVisible(true);
+  };
+
+  const captureReccePhoto = (index: number) => {
+    if (!reccePhotos[index].width || !reccePhotos[index].height) {
+      showModal('Measurements Required', 'Please enter width and height measurements before taking photos.', 'warning');
+      return;
+    }
+    setCurrentRecceIndex(index);
+    setCurrentPhotoType('front');
     setCameraVisible(true);
   };
 
   const handlePhotoCapture = (photoUri: string) => {
-    setFormData(prev => ({
-      ...prev,
-      photos: {
-        ...prev.photos,
-        [currentPhotoType]: photoUri
-      }
-    }));
+    if (currentRecceIndex !== null) {
+      // Recce photo
+      const newReccePhotos = [...reccePhotos];
+      newReccePhotos[currentRecceIndex].photo = photoUri;
+      setReccePhotos(newReccePhotos);
+      setCurrentRecceIndex(null);
+    } else {
+      // Initial photo
+      setInitialPhotos([...initialPhotos, photoUri]);
+    }
     setCameraVisible(false);
+  };
+
+  const addReccePhoto = () => {
+    setReccePhotos([...reccePhotos, { photo: null, width: '', height: '', unit: 'ft' }]);
+  };
+
+  const removeReccePhoto = (index: number) => {
+    if (reccePhotos.length === 1) {
+      showModal('Error', 'At least one recce photo is required', 'error');
+      return;
+    }
+    setReccePhotos(reccePhotos.filter((_, i) => i !== index));
+  };
+
+  const updateReccePhoto = (index: number, field: string, value: string) => {
+    const newReccePhotos = [...reccePhotos];
+    newReccePhotos[index][field] = value;
+    setReccePhotos(newReccePhotos);
   };
 
   const handleCameraClose = () => {
@@ -180,7 +246,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           Store ID: {storeData?.storeId || storeData?._id || storeId}
         </Text>
         <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 24 }}>
-          Fill in the recce details and upload photos
+          Upload initial photos, then add measurements for each board
         </Text>
 
         {/* Store Location & Address */}
@@ -195,17 +261,6 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
             Store Location
           </Text>
-          
-          {storeImage && (
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Current Location View
-              </Text>
-              <View style={{ width: '100%', height: 150, borderRadius: 8, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: theme.colors.textSecondary }}>Map View</Text>
-              </View>
-            </View>
-          )}
           
           <View style={{ marginBottom: 12 }}>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
@@ -299,91 +354,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           )}
         </View>
 
-        {/* Measurements */}
-        <View style={{ 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 12, 
-          padding: 16, 
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border
-        }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-            Board Measurements
-          </Text>
-          
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Width (ft) *
-              </Text>
-              <TextInput
-                style={{
-                  backgroundColor: theme.colors.background,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: theme.colors.text,
-                  fontSize: 16
-                }}
-                value={formData.width}
-                onChangeText={(text) => setFormData({ ...formData, width: text })}
-                placeholder="Enter width"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Height (ft) *
-              </Text>
-              <TextInput
-                style={{
-                  backgroundColor: theme.colors.background,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  borderRadius: 8,
-                  padding: 12,
-                  color: theme.colors.text,
-                  fontSize: 16
-                }}
-                value={formData.height}
-                onChangeText={(text) => setFormData({ ...formData, height: text })}
-                placeholder="Enter height"
-                placeholderTextColor={theme.colors.textSecondary}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-              Notes
-            </Text>
-            <TextInput
-              style={{
-                backgroundColor: theme.colors.background,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-                borderRadius: 8,
-                padding: 12,
-                color: theme.colors.text,
-                fontSize: 16,
-                minHeight: 80,
-                textAlignVertical: 'top'
-              }}
-              value={formData.notes}
-              onChangeText={(text) => setFormData({ ...formData, notes: text })}
-              placeholder="Add any notes or observations..."
-              placeholderTextColor={theme.colors.textSecondary}
-              multiline
-            />
-          </View>
-        </View>
-
-        {/* Photo Upload */}
+        {/* Initial Photos Section */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 
@@ -393,79 +364,209 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           borderColor: theme.colors.border
         }}>
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>
-            Photos with Measurement Overlay
+            Initial Store Photos (4 photos)
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>
+            Upload initial photos of the store before starting measurements
           </Text>
           
-          {(!formData.width || !formData.height) && (
-            <View style={{
-              backgroundColor: theme.colors.primary + '10',
-              borderLeftWidth: 4,
-              borderLeftColor: theme.colors.primary,
-              padding: 12,
-              marginBottom: 16,
-              borderRadius: 8
-            }}>
-              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
-                ⚠️ Enter measurements above to enable measurement overlay on camera
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                The camera will show green guide lines matching your entered dimensions
-              </Text>
-            </View>
-          )}
-          
-          <View style={{ gap: 12 }}>
-            {(['front', 'side', 'closeUp'] as const).map((type) => (
-              <View key={type}>
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  {type === 'front' ? 'Front View' : type === 'side' ? 'Side View' : 'Close Up'}
-                </Text>
-                
-                <TouchableOpacity
-                  onPress={() => capturePhoto(type)}
-                  style={{
-                    backgroundColor: formData.photos[type] ? theme.colors.primary + '15' : theme.colors.background,
-                    borderWidth: 2,
-                    borderColor: formData.photos[type] ? theme.colors.primary : theme.colors.border,
-                    borderStyle: formData.photos[type] ? 'solid' : 'dashed',
-                    borderRadius: 12,
-                    padding: 20,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 120
-                  }}
-                >
-                  {formData.photos[type] ? (
-                    <View style={{ alignItems: 'center' }}>
-                      <Camera size={28} color={theme.colors.primary} />
-                      <Text style={{ color: theme.colors.primary, fontSize: 14, marginTop: 6, fontWeight: '700' }}>
-                        Photo Captured
-                      </Text>
-                      <Text style={{ color: theme.colors.primary, fontSize: 11, marginTop: 2, opacity: 0.8 }}>
-                        With {formData.width} × {formData.height} ft measurements
-                      </Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
-                        Tap to retake
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <Camera size={28} color={theme.colors.textSecondary} />
-                      <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
-                        Capture {type === 'front' ? 'Front View' : type === 'side' ? 'Side View' : 'Close Up'}
-                      </Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                        {formData.width && formData.height 
-                          ? `Will show ${formData.width} × ${formData.height} ft guide` 
-                          : 'Enter measurements first for overlay guide'
-                        }
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {initialPhotos.map((photo, index) => (
+              <View key={index} style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: theme.colors.primary + '20', justifyContent: 'center', alignItems: 'center' }}>
+                <Camera size={20} color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.primary, fontSize: 10, marginTop: 2 }}>Photo {index + 1}</Text>
               </View>
             ))}
           </View>
+          
+          {initialPhotos.length < 4 && (
+            <TouchableOpacity
+              onPress={captureInitialPhoto}
+              style={{
+                backgroundColor: theme.colors.background,
+                borderWidth: 2,
+                borderColor: theme.colors.border,
+                borderStyle: 'dashed',
+                borderRadius: 12,
+                padding: 20,
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Camera size={24} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
+                Add Initial Photo ({initialPhotos.length}/4)
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Recce Photos with Measurements */}
+        {reccePhotos.map((reccePhoto, index) => (
+          <View key={index} style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ruler size={20} color={theme.colors.primary} />
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                  Board {index + 1} Measurement
+                </Text>
+              </View>
+              {reccePhotos.length > 1 && (
+                <TouchableOpacity onPress={() => removeReccePhoto(index)}>
+                  <X size={20} color="#EF4444" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {/* Measurements */}
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                  Width (ft) *
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: theme.colors.background,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    color: theme.colors.text,
+                    fontSize: 16
+                  }}
+                  value={reccePhoto.width}
+                  onChangeText={(text) => updateReccePhoto(index, 'width', text)}
+                  placeholder="0.0"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                  Height (ft) *
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: theme.colors.background,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    borderRadius: 8,
+                    padding: 12,
+                    color: theme.colors.text,
+                    fontSize: 16
+                  }}
+                  value={reccePhoto.height}
+                  onChangeText={(text) => updateReccePhoto(index, 'height', text)}
+                  placeholder="0.0"
+                  placeholderTextColor={theme.colors.textSecondary}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            
+            {/* Photo Capture */}
+            <TouchableOpacity
+              onPress={() => captureReccePhoto(index)}
+              style={{
+                backgroundColor: reccePhoto.photo ? theme.colors.primary + '15' : theme.colors.background,
+                borderWidth: 2,
+                borderColor: reccePhoto.photo ? theme.colors.primary : theme.colors.border,
+                borderStyle: reccePhoto.photo ? 'solid' : 'dashed',
+                borderRadius: 12,
+                padding: 20,
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 120
+              }}
+            >
+              {reccePhoto.photo ? (
+                <View style={{ alignItems: 'center' }}>
+                  <Camera size={28} color={theme.colors.primary} />
+                  <Text style={{ color: theme.colors.primary, fontSize: 14, marginTop: 6, fontWeight: '700' }}>
+                    Photo Captured
+                  </Text>
+                  <Text style={{ color: theme.colors.primary, fontSize: 11, marginTop: 2, opacity: 0.8 }}>
+                    {reccePhoto.width} × {reccePhoto.height} ft
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center' }}>
+                  <Camera size={28} color={theme.colors.textSecondary} />
+                  <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
+                    Capture Board Photo
+                  </Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                    {reccePhoto.width && reccePhoto.height 
+                      ? `Will show ${reccePhoto.width} × ${reccePhoto.height} ft guide` 
+                      : 'Enter measurements first'
+                    }
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        ))}
+        
+        {/* Add Board Button */}
+        <TouchableOpacity
+          onPress={addReccePhoto}
+          style={{
+            backgroundColor: theme.colors.background,
+            borderWidth: 2,
+            borderColor: theme.colors.border,
+            borderStyle: 'dashed',
+            borderRadius: 12,
+            padding: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16,
+            flexDirection: 'row'
+          }}
+        >
+          <Plus size={20} color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.primary, fontSize: 16, fontWeight: '600', marginLeft: 8 }}>
+            Add Another Board
+          </Text>
+        </TouchableOpacity>
+        
+        {/* Notes Section */}
+        <View style={{ 
+          backgroundColor: theme.colors.surface, 
+          borderRadius: 12, 
+          padding: 16, 
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: theme.colors.border
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+            Remarks
+          </Text>
+          <TextInput
+            style={{
+              backgroundColor: theme.colors.background,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              borderRadius: 8,
+              padding: 12,
+              color: theme.colors.text,
+              fontSize: 16,
+              minHeight: 80,
+              textAlignVertical: 'top'
+            }}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Add any notes or observations..."
+            placeholderTextColor={theme.colors.textSecondary}
+            multiline
+          />
         </View>
 
         {/* Submit Button */}
@@ -489,12 +590,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
 
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={loading || !formData.width || !formData.height || !formData.address}
+            disabled={loading || reccePhotos.some(rp => !rp.width || !rp.height || !rp.photo) || !formData.address}
             style={{
               flex: 2,
               padding: 16,
               borderRadius: 12,
-              backgroundColor: (!formData.width || !formData.height || !formData.address) ? theme.colors.border : theme.colors.primary,
+              backgroundColor: (reccePhotos.some(rp => !rp.width || !rp.height || !rp.photo) || !formData.address) ? theme.colors.border : theme.colors.primary,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'
@@ -512,9 +613,18 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         visible={cameraVisible}
         onClose={handleCameraClose}
         onCapture={handlePhotoCapture}
-        width={formData.width}
-        height={formData.height}
+        width={currentRecceIndex !== null ? reccePhotos[currentRecceIndex]?.width || '0' : '0'}
+        height={currentRecceIndex !== null ? reccePhotos[currentRecceIndex]?.height || '0' : '0'}
         photoType={currentPhotoType}
+      />
+      
+      <CustomModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        buttons={modalConfig.buttons}
       />
     </ScrollView>
   );

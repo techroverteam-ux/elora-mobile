@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Camera, Upload, CheckCircle2, Loader2, ArrowLeft, Ruler, FileText, ImageIcon } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeAPI } from '../../lib/api';
 import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
+import CustomModal from '../../components/CustomModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface InstallationFormProps {
@@ -25,10 +26,14 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   const [loading, setLoading] = useState(false);
   const [storeData, setStoreData] = useState<any>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
-  const [currentPhotoType, setCurrentPhotoType] = useState<'after1' | 'after2'>('after1');
-  const [installationPhotos, setInstallationPhotos] = useState({
-    after1: null as string | null,
-    after2: null as string | null,
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
+  const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: string | null}>({});
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: '',
+    message: '',
+    type: 'info' as 'error' | 'success' | 'warning' | 'info',
+    buttons: [] as Array<{ text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }>
   });
 
   useEffect(() => {
@@ -38,7 +43,17 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   const loadStoreData = async () => {
     try {
       const response = await storeAPI.getStoreById(storeId);
-      setStoreData(response.data.store);
+      const store = response.data.store;
+      setStoreData(store);
+      
+      // Initialize installation photos object based on recce photos count
+      if (store.recce?.reccePhotos) {
+        const initialPhotos: {[key: number]: string | null} = {};
+        store.recce.reccePhotos.forEach((_: any, index: number) => {
+          initialPhotos[index] = null;
+        });
+        setInstallationPhotos(initialPhotos);
+      }
     } catch (error) {
       console.error('Failed to load store data:', error);
       Toast.show({
@@ -50,34 +65,58 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     }
   };
 
+  const showModal = (title: string, message: string, type: 'error' | 'success' | 'warning' | 'info' = 'info', buttons?: Array<{ text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }>) => {
+    setModalConfig({
+      title,
+      message,
+      type,
+      buttons: buttons || [{ text: 'OK', onPress: () => setModalVisible(false) }]
+    });
+    setModalVisible(true);
+  };
+
   const handleSubmit = async () => {
-    if (!installationPhotos.after1 || !installationPhotos.after2) {
-      Alert.alert('Photos Required', 'Please capture both installation photos before submitting.');
+    const reccePhotosCount = storeData?.recce?.reccePhotos?.length || 0;
+    const uploadedCount = Object.values(installationPhotos).filter(photo => photo !== null).length;
+    
+    if (uploadedCount < reccePhotosCount) {
+      showModal('Photos Required', `Please upload installation photos for all ${reccePhotosCount} boards.`, 'error');
       return;
     }
 
-    Alert.alert(
+    showModal(
       'Complete Installation',
       'Are you sure you want to submit the installation as complete?',
+      'warning',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', onPress: () => setModalVisible(false), style: 'cancel' },
         {
           text: 'Submit',
           onPress: async () => {
+            setModalVisible(false);
             try {
               setLoading(true);
               
-              const installationData = {
-                photos: installationPhotos,
-                submittedDate: new Date().toISOString(),
-                recceReference: {
-                  width: storeData?.recce?.sizes?.width,
-                  height: storeData?.recce?.sizes?.height,
-                  unit: storeData?.recce?.sizes?.unit || 'ft'
-                }
-              };
+              // Create FormData exactly like web portal
+              const formData = new FormData();
+              const photosData: Array<{ reccePhotoIndex: number }> = [];
+              let fileIndex = 0;
 
-              await storeAPI.completeInstallation(storeId);
+              for (let i = 0; i < reccePhotosCount; i++) {
+                if (installationPhotos[i]) {
+                  formData.append(`installationPhoto${fileIndex}`, {
+                    uri: installationPhotos[i],
+                    type: 'image/jpeg',
+                    name: `installation_${i}.jpg`,
+                  } as any);
+                  photosData.push({ reccePhotoIndex: i });
+                  fileIndex++;
+                }
+              }
+
+              formData.append('installationPhotosData', JSON.stringify(photosData));
+
+              await storeAPI.submitInstallation(storeId, formData);
               
               Toast.show({
                 type: 'success',
@@ -95,25 +134,22 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             } finally {
               setLoading(false);
             }
-          }
+          },
+          style: 'destructive'
         }
       ]
     );
   };
 
-  const capturePhoto = (type: 'after1' | 'after2') => {
-    if (!storeData?.recce?.sizes?.width || !storeData?.recce?.sizes?.height) {
-      Alert.alert('No Recce Data', 'Recce measurements not found. Photos will be captured without overlay.');
-    }
-    
-    setCurrentPhotoType(type);
+  const captureInstallationPhoto = (index: number) => {
+    setCurrentPhotoIndex(index);
     setCameraVisible(true);
   };
 
   const handlePhotoCapture = (photoUri: string) => {
     setInstallationPhotos(prev => ({
       ...prev,
-      [currentPhotoType]: photoUri
+      [currentPhotoIndex]: photoUri
     }));
     setCameraVisible(false);
   };
@@ -136,6 +172,9 @@ export default function InstallationFormScreen({ route, navigation }: Installati
       </View>
     );
   }
+
+  const reccePhotos = storeData.recce?.reccePhotos || [];
+  const initialPhotos = storeData.recce?.initialPhotos || [];
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -167,102 +206,38 @@ export default function InstallationFormScreen({ route, navigation }: Installati
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-        {/* Recce Reference Section */}
-        {storeData.recce && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 12 }}>
-              Recce Reference
-            </Text>
-            
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-              {/* Recce Measurements */}
-              <View style={{ 
-                flex: 1,
-                backgroundColor: '#3B82F620', 
-                borderRadius: 12, 
-                padding: 16, 
-                borderWidth: 1,
-                borderColor: '#3B82F650'
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <Ruler size={20} color="#3B82F6" />
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
-                    Target Measurements
-                  </Text>
-                </View>
-                
-                <View style={{ gap: 4 }}>
-                  <Text style={{ color: '#3B82F6', fontSize: 14, fontWeight: '600' }}>
-                    {storeData.recce.sizes?.width || 0} × {storeData.recce.sizes?.height || 0} ft
-                  </Text>
-                  <Text style={{ color: '#3B82F6', fontSize: 12 }}>
-                    Use these dimensions for installation photos
-                  </Text>
-                </View>
-              </View>
-
-              {/* Recce Notes */}
-              <View style={{ 
-                flex: 1,
-                backgroundColor: '#3B82F620', 
-                borderRadius: 12, 
-                padding: 16, 
-                borderWidth: 1,
-                borderColor: '#3B82F650'
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <FileText size={20} color="#3B82F6" />
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
-                    Notes
-                  </Text>
-                </View>
-                
-                <Text style={{ color: '#3B82F6', fontSize: 12 }}>
-                  {storeData.recce.notes || 'No notes provided'}
-                </Text>
-              </View>
+        {/* Initial Photos Reference */}
+        {initialPhotos.length > 0 && (
+          <View style={{ 
+            backgroundColor: '#3B82F620', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: '#3B82F650'
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <ImageIcon size={20} color="#3B82F6" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
+                Initial Photos (Reference)
+              </Text>
             </View>
-
-            {/* Recce Photos Reference */}
-            <View style={{ 
-              backgroundColor: '#3B82F620', 
-              borderRadius: 12, 
-              padding: 16, 
-              borderWidth: 1,
-              borderColor: '#3B82F650'
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <ImageIcon size={20} color="#3B82F6" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
-                  Recce Photos (Reference)
-                </Text>
-              </View>
-              
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {['front', 'side', 'closeUp'].map((type) => (
-                  <View key={type} style={{ flex: 1, aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
-                    {storeData.recce?.photos?.[type] ? (
-                      <Image
-                        source={{ uri: getPhotoUrl(storeData.recce.photos[type]) || '' }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ImageIcon size={24} color="#3B82F6" />
-                        <Text style={{ color: '#3B82F6', fontSize: 10, marginTop: 4, textTransform: 'capitalize' }}>
-                          {type}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
+            
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {initialPhotos.slice(0, 4).map((photo: string, idx: number) => (
+                <View key={idx} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
+                  <Image
+                    source={{ uri: getPhotoUrl(photo) || '' }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              ))}
             </View>
           </View>
         )}
 
-        {/* Installation Photos Section */}
+        {/* Recce Photos & Installation Upload */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 
@@ -272,78 +247,86 @@ export default function InstallationFormScreen({ route, navigation }: Installati
           borderColor: theme.colors.border
         }}>
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>
-            Installation Photos
+            Installation Photos for Each Board
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>
+            Upload installation photo for each recce board ({reccePhotos.length} boards)
           </Text>
           
-          {storeData.recce?.sizes && (
-            <View style={{
-              backgroundColor: theme.colors.primary + '10',
-              borderLeftWidth: 4,
-              borderLeftColor: theme.colors.primary,
-              padding: 12,
-              marginBottom: 16,
-              borderRadius: 8
-            }}>
-              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
-                📏 Camera will show {storeData.recce.sizes.width} × {storeData.recce.sizes.height} ft measurement overlay
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                Align the installed board with the green guide lines
-              </Text>
-            </View>
-          )}
-          
-          <View style={{ gap: 12 }}>
-            {(['after1', 'after2'] as const).map((type, idx) => (
-              <View key={type}>
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Installation Photo {idx + 1} *
+          <View style={{ gap: 16 }}>
+            {reccePhotos.map((reccePhoto: any, index: number) => (
+              <View key={index} style={{ 
+                backgroundColor: theme.colors.background, 
+                borderRadius: 12, 
+                padding: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginBottom: 12 }}>
+                  Board {index + 1}
                 </Text>
                 
-                <TouchableOpacity
-                  onPress={() => capturePhoto(type)}
-                  style={{
-                    backgroundColor: installationPhotos[type] ? theme.colors.primary + '15' : theme.colors.background,
-                    borderWidth: 2,
-                    borderColor: installationPhotos[type] ? theme.colors.primary : theme.colors.border,
-                    borderStyle: installationPhotos[type] ? 'solid' : 'dashed',
-                    borderRadius: 12,
-                    padding: 20,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: 120
-                  }}
-                >
-                  {installationPhotos[type] ? (
-                    <View style={{ alignItems: 'center' }}>
-                      <Camera size={28} color={theme.colors.primary} />
-                      <Text style={{ color: theme.colors.primary, fontSize: 14, marginTop: 6, fontWeight: '700' }}>
-                        Photo Captured
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                  {/* Recce Photo Reference */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
+                      Recce Photo (Reference)
+                    </Text>
+                    <View style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
+                      <Image
+                        source={{ uri: getPhotoUrl(reccePhoto.photo) || '' }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    </View>
+                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
+                        {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
                       </Text>
-                      {storeData.recce?.sizes && (
-                        <Text style={{ color: theme.colors.primary, fontSize: 11, marginTop: 2, opacity: 0.8 }}>
-                          With {storeData.recce.sizes.width} × {storeData.recce.sizes.height} ft overlay
-                        </Text>
+                    </View>
+                  </View>
+                  
+                  {/* Installation Photo */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
+                      Installation Photo *
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => captureInstallationPhoto(index)}
+                      style={{
+                        aspectRatio: 1,
+                        backgroundColor: installationPhotos[index] ? theme.colors.primary + '15' : theme.colors.background,
+                        borderWidth: 2,
+                        borderColor: installationPhotos[index] ? '#10B981' : theme.colors.border,
+                        borderStyle: installationPhotos[index] ? 'solid' : 'dashed',
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {installationPhotos[index] ? (
+                        <View style={{ alignItems: 'center' }}>
+                          <Camera size={24} color="#10B981" />
+                          <Text style={{ color: '#10B981', fontSize: 12, marginTop: 4, fontWeight: '600' }}>
+                            Captured
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ alignItems: 'center' }}>
+                          <Camera size={24} color={theme.colors.textSecondary} />
+                          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+                            Capture
+                          </Text>
+                        </View>
                       )}
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
-                        Tap to retake
+                    </TouchableOpacity>
+                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>
+                        With {reccePhoto.measurements.width} × {reccePhoto.measurements.height} overlay
                       </Text>
                     </View>
-                  ) : (
-                    <View style={{ alignItems: 'center' }}>
-                      <Camera size={28} color={theme.colors.textSecondary} />
-                      <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
-                        Capture Installation Photo {idx + 1}
-                      </Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                        {storeData.recce?.sizes 
-                          ? `Will show ${storeData.recce.sizes.width} × ${storeData.recce.sizes.height} ft guide` 
-                          : 'Capture after installation is complete'
-                        }
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             ))}
           </View>
@@ -370,12 +353,12 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={loading || !installationPhotos.after1 || !installationPhotos.after2}
+            disabled={loading || Object.values(installationPhotos).some(photo => photo === null)}
             style={{
               flex: 2,
               padding: 16,
               borderRadius: 12,
-              backgroundColor: (!installationPhotos.after1 || !installationPhotos.after2) ? theme.colors.border : '#10B981',
+              backgroundColor: Object.values(installationPhotos).some(photo => photo === null) ? theme.colors.border : '#10B981',
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'
@@ -398,9 +381,18 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         visible={cameraVisible}
         onClose={handleCameraClose}
         onCapture={handlePhotoCapture}
-        width={storeData?.recce?.sizes?.width?.toString() || '0'}
-        height={storeData?.recce?.sizes?.height?.toString() || '0'}
-        photoType="front" // Installation photos use front view
+        width={reccePhotos[currentPhotoIndex]?.measurements?.width?.toString() || '0'}
+        height={reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0'}
+        photoType="front"
+      />
+      
+      <CustomModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        buttons={modalConfig.buttons}
       />
     </View>
   );

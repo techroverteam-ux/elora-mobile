@@ -300,6 +300,15 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
               <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Start Recce</Text>
             </TouchableOpacity>
           )}
+          
+          {(item.status === 'RECCE_SUBMITTED' || item.status === 'RECCE_APPROVED') && (
+            <TouchableOpacity 
+              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <CheckSquare size={16} color="#10B981" />
+              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Recce Submitted</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
