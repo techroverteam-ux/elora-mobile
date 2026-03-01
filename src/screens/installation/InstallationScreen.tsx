@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeAPI } from '../../lib/api';
+import { storeService } from '../../services/storeService';
+import { fileService } from '../../services/fileService';
+import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface InstallationAssignment {
   _id: string;
@@ -37,6 +40,9 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedAssignments, setSelectedAssignments] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   useEffect(() => {
     fetchAssignments();
@@ -47,34 +53,53 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     
     try {
       setLoading(true);
-      // Use stores API to get installation assignments
-      const { data } = await storeAPI.getStores({
+      const params = {
         page: 1,
         limit: 50,
-        status: 'INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED',
-      });
+        search: searchTerm || undefined,
+      };
+      
+      // Add status filter - try different approaches
+      if (filterStatus !== 'ALL') {
+        params.status = filterStatus;
+      } else {
+        // Get all installation-related statuses
+        params.status = 'INSTALLATION_ASSIGNED';
+      }
+      
+      console.log('InstallationScreen: API params:', params);
+      const response = await storeService.getAll(params);
+      console.log('InstallationScreen: API response:', response);
+      
+      if (!response || !response.stores) {
+        console.log('InstallationScreen: No stores in response');
+        setAssignments([]);
+        return;
+      }
       
       // Transform stores to assignment format
-      let filteredAssignments = (data.stores || []).map((store: any) => ({
-        _id: store._id,
-        store: {
+      let filteredAssignments = response.stores
+        .filter((store: any) => store.location && store.location.city) // Only include stores with valid location
+        .map((store: any) => ({
           _id: store._id,
-          dealerCode: store.dealerCode,
-          storeName: store.storeName,
-          location: store.location
-        },
-        assignedTo: store.workflow.installationAssignedTo || { name: 'Unassigned' },
-        status: store.currentStatus,
-        assignedAt: store.createdAt || new Date().toISOString(),
-        submittedAt: store.updatedAt,
-        images: [],
-        remarks: store.remark
-      }));
+          store: {
+            _id: store._id,
+            dealerCode: store.dealerCode,
+            storeName: store.storeName,
+            location: store.location
+          },
+          assignedTo: store.workflow?.installationAssignedTo || { name: 'Unassigned' },
+          status: store.currentStatus,
+          assignedAt: store.createdAt || new Date().toISOString(),
+          submittedAt: store.updatedAt,
+          images: [],
+          remarks: store.remark
+        }));
       
-      if (searchTerm) {
+      // Filter by installation statuses if needed
+      if (filterStatus === 'ALL') {
         filteredAssignments = filteredAssignments.filter((assignment: any) => 
-          assignment.store.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          assignment.store.dealerCode.toLowerCase().includes(searchTerm.toLowerCase())
+          ['INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'COMPLETED'].includes(assignment.status)
         );
       }
       
@@ -83,7 +108,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
       
     } catch (error) {
       console.error('InstallationScreen: Error fetching assignments', error);
-      Alert.alert('Error', 'Failed to load installation assignments');
+      Toast.show({ type: 'error', text1: 'Failed to load installation assignments' });
       setAssignments([]);
     } finally {
       setLoading(false);
@@ -99,6 +124,55 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
       newSet.add(id);
     }
     setSelectedAssignments(newSet);
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await storeService.exportInstallation();
+      await fileService.downloadFile(blob, 'Installation_Export.xlsx');
+      Toast.show({ type: 'success', text1: 'Installation data exported successfully!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Export failed' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBulkPPTDownload = async () => {
+    if (selectedAssignments.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select assignments' });
+      return;
+    }
+    setIsDownloadingPPT(true);
+    try {
+      const blob = await storeService.bulkPpt(Array.from(selectedAssignments), 'installation');
+      await fileService.downloadFile(blob, `Installation_Report_${selectedAssignments.size}_Stores.pptx`);
+      Toast.show({ type: 'success', text1: `Downloaded PPT with ${selectedAssignments.size} stores` });
+      setSelectedAssignments(new Set());
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to download PPTs' });
+    } finally {
+      setIsDownloadingPPT(false);
+    }
+  };
+
+  const handleBulkPDFDownload = async () => {
+    if (selectedAssignments.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select assignments' });
+      return;
+    }
+    setIsDownloadingPDF(true);
+    try {
+      const blob = await storeService.bulkPdf(Array.from(selectedAssignments), 'installation');
+      await fileService.downloadFile(blob, `Installation_Report_${selectedAssignments.size}_Stores.pdf`);
+      Toast.show({ type: 'success', text1: `Downloaded PDF with ${selectedAssignments.size} stores` });
+      setSelectedAssignments(new Set());
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to download PDFs' });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -121,16 +195,16 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
 
   const renderAssignment = ({ item }: { item: InstallationAssignment }) => {
     const isSelected = selectedAssignments.has(item._id);
-    const canSelect = item.status === 'SUBMITTED' || item.status === 'COMPLETED';
+    const canSelect = item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED';
     
     return (
       <View style={{ 
-        backgroundColor: theme.colors.surface, 
+        backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
         padding: 16, 
         marginBottom: 12, 
         borderRadius: 12, 
         borderWidth: 1, 
-        borderColor: theme.colors.border 
+        borderColor: isSelected ? theme.colors.primary : theme.colors.border 
       }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1 }}>
@@ -240,12 +314,21 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <Wrench size={24} color={theme.colors.primary} />
-          <View style={{ marginLeft: 12 }}>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Installation Tasks</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your installation assignments</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Wrench size={24} color={theme.colors.primary} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Installation Tasks</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your installation assignments</Text>
+            </View>
           </View>
+          <TouchableOpacity onPress={handleExport} disabled={isExporting} style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}>
+            {isExporting ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <Download size={16} color="#FFF" />
+            )}
+          </TouchableOpacity>
         </View>
 
         <View style={{ gap: 12 }}>
@@ -263,17 +346,31 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
           {selectedAssignments.size > 0 && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#F59E0B', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                onPress={handleBulkPPTDownload}
+                disabled={isDownloadingPPT}
+                style={{ flex: 1, backgroundColor: '#F59E0B', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPPT ? 0.6 : 1 }}
               >
-                <Text style={{ color: '#FFF', fontWeight: '600' }}>
-                  Generate PPT ({selectedAssignments.size})
+                {isDownloadingPPT ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <FileText size={16} color="#FFF" />
+                )}
+                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+                  PPT ({selectedAssignments.size})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={{ flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                onPress={handleBulkPDFDownload}
+                disabled={isDownloadingPDF}
+                style={{ flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPDF ? 0.6 : 1 }}
               >
-                <Text style={{ color: '#FFF', fontWeight: '600' }}>
-                  Generate PDF ({selectedAssignments.size})
+                {isDownloadingPDF ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <FileText size={16} color="#FFF" />
+                )}
+                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+                  PDF ({selectedAssignments.size})
                 </Text>
               </TouchableOpacity>
             </View>
@@ -282,10 +379,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading assignments...</Text>
-        </View>
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={assignments}

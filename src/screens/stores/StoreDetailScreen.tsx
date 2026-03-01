@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
-import { MapPin, Calendar, User, DollarSign, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { MapPin, Calendar, User, IndianRupee, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeAPI } from '../../lib/api';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface StoreDetailProps {
   route: {
@@ -130,6 +131,14 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).replace(/ /g, '-');
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED': return <CheckCircle size={20} color="#10B981" />;
@@ -159,12 +168,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
   };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading store details...</Text>
-      </View>
-    );
+    return <PageSkeleton type="dashboard" />;
   }
 
   if (!store) {
@@ -376,15 +380,20 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 </View>
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Width:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.width} ft</Text>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.width}</Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> ft</Text>
                 </View>
                 <View style={{ minWidth: '45%' }}>
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Height:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.height} ft</Text>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.height}</Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> ft</Text>
                 </View>
                 <View style={{ width: '100%' }}>
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Board Size:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.boardSize || '-'} sq.ft</Text>
+                  <View style={{ flexDirection: 'row' }}>
+                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.boardSize || '-'}</Text>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> sq.ft</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -401,7 +410,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
               borderColor: theme.colors.border
             }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <DollarSign size={20} color="#10B981" />
+                <IndianRupee size={20} color="#10B981" />
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
                   Cost Details
                 </Text>
@@ -411,7 +420,10 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 {store.costDetails?.boardRate && (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Board Rate:</Text>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.boardRate}/sq.ft</Text>
+                    <View style={{ flexDirection: 'row' }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.boardRate}</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>/sq.ft</Text>
+                    </View>
                   </View>
                 )}
                 {store.costDetails?.totalBoardCost && (
@@ -492,7 +504,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 </View>
                 {store.workflow.recceSubmittedAt && (
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 8 }}>
-                    Submitted: {new Date(store.workflow.recceSubmittedAt).toLocaleDateString()}
+                    Submitted: {formatDate(store.workflow.recceSubmittedAt)}
                   </Text>
                 )}
               </View>
@@ -529,7 +541,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 </View>
                 {store.workflow.installationSubmittedAt && (
                   <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 8 }}>
-                    Submitted: {new Date(store.workflow.installationSubmittedAt).toLocaleDateString()}
+                    Submitted: {formatDate(store.workflow.installationSubmittedAt)}
                   </Text>
                 )}
               </View>
@@ -556,7 +568,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Created</Text>
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                  {new Date(store.createdAt).toLocaleDateString()}
+                  {formatDate(store.createdAt)}
                 </Text>
               </View>
             </View>

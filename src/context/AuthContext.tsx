@@ -26,8 +26,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      setIsLoading(true);
       console.log('AuthContext: Checking authentication...');
+      
+      // Check if we have stored tokens first
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        console.log('AuthContext: No stored token found');
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
       
       // Use same endpoint as web portal
       const response = await api.get('/auth/me');
@@ -41,7 +49,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('AuthContext: No user data received');
       }
     } catch (error) {
-      console.error('AuthContext: Auth check failed', error);
+      console.log('AuthContext: Auth check failed', error?.message || 'Network error');
+      // Clear invalid token
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('refreshToken');
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -60,6 +71,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Use same login approach as web portal
       const response = await api.post('/auth/login', { email, password });
       console.log('AuthContext: Login response data:', response.data);
+      
+      // Store tokens if provided
+      if (response.data.token) {
+        await AsyncStorage.setItem('authToken', response.data.token);
+      }
+      if (response.data.refreshToken) {
+        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      }
       
       // After successful login, fetch user data like web portal
       const userResponse = await api.get('/auth/me');
@@ -88,6 +107,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('AuthContext: Logout API call failed:', error);
     } finally {
       // Clear local data
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('refreshToken');
       setUser(null);
       console.log('AuthContext: User logged out');
     }

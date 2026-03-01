@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, StatusBar, Text, Animated } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import EloraLogo from '../components/EloraLogo';
+import { View, StyleSheet, StatusBar, Text, Animated, Image } from 'react-native';
+import { LinearGradient } from 'react-native-linear-gradient';
 
 const SplashScreen = () => {
-  const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -74,20 +72,24 @@ const SplashScreen = () => {
     };
 
     startTextAnimation();
-
-    const navigationTimer = setTimeout(() => {
-      navigation.navigate('Login' as never);
-    }, 4800);
-
-    return () => {
-      clearTimeout(navigationTimer);
-    };
-  }, [navigation]);
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <StatusBar backgroundColor="#F6B21C" barStyle="light-content" />
-      <EloraLogo width={300} height={100} />
+    <LinearGradient
+      colors={['#FFFFFF', '#FEF3C7', '#F6B21C']}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <StatusBar backgroundColor="#F6B21C" barStyle="dark-content" />
+      
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
       
       <View style={styles.textContainer}>
         <Animated.View style={{
@@ -111,7 +113,7 @@ const SplashScreen = () => {
           <Text style={[styles.taglineText, styles.line3]}>INTO THE REAL WORLD</Text>
         </Animated.View>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -120,10 +122,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F6B21C',
+  },
+  logoContainer: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#F6B21C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  logo: {
+    width: 300,
+    height: 100,
   },
   textContainer: {
-    marginTop: 30,
+    marginTop: 40,
     alignItems: 'center',
     paddingHorizontal: 20,
   },
@@ -134,25 +149,25 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginVertical: 6,
     letterSpacing: 1.5,
-    textShadowColor: 'rgba(255, 255, 255, 0.4)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 3,
+    textShadowColor: 'rgba(246, 178, 28, 0.3)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
     fontFamily: 'System',
     textTransform: 'uppercase',
   },
   line1: {
-    color: '#1A202C',
+    color: '#B45309',
     fontSize: 20,
     fontStyle: 'italic',
   },
   line2: {
-    color: '#2D3748',
+    color: '#92400E',
     fontSize: 24,
     fontWeight: '800',
     textDecorationLine: 'underline',
   },
   line3: {
-    color: '#1A202C',
+    color: '#78350F',
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 2,

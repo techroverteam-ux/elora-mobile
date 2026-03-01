@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, FlatList, Dimensions, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
@@ -8,7 +8,7 @@ import AppBarHeader from '../../components/AppBarHeader'
 import UnifiedMediaCard from '../../components/UnifiedMediaCard';
 import MediaListItem from '../../components/MediaListItem';
 import ViewToggle from '../../components/ViewToggle';
-import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader';
+import PageSkeleton from '../../components/PageSkeleton';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
 import { useNavigation } from '@react-navigation/native';
@@ -152,7 +152,7 @@ const AllAudios = () => {
         }
         ListHeaderComponent={() => (
           isLoading || isTransitioning ? (
-            isGridView ? <ListViewSkeleton /> : <GridViewSkeleton />
+            <PageSkeleton type="list" />
           ) : null
         )}
       />

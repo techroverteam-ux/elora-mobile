@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Download } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
+import { fileService } from '../../services/fileService';
 import { User, Role } from '../../types';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 export default function UsersScreen() {
   const { theme } = useTheme();
@@ -13,10 +15,13 @@ export default function UsersScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -58,6 +63,20 @@ export default function UsersScreen() {
     }
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = { search: searchTerm };
+      const blob = await userService.export(params);
+      await fileService.downloadFile(blob, `Users_Export_${Date.now()}.xlsx`);
+      Toast.show({ type: 'success', text1: 'Users exported successfully!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to export users' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleCreate = () => {
     setEditingUser(null);
     setFormData({ name: '', email: '', password: '', roles: [], isActive: true });
@@ -77,46 +96,82 @@ export default function UsersScreen() {
   };
 
   const handleSubmit = async () => {
+    // Validation
+    if (!formData.name.trim()) {
+      Toast.show({ type: 'error', text1: 'Name is required' });
+      return;
+    }
+    if (!formData.email.trim()) {
+      Toast.show({ type: 'error', text1: 'Email is required' });
+      return;
+    }
+    if (!editingUser && !formData.password.trim()) {
+      Toast.show({ type: 'error', text1: 'Password is required for new users' });
+      return;
+    }
+    if (formData.roles.length === 0) {
+      Toast.show({ type: 'error', text1: 'At least one role must be selected' });
+      return;
+    }
+
     try {
       const payload: any = {
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
         roles: formData.roles,
         isActive: formData.isActive,
       };
-      if (formData.password) payload.password = formData.password;
+      if (formData.password.trim()) payload.password = formData.password.trim();
+
+      console.log('Creating/updating user with payload:', payload);
 
       if (editingUser) {
         await userService.update(editingUser._id, payload);
         Toast.show({ type: 'success', text1: 'User updated successfully' });
       } else {
-        await userService.create(payload);
+        const result = await userService.create(payload);
+        console.log('User creation result:', result);
         Toast.show({ type: 'success', text1: 'User created successfully' });
       }
       setModalVisible(false);
       fetchUsers();
     } catch (error: any) {
-      Toast.show({ type: 'error', text1: error.response?.data?.message || 'Operation failed' });
+      console.error('User creation/update error:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error message:', error?.message);
+      
+      let errorMessage = 'Operation failed';
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        errorMessage = 'Network error or server unavailable';
+      }
+      
+      Toast.show({ type: 'error', text1: 'Error', text2: errorMessage });
     }
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete User', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await userService.delete(id);
-            Toast.show({ type: 'success', text1: 'User deleted' });
-            fetchUsers();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Failed to delete user' });
-          }
-        },
-      },
-    ]);
+  const handleDelete = (user: User) => {
+    setUserToDelete(user);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      await userService.delete(userToDelete._id);
+      Toast.show({ type: 'success', text1: 'User deleted successfully' });
+      setDeleteModalVisible(false);
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to delete user' });
+    }
   };
 
   const toggleStatus = async (user: User) => {
@@ -164,7 +219,7 @@ export default function UsersScreen() {
           <TouchableOpacity onPress={() => handleEdit(item)} style={{ padding: 8, backgroundColor: '#3B82F620', borderRadius: 8 }}>
             <Edit2 size={18} color="#3B82F6" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDelete(item._id)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
+          <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
             <Trash2 size={18} color="#EF4444" />
           </TouchableOpacity>
         </View>
@@ -180,10 +235,19 @@ export default function UsersScreen() {
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Users</Text>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage system users</Text>
           </View>
-          <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-            <Plus size={20} color="#FFF" />
-            <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={handleExport} 
+              disabled={isExporting}
+              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
+            >
+              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={16} color="#FFF" />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+              <Plus size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -199,7 +263,7 @@ export default function UsersScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={users}
@@ -283,6 +347,41 @@ export default function UsersScreen() {
                 <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>{editingUser ? 'Update User' : 'Create User'}</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={deleteModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Trash2 size={32} color="#EF4444" />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete User</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                Are you sure you want to delete {userToDelete?.name}? This action cannot be undone and will permanently remove the user from the system.
+              </Text>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setUserToDelete(null);
+                }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

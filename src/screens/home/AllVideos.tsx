@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, Dimensions, RefreshControl } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, Dimensions, RefreshControl } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
@@ -8,7 +8,7 @@ import UnifiedMediaCard from '../../components/UnifiedMediaCard'
 import CustomFastImage from '../../components/CustomFastImage'
 import MediaListItem from '../../components/MediaListItem'
 import ViewToggle from '../../components/ViewToggle'
-import { GridViewSkeleton, ListViewSkeleton } from '../../components/SkeletonLoader'
+import PageSkeleton from '../../components/PageSkeleton'
 import { processAzureUrl } from '../../utils/azureUrlHelper'
 import { useTheme } from 'react-native-paper'
 import { useGetFeaturedQuery } from '../../data/redux/services/mediaApi'
@@ -95,7 +95,7 @@ const AllVideos = () => {
       </View>
 
       {isLoading || isTransitioning ? (
-        isGridView ? <ListViewSkeleton /> : <GridViewSkeleton />
+        <PageSkeleton type="list" />
       ) : (
         <>
           <FlatList

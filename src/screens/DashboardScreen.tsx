@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity, Menu, Bell, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PageSkeleton from '../components/PageSkeleton';
 
 interface DashboardData {
   overview: {
@@ -180,12 +181,7 @@ export default function DashboardScreen({ onMenuPress, onProfilePress }: { onMen
   };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading dashboard...</Text>
-      </View>
-    );
+    return <PageSkeleton type="dashboard" />;
   }
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Linking, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, Dimensions, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from 'react-native-paper';
@@ -11,6 +11,7 @@ import MediaHorizontalList from '../../components/MediaHorizontalList';
 import DailyGyanGallery from '../../components/DailyGyanGallery';
 import DebugCategoriesApi from '../../components/DebugCategoriesApi';
 import SimplePullToRefresh from '../../components/SimplePullToRefresh';
+import PageSkeleton from '../../components/PageSkeleton';
 
 import { useAuth } from '../../context/AuthContext';
 import { HomeStackParamList } from '../../navigation/types';
@@ -60,6 +61,7 @@ const Home: React.FC = () => {
   };
 
   if (isError) return <ErrorState colors={colors} onRetry={refetch} t={t} />;
+  if (isLoading) return <PageSkeleton type="list" />;
 
   const dashboardData = data?.data || {};
   const { recentUploads = [], topVideos = [], topAudios = [], topBooks = [] } = dashboardData;
@@ -345,10 +347,7 @@ export default Home;
 // 🔹 Themed UI Helpers
 //
 const LoadingState = ({ colors, t }: { colors: any; t: any }) => (
-  <View style={styles.centered}>
-    <ActivityIndicator size="large" color={colors.primary} />
-    <Text style={[styles.statusText, { color: colors.text }]}>{t('screens.home.loadingDashboard')}</Text>
-  </View>
+  <PageSkeleton type="list" />
 );
 
 const ErrorState = ({

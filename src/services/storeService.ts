@@ -52,4 +52,75 @@ export const storeService = {
     const { data } = await api.post(`/stores/${id}/recce/review`, { status: 'REJECTED' });
     return data;
   },
+
+  // File Export APIs
+  export: async (params?: any) => {
+    const queryParams = new URLSearchParams();
+    if (params) Object.entries(params).forEach(([key, value]) => {
+      if (value) queryParams.append(key, String(value));
+    });
+    const { data } = await api.get(`/stores/export?${queryParams.toString()}`, { responseType: 'blob' });
+    return data;
+  },
+
+  exportRecce: async () => {
+    const { data } = await api.get('/stores/export/recce', { responseType: 'blob' });
+    return data;
+  },
+
+  exportInstallation: async () => {
+    const { data } = await api.get('/stores/export/installation', { responseType: 'blob' });
+    return data;
+  },
+
+  getTemplate: async () => {
+    const { data } = await api.get('/stores/template', { responseType: 'blob' });
+    return data;
+  },
+
+  getExcel: async (storeId: string, type: string) => {
+    const { data } = await api.get(`/stores/${storeId}/excel/${type}`, { responseType: 'blob' });
+    return data;
+  },
+
+  getPdf: async (storeId: string, type: string) => {
+    const { data } = await api.get(`/stores/${storeId}/pdf/${type}`, { responseType: 'blob' });
+    return data;
+  },
+
+  getPpt: async (storeId: string, type: string) => {
+    const { data } = await api.get(`/stores/${storeId}/ppt/${type}`, { responseType: 'blob' });
+    return data;
+  },
+
+  bulkPdf: async (storeIds: string[], type: string) => {
+    const { data } = await api.post('/stores/pdf/bulk', { storeIds, type }, { responseType: 'blob' });
+    return data;
+  },
+
+  bulkPpt: async (storeIds: string[], type: string) => {
+    const { data } = await api.post('/stores/ppt/bulk', { storeIds, type }, { responseType: 'blob' });
+    return data;
+  },
+
+  upload: async (formData: FormData) => {
+    const { data } = await api.post('/stores/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  submitRecce: async (id: string, formData: FormData) => {
+    const { data } = await api.post(`/stores/${id}/recce`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  submitInstallation: async (id: string, formData: FormData) => {
+    const { data } = await api.post(`/stores/${id}/installation`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
 };

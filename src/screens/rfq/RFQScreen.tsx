@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Alert } from 'react-native';
-import { Search, FileSpreadsheet, CheckSquare, Square, Eye, Filter, ChevronDown } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
+import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeAPI } from '../../lib/api';
+import { storeService } from '../../services/storeService';
+import { rfqService } from '../../services/rfqService';
+import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native';
 
 interface Store {
   _id: string;
   storeId?: string;
-  clientCode?: string;
   dealerCode: string;
   storeName: string;
-  vendorCode?: string;
+  clientCode?: string;
   location: {
-    zone?: string;
-    state?: string;
-    district?: string;
     city: string;
+    state?: string;
   };
   currentStatus: string;
-  commercials?: {
-    poNumber?: string;
-    invoiceNumber?: string;
-  };
 }
 
 enum StoreStatus {
@@ -36,9 +32,8 @@ enum StoreStatus {
 }
 
 export default function RFQScreen() {
-  console.log('RFQScreen: Component initialized');
-  
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,60 +43,25 @@ export default function RFQScreen() {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  const [showStatusFilter, setShowStatusFilter] = useState(false);
-  const [filterZone, setFilterZone] = useState('');
-  const [filterState, setFilterState] = useState('');
-  const [filterCity, setFilterCity] = useState('');
-  const [filterVendorCode, setFilterVendorCode] = useState('');
-  const [filterDealerCode, setFilterDealerCode] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchStores();
-  }, [searchTerm, filterStatus, filterZone, filterState, filterCity, filterVendorCode, filterDealerCode]);
+  }, [searchTerm, filterStatus]);
 
   const fetchStores = async () => {
-    console.log('RFQScreen: fetchStores called');
-    
     try {
       setLoading(true);
-      const { data } = await storeAPI.getStores({
+      const params = {
         page: 1,
         limit: 100,
         status: filterStatus !== 'ALL' ? filterStatus : undefined,
         search: searchTerm || undefined,
-        city: filterCity || undefined,
-      });
+      };
       
-      let filteredStores = data.stores || [];
-      
-      // Apply additional filters
-      if (filterZone) {
-        filteredStores = filteredStores.filter((s: Store) => 
-          s.location.zone?.toLowerCase().includes(filterZone.toLowerCase())
-        );
-      }
-      if (filterState) {
-        filteredStores = filteredStores.filter((s: Store) => 
-          s.location.state?.toLowerCase().includes(filterState.toLowerCase())
-        );
-      }
-      if (filterVendorCode) {
-        filteredStores = filteredStores.filter((s: Store) => 
-          s.vendorCode?.toLowerCase().includes(filterVendorCode.toLowerCase())
-        );
-      }
-      if (filterDealerCode) {
-        filteredStores = filteredStores.filter((s: Store) => 
-          s.dealerCode?.toLowerCase().includes(filterDealerCode.toLowerCase())
-        );
-      }
-      
-      setStores(filteredStores);
-      console.log('RFQScreen: Stores loaded successfully', { count: filteredStores.length });
-      
+      const data = await storeService.getAll(params);
+      setStores(data.stores || []);
     } catch (error) {
-      console.error('RFQScreen: Error fetching stores', error);
       Toast.show({ type: 'error', text1: 'Failed to load stores' });
       setStores([]);
     } finally {
@@ -134,32 +94,13 @@ export default function RFQScreen() {
       return;
     }
 
-    console.log('RFQScreen: Generating RFQ for stores', Array.from(selectedStoreIds));
     setIsGenerating(true);
-    
     try {
-      // Call RFQ generation API
-      const response = await fetch('https://elora-api-smoky.vercel.app/api/v1/rfq/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ storeIds: Array.from(selectedStoreIds) }),
-      });
-
-      if (response.ok) {
-        Toast.show({ 
-          type: 'success', 
-          text1: 'RFQ Generated Successfully!',
-          text2: `Generated for ${selectedStoreIds.size} stores`
-        });
-        setSelectedStoreIds(new Set());
-      } else {
-        throw new Error('Failed to generate RFQ');
-      }
-    } catch (error) {
-      console.error('RFQScreen: Error generating RFQ', error);
+      const blob = await rfqService.generate(Array.from(selectedStoreIds));
+      await fileService.downloadFile(blob, `RFQ_${Date.now()}.xlsx`);
+      Toast.show({ type: 'success', text1: 'RFQ generated successfully!' });
+      setSelectedStoreIds(new Set());
+    } catch (error: any) {
       Toast.show({ type: 'error', text1: 'Failed to generate RFQ' });
     } finally {
       setIsGenerating(false);
@@ -220,26 +161,17 @@ export default function RFQScreen() {
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
           <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Client Code</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {item.clientCode || '-'}
-            </Text>
-          </View>
-          <View>
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Dealer Code</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {item.dealerCode}
-            </Text>
+            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.dealerCode}</Text>
           </View>
           <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Zone</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {item.location.zone || '-'}
-            </Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Client Code</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.clientCode || '-'}</Text>
           </View>
         </View>
 
         <TouchableOpacity 
+          onPress={() => (navigation as any)?.navigate('StoreDetail', { storeId: item._id })} 
           style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
         >
           <Eye size={16} color="#3B82F6" />
@@ -262,20 +194,21 @@ export default function RFQScreen() {
               onPress={handleGenerateRFQ}
               disabled={isGenerating}
               style={{ 
-                backgroundColor: isGenerating ? theme.colors.border : theme.colors.primary, 
+                backgroundColor: theme.colors.primary, 
                 paddingHorizontal: 16, 
                 paddingVertical: 10, 
-                borderRadius: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center' 
+                borderRadius: 8,
+                opacity: isGenerating ? 0.6 : 1,
+                flexDirection: 'row',
+                alignItems: 'center'
               }}
             >
               {isGenerating ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <FileSpreadsheet size={20} color="#FFF" />
+                <FileSpreadsheet size={16} color="#FFF" />
               )}
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+              <Text style={{ color: '#FFF', marginLeft: 8, fontWeight: '600', fontSize: 12 }}>
                 Generate RFQ ({selectedStoreIds.size})
               </Text>
             </TouchableOpacity>
@@ -287,40 +220,33 @@ export default function RFQScreen() {
             <Search size={20} color={theme.colors.textSecondary} />
             <TextInput
               style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search stores..."
+              placeholder="Search stores, dealers..."
               placeholderTextColor={theme.colors.textSecondary}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
           </View>
           
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={() => setShowStatusFilter(!showStatusFilter)}
-              style={{ flex: 1, backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+          <TouchableOpacity 
+            onPress={() => setShowFilters(!showFilters)}
+            style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Filter size={16} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, fontSize: 14, marginLeft: 8 }}>
                 {filterStatus === 'ALL' ? 'All Status' : filterStatus.replace(/_/g, ' ')}
               </Text>
-              <ChevronDown size={16} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => setShowFilters(!showFilters)}
-              style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}
-            >
-              <Filter size={20} color={theme.colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
           
-          {showStatusFilter && (
+          {showFilters && (
             <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
               {['ALL', ...Object.values(StoreStatus)].map((status) => (
                 <TouchableOpacity
                   key={status}
                   onPress={() => {
                     setFilterStatus(status);
-                    setShowStatusFilter(false);
+                    setShowFilters(false);
                   }}
                   style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
                 >
@@ -332,45 +258,19 @@ export default function RFQScreen() {
             </View>
           )}
           
-          {showFilters && (
-            <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, padding: 16, gap: 12 }}>
-              <Text style={{ color: theme.colors.text, fontWeight: '600', marginBottom: 8 }}>Additional Filters</Text>
-              <TextInput
-                style={{ backgroundColor: theme.colors.background, padding: 12, borderRadius: 8, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="Zone"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={filterZone}
-                onChangeText={setFilterZone}
-              />
-              <TextInput
-                style={{ backgroundColor: theme.colors.background, padding: 12, borderRadius: 8, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="State"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={filterState}
-                onChangeText={setFilterState}
-              />
-              <TextInput
-                style={{ backgroundColor: theme.colors.background, padding: 12, borderRadius: 8, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="City"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={filterCity}
-                onChangeText={setFilterCity}
-              />
-              <TextInput
-                style={{ backgroundColor: theme.colors.background, padding: 12, borderRadius: 8, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="Vendor Code"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={filterVendorCode}
-                onChangeText={setFilterVendorCode}
-              />
-              <TextInput
-                style={{ backgroundColor: theme.colors.background, padding: 12, borderRadius: 8, color: theme.colors.text, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="Dealer Code"
-                placeholderTextColor={theme.colors.textSecondary}
-                value={filterDealerCode}
-                onChangeText={setFilterDealerCode}
-              />
-            </View>
+          {stores.length > 0 && (
+            <TouchableOpacity 
+              onPress={toggleAllSelection}
+              style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center' }}
+            >
+              {selectedStoreIds.size === stores.length && stores.length > 0 ? 
+                <CheckSquare size={20} color={theme.colors.primary} /> : 
+                <Square size={20} color={theme.colors.textSecondary} />
+              }
+              <Text style={{ color: theme.colors.text, marginLeft: 8, fontWeight: '600' }}>
+                Select All ({stores.length})
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -378,7 +278,6 @@ export default function RFQScreen() {
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading stores...</Text>
         </View>
       ) : (
         <FlatList
@@ -396,29 +295,10 @@ export default function RFQScreen() {
               colors={[theme.colors.primary]}
             />
           }
-          ListHeaderComponent={
-            stores.length > 0 ? (
-              <TouchableOpacity 
-                onPress={toggleAllSelection}
-                style={{ flexDirection: 'row', alignItems: 'center', padding: 12, marginBottom: 8 }}
-              >
-                {selectedStoreIds.size === stores.length && stores.length > 0 ? 
-                  <CheckSquare size={20} color={theme.colors.primary} /> : 
-                  <Square size={20} color={theme.colors.textSecondary} />
-                }
-                <Text style={{ color: theme.colors.text, marginLeft: 8, fontWeight: '600' }}>
-                  Select All ({stores.length})
-                </Text>
-              </TouchableOpacity>
-            ) : null
-          }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
               <Text style={{ color: theme.colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                No stores found
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 8 }}>
-                Try adjusting your filters
+                No stores found matching filters
               </Text>
             </View>
           }

@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Alert, Modal, ScrollView } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeAPI, userAPI } from '../../lib/api';
+import { storeService } from '../../services/storeService';
+import { userService } from '../../services/userService';
+import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface Store {
   _id: string;
@@ -40,11 +43,13 @@ enum StoreStatus {
 }
 
 export default function StoresScreen({ navigation: navigationProp }: { navigation?: any }) {
-  console.log('StoresScreen: Component initialized - REAL STORES SCREEN LOADED');
+  console.log('StoresScreen: Component initialized - REAL STORES SCREEN LOADED', Date.now());
   
   const navigation = useNavigation();
   const nav = navigationProp || navigation;
   const { theme } = useTheme();
+  
+  console.log('StoresScreen: State initialization');
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,8 +65,13 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [selectedUserId, setSelectedUserId] = useState('');
   const [singleAssignTarget, setSingleAssignTarget] = useState<Store | null>(null);
 
-  // Add Store Modal
-  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
+  // Add Store Modal - using ref to prevent re-render issues
+  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(() => {
+    console.log('Modal state initialized to false');
+    return false;
+  });
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
   const [newStore, setNewStore] = useState({
     storeName: '',
     dealerCode: '',
@@ -70,7 +80,27 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     address: ''
   });
 
+  // Bulk Upload
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStats, setUploadStats] = useState<any>(null);
+
+  // Export and Bulk Operations
+  const [isExporting, setIsExporting] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStores, setTotalStores] = useState(0);
+
   useEffect(() => {
+    console.log('Modal state changed to:', isAddStoreModalOpen);
+  }, [isAddStoreModalOpen]);
+
+  useEffect(() => {
+    console.log('useEffect triggered, searchTerm:', searchTerm, 'filterStatus:', filterStatus);
     fetchStores();
   }, [searchTerm, filterStatus]);
 
@@ -79,14 +109,19 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     
     try {
       setLoading(true);
-      const { data } = await storeAPI.getStores({
-        page: 1,
-        limit: 50,
+      const params = {
+        page,
+        limit: 20,
         status: filterStatus !== 'ALL' ? filterStatus : undefined,
         search: searchTerm || undefined,
-      });
+      };
       
+      const data = await storeService.getAll(params);
       setStores(data.stores || []);
+      if (data.pagination) {
+        setTotalPages(data.pagination.pages);
+        setTotalStores(data.pagination.total);
+      }
       console.log('StoresScreen: Stores loaded successfully', { count: data.stores?.length || 0 });
       
     } catch (error) {
@@ -99,28 +134,28 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
-  const handleDelete = async (id: string) => {
-    Alert.alert('Delete Store', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await storeAPI.deleteStore(id);
-            Toast.show({ type: 'success', text1: 'Store deleted successfully' });
-            fetchStores();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Failed to delete store' });
-          }
-        },
-      },
-    ]);
+  const handleDelete = (store: Store) => {
+    setStoreToDelete(store);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!storeToDelete) return;
+    
+    try {
+      await storeService.delete(storeToDelete._id);
+      Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+      setDeleteModalVisible(false);
+      setStoreToDelete(null);
+      fetchStores();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to delete store' });
+    }
   };
 
   const handleApproveRecce = async (id: string) => {
     try {
-      await storeAPI.reviewRecce(id, 'APPROVED');
+      await storeService.approveRecce(id);
       Toast.show({ type: 'success', text1: 'Recce approved successfully' });
       fetchStores();
     } catch (error) {
@@ -130,7 +165,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   const handleRejectRecce = async (id: string) => {
     try {
-      await storeAPI.reviewRecce(id, 'REJECTED');
+      await storeService.rejectRecce(id);
       Toast.show({ type: 'success', text1: 'Recce rejected' });
       fetchStores();
     } catch (error) {
@@ -138,7 +173,152 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
+  // Export Functions
+  const handleExportStores = async () => {
+    setIsExporting(true);
+    try {
+      const params = {
+        status: filterStatus !== 'ALL' ? filterStatus : undefined,
+        search: searchTerm || undefined,
+      };
+      const blob = await storeService.export(params);
+      await fileService.downloadFile(blob, `Stores_Export_${Date.now()}.xlsx`);
+      Toast.show({ type: 'success', text1: 'Stores exported successfully!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to export stores' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedStoreIds.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select stores to delete' });
+      return;
+    }
+
+    Alert.alert(
+      'Delete Stores',
+      `Are you sure you want to delete ${selectedStoreIds.size} stores?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await Promise.all(Array.from(selectedStoreIds).map(id => storeService.delete(id)));
+              Toast.show({ type: 'success', text1: `${selectedStoreIds.size} stores deleted successfully` });
+              setSelectedStoreIds(new Set());
+              fetchStores();
+            } catch (error) {
+              Toast.show({ type: 'error', text1: 'Failed to delete some stores' });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBulkAssign = (stage: 'RECCE' | 'INSTALLATION') => {
+    if (selectedStoreIds.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select stores to assign' });
+      return;
+    }
+    openAssignModal(stage);
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const blob = await storeService.getTemplate();
+      await fileService.downloadFile(blob, 'Store_Upload_Template.xlsx');
+      Toast.show({ type: 'success', text1: 'Template downloaded!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to download template' });
+    }
+  };
+
+  // File Upload Functions
+  const handleFileSelect = async () => {
+    try {
+      Alert.alert(
+        'Select Files',
+        'Choose file source:',
+        [
+          { 
+            text: 'Files', 
+            onPress: () => {
+              Toast.show({ 
+                type: 'info', 
+                text1: 'File Selection', 
+                text2: 'Use web portal for Excel file upload' 
+              });
+            }
+          },
+          { text: 'Cancel', style: 'cancel' }
+        ]
+      );
+    } catch (err) {
+      Toast.show({ type: 'error', text1: 'Failed to select files' });
+    }
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
+    
+    setUploading(true);
+    const formData = new FormData();
+    selectedFiles.forEach(file => {
+      formData.append('files', {
+        uri: file.uri,
+        type: file.type,
+        name: file.name,
+      } as any);
+    });
+    
+    try {
+      const data = await storeService.upload(formData);
+      setUploadStats(data);
+      Toast.show({ type: 'success', text1: `Success: ${data.successCount}, Errors: ${data.errorCount}` });
+      if (data.successCount > 0) {
+        fetchStores();
+        setSelectedFiles([]);
+      }
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Upload failed' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Download Functions
+  const handleDownload = async (storeId: string, dealerCode: string, reportType: 'recce' | 'installation', format: 'pdf' | 'ppt' | 'excel') => {
+    setDownloadMenuOpen(null);
+    try {
+      let blob;
+      let filename;
+      
+      if (format === 'pdf') {
+        blob = await storeService.getPdf(storeId, reportType);
+        filename = `${reportType}_${dealerCode}.pdf`;
+      } else if (format === 'excel') {
+        blob = await storeService.getExcel(storeId, reportType);
+        filename = `${reportType}_${dealerCode}.xlsx`;
+      } else {
+        blob = await storeService.getPpt(storeId, reportType);
+        filename = `${reportType}_${dealerCode}.pptx`;
+      }
+      
+      await fileService.downloadFile(blob, filename);
+      Toast.show({ type: 'success', text1: `${format.toUpperCase()} Downloaded!` });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Download failed' });
+    }
+  };
+
   const openAssignModal = async (stage: 'RECCE' | 'INSTALLATION', specificStore?: Store) => {
+    console.log('Opening assign modal', { stage, specificStore: !!specificStore });
+    
     if (specificStore) {
       setSingleAssignTarget(specificStore);
     } else {
@@ -151,12 +331,15 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     
     setAssignStage(stage);
     setSelectedUserId('');
-    setIsAssignModalOpen(true);
     
     try {
-      const { data } = await userAPI.getUsersByRole(stage);
+      const roleCode = stage === 'RECCE' ? 'RECCE' : 'INSTALLATION';
+      const data = await userService.getByRole(roleCode);
       setAvailableUsers(data.users || []);
+      setIsAssignModalOpen(true);
+      console.log('Assign modal opened successfully');
     } catch (error) {
+      console.error('Error opening assign modal:', error);
       Toast.show({ type: 'error', text1: `Failed to fetch ${stage} users` });
       setAvailableUsers([]);
     }
@@ -170,11 +353,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     
     try {
       const idsToAssign = singleAssignTarget ? [singleAssignTarget._id] : Array.from(selectedStoreIds);
-      await storeAPI.assignStores({
-        storeIds: idsToAssign,
-        userId: selectedUserId,
-        stage: assignStage,
-      });
+      await storeService.assign(idsToAssign, selectedUserId, assignStage);
       Toast.show({ type: 'success', text1: 'Assignment successful!' });
       setIsAssignModalOpen(false);
       setSelectedStoreIds(new Set());
@@ -192,7 +371,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
 
     try {
-      await storeAPI.createStore({
+      await storeService.create({
         storeName: newStore.storeName,
         dealerCode: newStore.dealerCode,
         location: {
@@ -338,11 +517,23 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           )}
           
           <TouchableOpacity 
-            onPress={() => handleDelete(item._id)} 
+            onPress={() => handleDelete(item)} 
             style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8 }}
           >
             <Trash2 size={16} color="#EF4444" />
           </TouchableOpacity>
+          
+          {[StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED].includes(item.currentStatus as StoreStatus) && (
+            <TouchableOpacity 
+              onPress={() => {
+                const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
+                handleDownload(item._id, item.dealerCode, reportType, 'pdf');
+              }}
+              style={{ backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8 }}
+            >
+              <Download size={16} color="#F59E0B" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -353,15 +544,38 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       <View style={{ padding: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <View>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Store Management</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Total stores: {stores.length}</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Store Operations</Text>
+            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage and track all store activities</Text>
           </View>
-          <TouchableOpacity 
-            onPress={() => setIsAddStoreModalOpen(true)}
-            style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
-          >
-            <Plus size={20} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={handleExportStores} 
+              disabled={isExporting}
+              style={{ 
+                backgroundColor: '#10B981', 
+                paddingHorizontal: 12, 
+                paddingVertical: 8, 
+                borderRadius: 8,
+                opacity: isExporting ? 0.6 : 1
+              }}
+            >
+              {isExporting ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Download size={16} color="#FFF" />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => {
+                console.log('Plus clicked, setting modal to true');
+                setIsAddStoreModalOpen(true);
+                setTimeout(() => console.log('Modal state after click:', isAddStoreModalOpen), 100);
+              }} 
+              style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+            >
+              <Plus size={16} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ gap: 12 }}>
@@ -406,24 +620,35 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           )}
           
           {selectedStoreIds.size > 0 && (
-            <TouchableOpacity 
-              onPress={() => openAssignModal('RECCE')}
-              style={{ backgroundColor: '#3B82F6', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <UserPlus size={16} color="#FFF" />
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                Assign Recce ({selectedStoreIds.size})
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity 
+                onPress={() => handleBulkAssign('RECCE')}
+                style={{ flex: 1, backgroundColor: '#3B82F6', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <UserPlus size={16} color="#FFF" />
+                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+                  Assign Recce ({selectedStoreIds.size})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => handleBulkAssign('INSTALLATION')}
+                style={{ backgroundColor: '#10B981', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <UserPlus size={16} color="#FFF" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleBulkDelete}
+                style={{ backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Trash2 size={16} color="#FFF" />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading stores...</Text>
-        </View>
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={stores}
@@ -457,7 +682,13 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         onRequestClose={() => setIsAssignModalOpen(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
+          <View style={{ 
+            backgroundColor: theme.colors.background, 
+            borderTopLeftRadius: 20, 
+            borderTopRightRadius: 20, 
+            maxHeight: '80%',
+            paddingBottom: 20
+          }}>
             <View style={{ padding: 20 }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
                 Assign {assignStage}
@@ -542,102 +773,54 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
             <View style={{ padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-                Add New Store
-              </Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>Add New Store</Text>
               
               <ScrollView style={{ maxHeight: 400 }}>
                 <View style={{ gap: 16 }}>
                   <View>
                     <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Store Name *</Text>
                     <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        color: theme.colors.text,
-                        fontSize: 16
-                      }}
+                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
                       value={newStore.storeName}
                       onChangeText={(text) => setNewStore({ ...newStore, storeName: text })}
                       placeholder="Enter store name"
                       placeholderTextColor={theme.colors.textSecondary}
                     />
                   </View>
-
                   <View>
                     <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Dealer Code *</Text>
                     <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        color: theme.colors.text,
-                        fontSize: 16
-                      }}
+                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
                       value={newStore.dealerCode}
                       onChangeText={(text) => setNewStore({ ...newStore, dealerCode: text })}
                       placeholder="Enter dealer code"
                       placeholderTextColor={theme.colors.textSecondary}
                     />
                   </View>
-
                   <View>
                     <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>City *</Text>
                     <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        color: theme.colors.text,
-                        fontSize: 16
-                      }}
+                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
                       value={newStore.city}
                       onChangeText={(text) => setNewStore({ ...newStore, city: text })}
                       placeholder="Enter city"
                       placeholderTextColor={theme.colors.textSecondary}
                     />
                   </View>
-
                   <View>
                     <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>State</Text>
                     <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        color: theme.colors.text,
-                        fontSize: 16
-                      }}
+                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
                       value={newStore.state}
                       onChangeText={(text) => setNewStore({ ...newStore, state: text })}
                       placeholder="Enter state"
                       placeholderTextColor={theme.colors.textSecondary}
                     />
                   </View>
-
                   <View>
                     <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Address</Text>
                     <TextInput
-                      style={{
-                        backgroundColor: theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        color: theme.colors.text,
-                        fontSize: 16,
-                        minHeight: 80,
-                        textAlignVertical: 'top'
-                      }}
+                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16, minHeight: 80, textAlignVertical: 'top' }}
                       value={newStore.address}
                       onChangeText={(text) => setNewStore({ ...newStore, address: text })}
                       placeholder="Enter full address"
@@ -661,17 +844,106 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 <TouchableOpacity
                   onPress={handleAddStore}
                   disabled={!newStore.storeName || !newStore.dealerCode || !newStore.city}
-                  style={{
-                    flex: 1,
-                    padding: 12,
-                    borderRadius: 8,
-                    backgroundColor: (!newStore.storeName || !newStore.dealerCode || !newStore.city) ? theme.colors.border : theme.colors.primary,
-                    alignItems: 'center'
-                  }}
+                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStore.storeName || !newStore.dealerCode || !newStore.city) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
                 >
                   <Text style={{ color: '#FFF', fontWeight: '600' }}>Add Store</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Upload Modal */}
+      <Modal
+        visible={uploadModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setUploadModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
+            <View style={{ padding: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Bulk Upload Stores</Text>
+                <TouchableOpacity onPress={() => setUploadModalVisible(false)}>
+                  <X size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              {uploadStats ? (
+                <View style={{ alignItems: 'center', padding: 20 }}>
+                  <Text style={{ fontSize: 32, fontWeight: 'bold', color: uploadStats.errorCount === 0 ? '#10B981' : '#F59E0B' }}>
+                    {uploadStats.successCount} / {uploadStats.totalProcessed}
+                  </Text>
+                  <Text style={{ color: theme.colors.textSecondary, marginBottom: 20 }}>Records Processed</Text>
+                  <TouchableOpacity onPress={() => { setUploadModalVisible(false); setUploadStats(null); }} style={{ backgroundColor: theme.colors.primary, padding: 16, borderRadius: 8, width: '100%', alignItems: 'center' }}>
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <ScrollView>
+                  <TouchableOpacity 
+                    onPress={downloadTemplate} 
+                    style={{ backgroundColor: '#10B981', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 16 }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Download size={20} color="#FFF" />
+                      <Text style={{ color: '#FFF', marginLeft: 8, fontWeight: 'bold' }}>Download Template</Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <View style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.border, padding: 32, borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
+                    <Upload size={32} color={theme.colors.textSecondary} />
+                    <Text style={{ color: theme.colors.text, marginTop: 8, fontWeight: '600' }}>File Upload</Text>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                      Please use the web portal for bulk Excel file upload
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity 
+                    onPress={() => setUploadModalVisible(false)}
+                    style={{ backgroundColor: theme.colors.primary, padding: 16, borderRadius: 8, alignItems: 'center' }}
+                  >
+                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={deleteModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Trash2 size={32} color="#EF4444" />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete Store</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                Are you sure you want to delete "{storeToDelete?.storeName}"? This action cannot be undone and will permanently remove all store data including recce and installation records.
+              </Text>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setStoreToDelete(null);
+                }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity, Filter, Calendar, Download, Eye } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface Analytics {
   overview: {
@@ -153,12 +154,7 @@ export default function ReportsScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 16 }}>Loading analytics...</Text>
-      </View>
-    );
+    return <PageSkeleton type="dashboard" />;
   }
 
   if (!analytics) {

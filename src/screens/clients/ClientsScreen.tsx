@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
 import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Building2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { clientService } from '../../services/clientService';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface Client {
   _id: string;
@@ -184,7 +185,7 @@ export default function ClientsScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={clients}

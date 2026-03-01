@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, Shield, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, Shield, ChevronLeft, ChevronRight, Download } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { roleService } from '../../services/roleService';
+import { fileService } from '../../services/fileService';
 import { Role, PermissionSet } from '../../types';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 const MODULES = ['users', 'roles', 'stores', 'recce', 'installation', 'enquiries', 'reports', 'elements', 'clients'];
 
@@ -13,10 +15,13 @@ export default function RolesScreen() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -46,6 +51,20 @@ export default function RolesScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = { search: searchTerm };
+      const blob = await roleService.export(params);
+      await fileService.downloadFile(blob, `Roles_Export_${Date.now()}.xlsx`);
+      Toast.show({ type: 'success', text1: 'Roles exported successfully!' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to export roles' });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -94,27 +113,27 @@ export default function RolesScreen() {
     }
   };
 
-  const handleDelete = (id: string, code: string) => {
-    if (code === 'SUPER_ADMIN') {
+  const handleDelete = (role: Role) => {
+    if (role.code === 'SUPER_ADMIN') {
       Toast.show({ type: 'error', text1: 'Cannot delete SUPER_ADMIN role' });
       return;
     }
-    Alert.alert('Delete Role', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await roleService.delete(id);
-            Toast.show({ type: 'success', text1: 'Role deleted' });
-            fetchRoles();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Failed to delete role' });
-          }
-        },
-      },
-    ]);
+    setRoleToDelete(role);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!roleToDelete) return;
+    
+    try {
+      await roleService.delete(roleToDelete._id);
+      Toast.show({ type: 'success', text1: 'Role deleted successfully' });
+      setDeleteModalVisible(false);
+      setRoleToDelete(null);
+      fetchRoles();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to delete role' });
+    }
   };
 
   const renderRole = ({ item }: { item: Role }) => (
@@ -146,7 +165,7 @@ export default function RolesScreen() {
           <Edit2 size={18} color="#3B82F6" />
         </TouchableOpacity>
         {item.code !== 'SUPER_ADMIN' && (
-          <TouchableOpacity onPress={() => handleDelete(item._id, item.code)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
+          <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
             <Trash2 size={18} color="#EF4444" />
           </TouchableOpacity>
         )}
@@ -162,10 +181,19 @@ export default function RolesScreen() {
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Roles</Text>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage permissions</Text>
           </View>
-          <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-            <Plus size={20} color="#FFF" />
-            <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={handleExport} 
+              disabled={isExporting}
+              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
+            >
+              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={16} color="#FFF" />}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
+              <Plus size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
@@ -181,7 +209,7 @@ export default function RolesScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={roles}
@@ -257,6 +285,41 @@ export default function RolesScreen() {
                 <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>{editingRole ? 'Update Role' : 'Create Role'}</Text>
               </TouchableOpacity>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={deleteModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Trash2 size={32} color="#EF4444" />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete Role</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                Are you sure you want to delete the role "{roleToDelete?.name}"? This action cannot be undone and will remove all permissions associated with this role.
+              </Text>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setRoleToDelete(null);
+                }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

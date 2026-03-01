@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, ScrollView, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, ScrollView, TextInput } from 'react-native';
 import { MessageSquare, Mail, Phone, Clock, User, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { enquiryService } from '../../services/enquiryService';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 interface Enquiry {
   _id: string;
@@ -137,7 +138,7 @@ export default function EnquiriesScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 40 }} />
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={enquiries}

@@ -14,6 +14,7 @@ interface InstallationDetailProps {
   };
   navigation: {
     goBack: () => void;
+    navigate: (screen: string, params?: any) => void;
   };
 }
 
@@ -548,8 +549,34 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
           </View>
         </View>
 
-        {/* Action Button */}
-        {!isCompleted && (
+        {/* Action Buttons */}
+        {store.currentStatus === 'INSTALLATION_ASSIGNED' && !isCompleted && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate('InstallationForm', { storeId: store._id })}
+            style={{
+              backgroundColor: '#10B981',
+              padding: 16,
+              borderRadius: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#10B981',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+              marginBottom: 16
+            }}
+          >
+            <Camera size={20} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
+              Start Installation
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Complete Installation Button */}
+        {store.currentStatus === 'INSTALLATION_ASSIGNED' && isCompleted && (
           <TouchableOpacity
             onPress={handleCompleteInstallation}
             disabled={submitting}
@@ -564,7 +591,8 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
-              elevation: 8
+              elevation: 8,
+              marginBottom: 16
             }}
           >
             {submitting ? (
@@ -579,7 +607,7 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
         )}
 
         {/* Completed Status */}
-        {isCompleted && (
+        {(store.currentStatus === 'INSTALLATION_SUBMITTED' || store.currentStatus === 'COMPLETED') && isCompleted && (
           <View style={{
             backgroundColor: '#10B98120',
             padding: 16,

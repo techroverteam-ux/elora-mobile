@@ -10,4 +10,9 @@ export const enquiryService = {
     const { data } = await api.put(`/enquiries/${id}`, { remark, status });
     return data;
   },
+
+  create: async (enquiryData: any) => {
+    const { data } = await api.post('/enquiries', enquiryData);
+    return data;
+  },
 };

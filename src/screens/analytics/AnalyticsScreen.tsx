@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { BarChart3, TrendingUp, Users, Store } from 'lucide-react-native';
 import { analyticsService } from '../../services/analyticsService';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 export default function AnalyticsScreen() {
   const [analytics, setAnalytics] = useState(null);
@@ -27,11 +28,7 @@ export default function AnalyticsScreen() {
   };
 
   if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#3b82f6" />
-      </View>
-    );
+    return <PageSkeleton type="dashboard" />;
   }
 
   return (

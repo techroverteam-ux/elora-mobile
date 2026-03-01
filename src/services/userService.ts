@@ -41,8 +41,10 @@ export const userService = {
     return data;
   },
 
-  export: async () => {
-    const { data } = await api.get('/users/export', { responseType: 'blob' });
+  export: async (params?: { search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    const { data } = await api.get(`/users/export?${queryParams.toString()}`, { responseType: 'blob' });
     return data;
   },
 
@@ -53,6 +55,18 @@ export const userService = {
 
   uploadBulk: async (files: FormData) => {
     const { data } = await api.post('/users/upload', files, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data;
+  },
+
+  getStats: async (id: string) => {
+    const { data } = await api.get(`/users/${id}/stats`);
+    return data;
+  },
+
+  bulkAssignStores: async (userId: string, formData: FormData) => {
+    const { data } = await api.post(`/users/${userId}/bulk-assign-stores`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return data;

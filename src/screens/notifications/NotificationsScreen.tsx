@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { Bell, CheckCircle } from 'lucide-react-native';
 import { notificationService } from '../../services/notificationService';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
 
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState([]);
@@ -44,11 +45,7 @@ export default function NotificationsScreen() {
   );
 
   if (loading) {
-    return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#3b82f6" />
-      </View>
-    );
+    return <PageSkeleton type="list" />;
   }
 
   return (

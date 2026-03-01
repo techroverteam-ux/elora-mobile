@@ -143,6 +143,11 @@ const styles = StyleSheet.create({
   logoImage: {
     width: width * 0.5,
     height: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 1,
+    elevation: 3,
   },
   menu: {
     flex: 1,

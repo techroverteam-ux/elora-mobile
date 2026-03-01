@@ -245,15 +245,16 @@ function AppContent() {
     }
   };
 
+  if (showSplash) {
+    setTimeout(() => setShowSplash(false), 5000);
+    return <SplashScreen />;
+  }
+
   if (isLoading) {
     return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    if (showSplash) {
-      setTimeout(() => setShowSplash(false), 3000);
-      return <SplashScreen />;
-    }
     return <LoginScreen />;
   }
 

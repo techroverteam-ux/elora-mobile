@@ -1,14 +1,23 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = 'https://elora-api-smoky.vercel.app/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
-  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Add token to requests
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 let isRefreshing = false;
@@ -27,12 +36,10 @@ const processQueue = (error: any, token: string | null = null) => {
 
 api.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response.status, response.config.url);
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
-    console.error('API Response Error:', error.response?.status, error.response?.data);
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -47,11 +54,18 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await api.post('/auth/refresh');
-        processQueue(null, null);
-        return api(originalRequest);
+        const refreshToken = await AsyncStorage.getItem('refreshToken');
+        if (refreshToken) {
+          const response = await api.post('/auth/refresh', { refreshToken });
+          const newToken = response.data.token;
+          await AsyncStorage.setItem('authToken', newToken);
+          processQueue(null, newToken);
+          return api(originalRequest);
+        }
       } catch (refreshError) {
         processQueue(refreshError, null);
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('refreshToken');
         console.log('Token refresh failed, user needs to login again');
         return Promise.reject(refreshError);
       } finally {

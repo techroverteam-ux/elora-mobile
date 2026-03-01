@@ -21,9 +21,15 @@ export const lightTheme = {
     border: '#E2E8F0',
     divider: '#F1F5F9',
     
+    // Header specific colors
+    headerBg: '#FFFFFF',
+    headerText: '#1E293B',
+    headerBorder: '#E2E8F0',
+    
     gradient: {
       primary: ['#F6B21C', '#FECC00', '#E6A500'],
       secondary: ['#F6B21C', '#FECC00'],
+      header: ['#FFFFFF', '#F8FAFC'],
     },
   },
 };
@@ -51,9 +57,15 @@ export const darkTheme = {
     border: '#334155',
     divider: '#475569',
     
+    // Header specific colors
+    headerBg: '#1E293B',
+    headerText: '#F8FAFC',
+    headerBorder: '#334155',
+    
     gradient: {
       primary: ['#F6B21C', '#FECC00', '#E6A500'],
       secondary: ['#F6B21C', '#FECC00'],
+      header: ['#1E293B', '#334155'],
     },
   },
 };

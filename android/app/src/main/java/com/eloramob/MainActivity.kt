@@ -24,6 +24,9 @@ class MainActivity : ReactActivity() {
           DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    // Set splash theme before super.onCreate
+    setTheme(R.style.AppTheme)
+    
     // Enable edge-to-edge for Android 15+ compatibility
     enableEdgeToEdge()
     super.onCreate(null)

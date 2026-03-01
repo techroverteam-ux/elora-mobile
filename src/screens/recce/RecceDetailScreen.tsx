@@ -13,6 +13,7 @@ interface RecceDetailProps {
   };
   navigation: {
     goBack: () => void;
+    navigate: (screen: string, params?: any) => void;
   };
 }
 
@@ -567,8 +568,33 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
             </View>
           )}
 
-          {/* Submit Button */}
-          {!isSubmitted && (
+          {/* Action Buttons */}
+          {store.currentStatus === 'RECCE_ASSIGNED' && !isSubmitted && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('RecceForm', { storeId: store._id })}
+              style={{
+                backgroundColor: '#F59E0B',
+                padding: 16,
+                borderRadius: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                shadowColor: '#F59E0B',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8
+              }}
+            >
+              <Camera size={20} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
+                Start Recce
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Submit Button for editing existing recce */}
+          {store.currentStatus === 'RECCE_ASSIGNED' && isSubmitted && (
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={submitting}
@@ -592,13 +618,13 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                 <CheckCircle2 size={20} color="#FFFFFF" />
               )}
               <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
-                Submit Recce Report
+                Update Recce Report
               </Text>
             </TouchableOpacity>
           )}
 
           {/* Submitted Status */}
-          {isSubmitted && (
+          {(store.currentStatus === 'RECCE_SUBMITTED' || store.currentStatus === 'RECCE_APPROVED') && isSubmitted && (
             <View style={{
               backgroundColor: '#10B98120',
               padding: 16,

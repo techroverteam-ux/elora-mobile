@@ -219,6 +219,11 @@ const styles = StyleSheet.create({
   logoImage: {
     width: width * 0.6,
     height: width * 0.15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 1,
+    elevation: 3,
   },
   logoText: {
     fontSize: 36,
