@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText } from 'lucide-react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal } from 'react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
@@ -34,19 +35,45 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
   console.log('InstallationScreen: Component initialized');
   
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [assignments, setAssignments] = useState<InstallationAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [selectedAssignments, setSelectedAssignments] = useState<Set<string>>(new Set());
   const [isExporting, setIsExporting] = useState(false);
   const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStores, setTotalStores] = useState(0);
+  
+  // Role-based access
+  const isAdmin = useMemo(() => {
+    if (!user || !user.roles || !Array.isArray(user.roles)) return false;
+    return user.roles.some((role) => 
+      role?.code === "SUPER_ADMIN" || role?.code === "ADMIN"
+    );
+  }, [user]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchAssignments();
-  }, [searchTerm, filterStatus]);
+  }, [page, limit, debouncedSearch, filterStatus]);
 
   const fetchAssignments = async () => {
     console.log('InstallationScreen: fetchAssignments called');
@@ -54,17 +81,17 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     try {
       setLoading(true);
       const params = {
-        page: 1,
-        limit: 50,
-        search: searchTerm || undefined,
+        page,
+        limit,
+        search: debouncedSearch || undefined,
       };
       
-      // Add status filter - try different approaches
+      // Filter by installation-related statuses only
       if (filterStatus !== 'ALL') {
         params.status = filterStatus;
       } else {
-        // Get all installation-related statuses
-        params.status = 'INSTALLATION_ASSIGNED';
+        // Show only stores that have been assigned to installation
+        params.status = 'INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED';
       }
       
       console.log('InstallationScreen: API params:', params);
@@ -77,9 +104,16 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
         return;
       }
       
+      // Additional client-side filter to ensure only installation-assigned stores appear
+      const installationStores = response.stores.filter((store: any) => 
+        store.currentStatus === 'INSTALLATION_ASSIGNED' ||
+        store.currentStatus === 'INSTALLATION_SUBMITTED' ||
+        store.currentStatus === 'COMPLETED'
+      );
+      
       // Transform stores to assignment format
-      let filteredAssignments = response.stores
-        .filter((store: any) => store.location && store.location.city) // Only include stores with valid location
+      const filteredAssignments = installationStores
+        .filter((store: any) => store.location && store.location.city)
         .map((store: any) => ({
           _id: store._id,
           store: {
@@ -89,21 +123,22 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
             location: store.location
           },
           assignedTo: store.workflow?.installationAssignedTo || { name: 'Unassigned' },
+          assignedBy: store.workflow?.installationAssignedBy || { name: 'Unknown' },
           status: store.currentStatus,
-          assignedAt: store.createdAt || new Date().toISOString(),
-          submittedAt: store.updatedAt,
-          images: [],
+          assignedAt: store.workflow?.installationAssignedAt || store.createdAt || new Date().toISOString(),
+          submittedAt: store.workflow?.installationSubmittedAt || store.updatedAt,
+          images: store.installation?.photos || [],
           remarks: store.remark
         }));
       
-      // Filter by installation statuses if needed
-      if (filterStatus === 'ALL') {
-        filteredAssignments = filteredAssignments.filter((assignment: any) => 
-          ['INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'COMPLETED'].includes(assignment.status)
-        );
+      setAssignments(filteredAssignments);
+      
+      // Set pagination info
+      if (response.pagination) {
+        setTotalPages(response.pagination.pages);
+        setTotalStores(response.pagination.total);
       }
       
-      setAssignments(filteredAssignments);
       console.log('InstallationScreen: Assignments loaded successfully', { count: filteredAssignments.length });
       
     } catch (error) {
@@ -124,6 +159,17 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
       newSet.add(id);
     }
     setSelectedAssignments(newSet);
+  };
+
+  const toggleAllSelection = () => {
+    const completedAssignments = assignments.filter(a => 
+      a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED'
+    );
+    if (selectedAssignments.size === completedAssignments.length && completedAssignments.length > 0) {
+      setSelectedAssignments(new Set());
+    } else {
+      setSelectedAssignments(new Set(completedAssignments.map(a => a._id)));
+    }
   };
 
   const handleExport = async () => {
@@ -177,13 +223,19 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ASSIGNED': return '#3B82F6';
-      case 'IN_PROGRESS': return '#F59E0B';
-      case 'SUBMITTED': return '#10B981';
-      case 'COMPLETED': return '#8B5CF6';
+      case 'INSTALLATION_ASSIGNED': return '#F59E0B';
+      case 'INSTALLATION_SUBMITTED': return '#3B82F6';
+      case 'COMPLETED': return '#10B981';
       default: return '#6B7280';
     }
   };
+
+  const statusOptions = [
+    { label: 'All Status', value: 'ALL' },
+    { label: 'Pending', value: 'INSTALLATION_ASSIGNED' },
+    { label: 'Submitted', value: 'INSTALLATION_SUBMITTED' },
+    { label: 'Completed', value: 'COMPLETED' }
+  ];
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
@@ -242,9 +294,11 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
           <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Assigned To</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              {isAdmin ? 'Assigned To' : 'Assigned By'}
+            </Text>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {item.assignedTo.name}
+              {isAdmin ? item.assignedTo.name : item.assignedBy.name}
             </Text>
           </View>
           <View>
@@ -345,14 +399,58 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
             <Search size={20} color={theme.colors.textSecondary} />
             <TextInput
               style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search assignments..."
+              placeholder="Search store name, city, dealer code..."
               placeholderTextColor={theme.colors.textSecondary}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
           </View>
           
-          {selectedAssignments.size > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={() => setShowFilters(true)}
+              style={{ 
+                backgroundColor: theme.colors.surface, 
+                padding: 12, 
+                borderRadius: 8, 
+                borderWidth: 1, 
+                borderColor: theme.colors.border, 
+                flexDirection: 'row', 
+                alignItems: 'center',
+                flex: 1
+              }}
+            >
+              <Filter size={16} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, fontSize: 14, marginLeft: 8 }}>
+                {filterStatus === 'ALL' ? 'All Status' : statusOptions.find(s => s.value === filterStatus)?.label}
+              </Text>
+            </TouchableOpacity>
+            
+            {assignments.length > 0 && isAdmin && (
+              <TouchableOpacity 
+                onPress={toggleAllSelection}
+                style={{ 
+                  backgroundColor: theme.colors.surface, 
+                  padding: 12, 
+                  borderRadius: 8, 
+                  borderWidth: 1, 
+                  borderColor: theme.colors.border, 
+                  flexDirection: 'row', 
+                  alignItems: 'center'
+                }}
+              >
+                {selectedAssignments.size === assignments.filter(a => a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED').length && assignments.filter(a => a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED').length > 0 ? 
+                  <CheckSquare size={20} color={theme.colors.primary} /> : 
+                  <Square size={20} color={theme.colors.textSecondary} />
+                }
+                <Text style={{ color: theme.colors.text, marginLeft: 8, fontWeight: '600', fontSize: 12 }}>
+                  Select All
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {isAdmin && selectedAssignments.size > 0 && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity 
                 onPress={handleBulkPPTDownload}
@@ -400,6 +498,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setPage(1);
                 fetchAssignments();
               }}
               colors={[theme.colors.primary]}
@@ -407,13 +506,137 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                No installation assignments found
+              <Wrench size={48} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
+                {debouncedSearch ? 'No installations found' : filterStatus !== 'ALL' ? 'No installations with this status' : 'No installation tasks available'}
               </Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, marginTop: 8, textAlign: 'center' }}>
+                {debouncedSearch 
+                  ? `No installations match "${debouncedSearch}". Try a different search term.`
+                  : filterStatus !== 'ALL'
+                    ? `No installations found with status "${statusOptions.find(s => s.value === filterStatus)?.label}". Try selecting a different status.`
+                    : 'There are no installation tasks assigned yet.'}
+              </Text>
+              {(debouncedSearch || filterStatus !== 'ALL') && (
+                <TouchableOpacity 
+                  onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }}
+                  style={{ 
+                    backgroundColor: theme.colors.primary, 
+                    paddingHorizontal: 16, 
+                    paddingVertical: 8, 
+                    borderRadius: 8, 
+                    marginTop: 16 
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
+          }
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                paddingVertical: 16, 
+                paddingHorizontal: 16,
+                backgroundColor: theme.colors.surface,
+                borderRadius: 8,
+                marginTop: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalStores)} of {totalStores} entries
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.max(1, p - 1))} 
+                    disabled={page === 1}
+                    style={{ 
+                      padding: 8, 
+                      borderRadius: 6, 
+                      backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary,
+                      opacity: page === 1 ? 0.5 : 1
+                    }}
+                  >
+                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFFFFF'} />
+                  </TouchableOpacity>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', paddingHorizontal: 8 }}>
+                    {page}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
+                    disabled={page === totalPages}
+                    style={{ 
+                      padding: 8, 
+                      borderRadius: 6, 
+                      backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary,
+                      opacity: page === totalPages ? 0.5 : 1
+                    }}
+                  >
+                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFFFFF'} />
+                  </TouchableOpacity>
+                </div>
+              </View>
+            ) : null
           }
         />
       )}
+      
+      {/* Status Filter Modal */}
+      <Modal
+        visible={showFilters}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ 
+            backgroundColor: theme.colors.background, 
+            borderTopLeftRadius: 20, 
+            borderTopRightRadius: 20, 
+            paddingTop: 20,
+            maxHeight: '50%'
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Filter by Status</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <X size={24} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={statusOptions}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setFilterStatus(item.value);
+                    setPage(1);
+                    setShowFilters(false);
+                  }}
+                  style={{ 
+                    padding: 16, 
+                    borderBottomWidth: 1, 
+                    borderBottomColor: theme.colors.border,
+                    backgroundColor: filterStatus === item.value ? theme.colors.primary + '20' : 'transparent'
+                  }}
+                >
+                  <Text style={{ 
+                    color: filterStatus === item.value ? theme.colors.primary : theme.colors.text, 
+                    fontSize: 16,
+                    fontWeight: filterStatus === item.value ? '600' : '400'
+                  }}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

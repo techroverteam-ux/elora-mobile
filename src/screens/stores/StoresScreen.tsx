@@ -72,13 +72,32 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   });
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
-  const [newStore, setNewStore] = useState({
-    storeName: '',
-    dealerCode: '',
-    city: '',
-    state: '',
-    address: ''
-  });
+
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const fetchClients = async () => {
+    try {
+      const { data } = await storeService.getClients();
+      setClients(data.clients || data || []);
+    } catch (error) {
+      console.error('Failed to fetch clients', error);
+    }
+  };
+
+  // Filter users based on search term
+  useEffect(() => {
+    if (!userSearchTerm) {
+      setFilteredUsers(availableUsers);
+    } else {
+      const filtered = availableUsers.filter(user => 
+        user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [userSearchTerm, availableUsers]);
 
   // Bulk Upload
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
@@ -114,6 +133,9 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         limit: 20,
         status: filterStatus !== 'ALL' ? filterStatus : undefined,
         search: searchTerm || undefined,
+        city: filterCity || undefined,
+        clientCode: filterClientCode || undefined,
+        clientName: filterClientName || undefined,
       };
       
       const data = await storeService.getAll(params);
@@ -291,7 +313,15 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
-  // Download Functions
+  // Download Functions with menu support
+  const toggleDownloadMenu = (storeId: string, type: string) => {
+    if (downloadMenuOpen?.storeId === storeId && downloadMenuOpen?.type === type) {
+      setDownloadMenuOpen(null);
+    } else {
+      setDownloadMenuOpen({ storeId, type });
+    }
+  };
+
   const handleDownload = async (storeId: string, dealerCode: string, reportType: 'recce' | 'installation', format: 'pdf' | 'ppt' | 'excel') => {
     setDownloadMenuOpen(null);
     try {
@@ -336,12 +366,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       const roleCode = stage === 'RECCE' ? 'RECCE' : 'INSTALLATION';
       const data = await userService.getByRole(roleCode);
       setAvailableUsers(data.users || []);
+      setFilteredUsers(data.users || []);
       setIsAssignModalOpen(true);
       console.log('Assign modal opened successfully');
     } catch (error) {
       console.error('Error opening assign modal:', error);
       Toast.show({ type: 'error', text1: `Failed to fetch ${stage} users` });
       setAvailableUsers([]);
+      setFilteredUsers([]);
     }
   };
 
@@ -365,24 +397,44 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   };
 
   const handleAddStore = async () => {
-    if (!newStore.storeName || !newStore.dealerCode || !newStore.city) {
-      Toast.show({ type: 'error', text1: 'Please fill required fields' });
+    if (!newStoreData.dealerCode || !newStoreData.dealerName) {
+      Toast.show({ type: 'error', text1: 'Dealer Code and Name are required' });
+      return;
+    }
+    if (!newStoreData.clientCode) {
+      Toast.show({ type: 'error', text1: 'Client Code is required' });
       return;
     }
 
     try {
-      await storeService.create({
-        storeName: newStore.storeName,
-        dealerCode: newStore.dealerCode,
+      const payload = {
+        dealerCode: newStoreData.dealerCode,
+        storeName: newStoreData.dealerName,
+        vendorCode: newStoreData.vendorCode,
+        clientCode: newStoreData.clientCode,
         location: {
-          city: newStore.city,
-          state: newStore.state,
-          address: newStore.address
+          zone: newStoreData.zone,
+          state: newStoreData.state,
+          district: newStoreData.district,
+          city: newStoreData.city,
+          address: newStoreData.dealerAddress,
+          ...(newStoreData.latitude && newStoreData.longitude && {
+            coordinates: {
+              lat: Number(newStoreData.latitude),
+              lng: Number(newStoreData.longitude)
+            }
+          })
         }
-      });
+      };
+      await storeService.create(payload);
       Toast.show({ type: 'success', text1: 'Store added successfully!' });
       setIsAddStoreModalOpen(false);
-      setNewStore({ storeName: '', dealerCode: '', city: '', state: '', address: '' });
+      setNewStoreData({
+        zone: '', state: '', district: '', city: '',
+        vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
+        clientCode: '',
+        latitude: '', longitude: ''
+      });
       fetchStores();
     } catch (error: any) {
       Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to add store' });
@@ -590,6 +642,24 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             />
           </View>
           
+          {/* Additional Filters Row */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              style={{ flex: 1, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, color: theme.colors.text, fontSize: 14 }}
+              placeholder="Filter by City"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={filterCity}
+              onChangeText={setFilterCity}
+            />
+            <TextInput
+              style={{ flex: 1, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, color: theme.colors.text, fontSize: 14 }}
+              placeholder="Client Code"
+              placeholderTextColor={theme.colors.textSecondary}
+              value={filterClientCode}
+              onChangeText={setFilterClientCode}
+            />
+          </View>
+          
           <TouchableOpacity 
             onPress={() => setShowStatusFilter(!showStatusFilter)}
             style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
@@ -694,8 +764,20 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 Assign {assignStage}
               </Text>
               
+              {/* User Search */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 16 }}>
+                <Search size={16} color={theme.colors.textSecondary} />
+                <TextInput
+                  style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, color: theme.colors.text, fontSize: 14 }}
+                  placeholder="Search by name or email..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={userSearchTerm}
+                  onChangeText={setUserSearchTerm}
+                />
+              </View>
+              
               <ScrollView style={{ maxHeight: 300 }}>
-                {availableUsers.map(user => (
+                {filteredUsers.map(user => (
                   <TouchableOpacity
                     key={user._id}
                     onPress={() => setSelectedUserId(user._id)}
@@ -777,56 +859,139 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               
               <ScrollView style={{ maxHeight: 400 }}>
                 <View style={{ gap: 16 }}>
-                  <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Store Name *</Text>
-                    <TextInput
-                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                      value={newStore.storeName}
-                      onChangeText={(text) => setNewStore({ ...newStore, storeName: text })}
-                      placeholder="Enter store name"
-                      placeholderTextColor={theme.colors.textSecondary}
-                    />
+                  {/* Basic Details */}
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8 }}>BASIC DETAILS</Text>
+                  
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Dealer Code *</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.dealerCode}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerCode: text })}
+                        placeholder="Enter dealer code"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Dealer Name *</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.dealerName}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerName: text })}
+                        placeholder="Enter dealer name"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
                   </View>
-                  <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Dealer Code *</Text>
-                    <TextInput
-                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                      value={newStore.dealerCode}
-                      onChangeText={(text) => setNewStore({ ...newStore, dealerCode: text })}
-                      placeholder="Enter dealer code"
-                      placeholderTextColor={theme.colors.textSecondary}
-                    />
+                  
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Vendor Code</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.vendorCode}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, vendorCode: text })}
+                        placeholder="Enter vendor code"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Client Code *</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.clientCode}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, clientCode: text })}
+                        placeholder="e.g., CLI001"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
                   </View>
-                  <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>City *</Text>
-                    <TextInput
-                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                      value={newStore.city}
-                      onChangeText={(text) => setNewStore({ ...newStore, city: text })}
-                      placeholder="Enter city"
-                      placeholderTextColor={theme.colors.textSecondary}
-                    />
+                  
+                  {/* Location */}
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8, marginTop: 16 }}>LOCATION</Text>
+                  
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Zone</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.zone}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, zone: text })}
+                        placeholder="Enter zone"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>State</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.state}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, state: text })}
+                        placeholder="Enter state"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
                   </View>
-                  <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>State</Text>
-                    <TextInput
-                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                      value={newStore.state}
-                      onChangeText={(text) => setNewStore({ ...newStore, state: text })}
-                      placeholder="Enter state"
-                      placeholderTextColor={theme.colors.textSecondary}
-                    />
+                  
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>District *</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.district}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, district: text })}
+                        placeholder="Enter district"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>City *</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.city}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, city: text })}
+                        placeholder="Enter city"
+                        placeholderTextColor={theme.colors.textSecondary}
+                      />
+                    </View>
                   </View>
+                  
                   <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Address</Text>
+                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Address</Text>
                     <TextInput
                       style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16, minHeight: 80, textAlignVertical: 'top' }}
-                      value={newStore.address}
-                      onChangeText={(text) => setNewStore({ ...newStore, address: text })}
+                      value={newStoreData.dealerAddress}
+                      onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerAddress: text })}
                       placeholder="Enter full address"
                       placeholderTextColor={theme.colors.textSecondary}
                       multiline
                     />
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Latitude</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.latitude}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, latitude: text })}
+                        placeholder="e.g. 28.7041"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Longitude</Text>
+                      <TextInput
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        value={newStoreData.longitude}
+                        onChangeText={(text) => setNewStoreData({ ...newStoreData, longitude: text })}
+                        placeholder="e.g. 77.1025"
+                        placeholderTextColor={theme.colors.textSecondary}
+                        keyboardType="numeric"
+                      />
+                    </View>
                   </View>
                 </View>
               </ScrollView>
@@ -835,7 +1000,12 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 <TouchableOpacity
                   onPress={() => {
                     setIsAddStoreModalOpen(false);
-                    setNewStore({ storeName: '', dealerCode: '', city: '', state: '', address: '' });
+                    setNewStoreData({
+                      zone: '', state: '', district: '', city: '',
+                      vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
+                      clientCode: '',
+                      latitude: '', longitude: ''
+                    });
                   }}
                   style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
                 >
@@ -843,8 +1013,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddStore}
-                  disabled={!newStore.storeName || !newStore.dealerCode || !newStore.city}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStore.storeName || !newStore.dealerCode || !newStore.city) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
+                  disabled={!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode}
+                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
                 >
                   <Text style={{ color: '#FFF', fontWeight: '600' }}>Add Store</Text>
                 </TouchableOpacity>

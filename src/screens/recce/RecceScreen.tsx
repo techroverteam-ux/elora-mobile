@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square } from 'lucide-react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import { fileService } from '../../services/fileService';
@@ -23,10 +23,14 @@ interface RecceAssignment {
     _id: string;
     name: string;
   };
+  assignedBy?: {
+    _id: string;
+    name: string;
+  };
   status: string;
   assignedAt: string;
   submittedAt?: string;
-  images?: string[];
+  images?: any[];
   remarks?: string;
 }
 
@@ -43,10 +47,35 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
   const [isExporting, setIsExporting] = useState(false);
   const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [showStatusFilter, setShowStatusFilter] = useState(false);
+
+  // Enhanced state to match web portal
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStores, setTotalStores] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+  
+  // Check admin status
+  useEffect(() => {
+    // This would come from auth context in real app
+    // For now, assume admin if needed
+    setIsAdmin(true);
+  }, []);
 
   useEffect(() => {
     fetchAssignments();
-  }, [searchTerm, filterStatus]);
+  }, [debouncedSearch, filterStatus, page, limit]);
 
   const fetchAssignments = async () => {
     console.log('RecceScreen: fetchAssignments called');
@@ -54,17 +83,20 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
     try {
       setLoading(true);
       const params = {
-        page: 1,
-        limit: 50,
-        search: searchTerm || undefined,
+        page,
+        limit,
+        search: debouncedSearch || undefined,
       };
       
-      // Add status filter - try different approaches
+      // Filter by recce-related statuses only - matching web portal logic
       if (filterStatus !== 'ALL') {
         params.status = filterStatus;
       } else {
-        // Get all recce-related statuses
-        params.status = 'RECCE_ASSIGNED';
+        // Show all recce-related stores (including completed for admins)
+        const statuses = isAdmin 
+          ? 'RECCE_ASSIGNED,RECCE_SUBMITTED,RECCE_APPROVED,RECCE_REJECTED,INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED'
+          : 'RECCE_ASSIGNED,RECCE_SUBMITTED,RECCE_APPROVED,RECCE_REJECTED';
+        params.status = statuses;
       }
       
       console.log('RecceScreen: API params:', params);
@@ -77,9 +109,18 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         return;
       }
       
+      // Additional client-side filter for admin users
+      let recceStores = isAdmin 
+        ? response.stores.filter((store: any) => 
+            store.recce?.submittedDate // Only show stores that have recce data
+          )
+        : response.stores.filter((store: any) => 
+            ['RECCE_ASSIGNED', 'RECCE_SUBMITTED', 'RECCE_APPROVED', 'RECCE_REJECTED'].includes(store.currentStatus)
+          );
+      
       // Transform stores to assignment format
-      let filteredAssignments = response.stores
-        .filter((store: any) => store.location && store.location.city) // Only include stores with valid location
+      const filteredAssignments = recceStores
+        .filter((store: any) => store.location && store.location.city)
         .map((store: any) => ({
           _id: store._id,
           store: {
@@ -89,21 +130,22 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             location: store.location
           },
           assignedTo: store.workflow?.recceAssignedTo || { name: 'Unassigned' },
+          assignedBy: store.workflow?.recceAssignedBy || { name: 'Unknown' },
           status: store.currentStatus,
           assignedAt: store.createdAt || new Date().toISOString(),
           submittedAt: store.updatedAt,
-          images: [],
+          images: store.recce?.reccePhotos || [],
           remarks: store.remark
         }));
       
-      // Filter by recce statuses if needed
-      if (filterStatus === 'ALL') {
-        filteredAssignments = filteredAssignments.filter((assignment: any) => 
-          ['RECCE_ASSIGNED', 'RECCE_SUBMITTED', 'RECCE_APPROVED'].includes(assignment.status)
-        );
+      setAssignments(filteredAssignments);
+      
+      // Set pagination data
+      if (response.pagination) {
+        setTotalPages(response.pagination.pages);
+        setTotalStores(response.pagination.total);
       }
       
-      setAssignments(filteredAssignments);
       console.log('RecceScreen: Assignments loaded successfully', { count: filteredAssignments.length });
       
     } catch (error) {
@@ -242,9 +284,11 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
           <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Assigned To</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+              {isAdmin ? 'Assigned To' : 'Assigned By'}
+            </Text>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {item.assignedTo.name}
+              {isAdmin ? item.assignedTo.name : (item.assignedBy?.name || 'Unknown')}
             </Text>
           </View>
           <View>
@@ -338,12 +382,48 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             <Search size={20} color={theme.colors.textSecondary} />
             <TextInput
               style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search assignments..."
+              placeholder="Search store name, city..."
               placeholderTextColor={theme.colors.textSecondary}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
           </View>
+          
+          {/* Status Filter Dropdown */}
+          <TouchableOpacity 
+            onPress={() => setShowStatusFilter(!showStatusFilter)}
+            style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+              {filterStatus === 'ALL' ? 'All Status' : 
+               filterStatus === 'RECCE_ASSIGNED' ? 'Pending' :
+               filterStatus === 'RECCE_SUBMITTED' ? 'Submitted' :
+               filterStatus === 'RECCE_APPROVED' ? 'Approved' : filterStatus.replace(/_/g, ' ')}
+            </Text>
+            <ChevronDown size={16} color={theme.colors.textSecondary} />
+          </TouchableOpacity>
+          
+          {showStatusFilter && (
+            <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
+              {[
+                { value: 'ALL', label: 'All Status' },
+                { value: 'RECCE_ASSIGNED', label: 'Pending' },
+                { value: 'RECCE_SUBMITTED', label: 'Submitted' },
+                { value: 'RECCE_APPROVED', label: 'Approved' }
+              ].map((status) => (
+                <TouchableOpacity
+                  key={status.value}
+                  onPress={() => {
+                    setFilterStatus(status.value);
+                    setShowStatusFilter(false);
+                  }}
+                  style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                >
+                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{status.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           
           {selectedAssignments.size > 0 && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -400,10 +480,54 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                No recce assignments found
+              <Search size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>
+                {debouncedSearch ? 'No stores found' : filterStatus !== 'ALL' ? 'No stores with this status' : 'No recce tasks available'}
               </Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 16 }}>
+                {debouncedSearch 
+                  ? `No stores match "${debouncedSearch}". Try a different search term.`
+                  : filterStatus !== 'ALL'
+                    ? `No stores found with this status. Try selecting a different status.`
+                    : 'There are no recce tasks assigned yet.'}
+              </Text>
+              {(debouncedSearch || filterStatus !== 'ALL') && (
+                <TouchableOpacity 
+                  onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }}
+                  style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                >
+                  <Text style={{ color: '#FFF', fontWeight: '600' }}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
             </View>
+          }
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, backgroundColor: theme.colors.surface, marginTop: 16, borderRadius: 8 }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                  Showing {(page-1)*limit + 1}-{Math.min(page*limit, totalStores)} of {totalStores}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.max(1, p-1))} 
+                    disabled={page === 1}
+                    style={{ padding: 8, borderRadius: 4, backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary }}
+                  >
+                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFF'} />
+                  </TouchableOpacity>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', minWidth: 20, textAlign: 'center' }}>
+                    {page}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.min(totalPages, p+1))} 
+                    disabled={page === totalPages}
+                    style={{ padding: 8, borderRadius: 4, backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary }}
+                  >
+                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFF'} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null
           }
         />
       )}

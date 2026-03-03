@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator } from 'react-native';
-import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter } from 'lucide-react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import { rfqService } from '../../services/rfqService';
 import { fileService } from '../../services/fileService';
@@ -33,6 +34,7 @@ enum StoreStatus {
 
 export default function RFQScreen() {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,32 +42,90 @@ export default function RFQScreen() {
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Filters
+  // Enhanced Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterZone, setFilterZone] = useState('');
+  const [filterState, setFilterState] = useState('');
+  const [filterDistrict, setFilterDistrict] = useState('');
+  const [filterVendorCode, setFilterVendorCode] = useState('');
+  const [filterDealerCode, setFilterDealerCode] = useState('');
+  const [filterPONumber, setFilterPONumber] = useState('');
+  const [filterInvoiceNo, setFilterInvoiceNo] = useState('');
+  const [filterClientCode, setFilterClientCode] = useState('');
+  const [filterCity, setFilterCity] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStores, setTotalStores] = useState(0);
+  
+  // Role-based access
+  const isAdmin = useMemo(() => {
+    if (!user || !user.roles || !Array.isArray(user.roles)) return false;
+    return user.roles.some((role) => 
+      role?.code === "SUPER_ADMIN" || role?.code === "ADMIN"
+    );
+  }, [user]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchStores();
-  }, [searchTerm, filterStatus]);
+  }, [page, limit, debouncedSearch, filterStatus, filterZone, filterState, filterDistrict, filterVendorCode, filterDealerCode, filterPONumber, filterInvoiceNo, filterClientCode, filterCity]);
 
   const fetchStores = async () => {
+    const startTime = Date.now();
     try {
       setLoading(true);
       const params = {
-        page: 1,
-        limit: 100,
+        page,
+        limit,
         status: filterStatus !== 'ALL' ? filterStatus : undefined,
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
+        city: filterCity || undefined,
       };
       
       const data = await storeService.getAll(params);
-      setStores(data.stores || []);
+      let filteredStores = data.stores || [];
+      
+      // Apply client-side filters
+      if (filterZone) filteredStores = filteredStores.filter((s: Store) => s.location.zone?.toLowerCase().includes(filterZone.toLowerCase()));
+      if (filterState) filteredStores = filteredStores.filter((s: Store) => s.location.state?.toLowerCase().includes(filterState.toLowerCase()));
+      if (filterDistrict) filteredStores = filteredStores.filter((s: Store) => s.location.district?.toLowerCase().includes(filterDistrict.toLowerCase()));
+      if (filterVendorCode) filteredStores = filteredStores.filter((s: Store) => s.vendorCode?.toLowerCase().includes(filterVendorCode.toLowerCase()));
+      if (filterDealerCode) filteredStores = filteredStores.filter((s: Store) => s.dealerCode?.toLowerCase().includes(filterDealerCode.toLowerCase()));
+      if (filterPONumber) filteredStores = filteredStores.filter((s: Store) => s.commercials?.poNumber?.toLowerCase().includes(filterPONumber.toLowerCase()));
+      if (filterInvoiceNo) filteredStores = filteredStores.filter((s: Store) => s.commercials?.invoiceNumber?.toLowerCase().includes(filterInvoiceNo.toLowerCase()));
+      if (filterClientCode) filteredStores = filteredStores.filter((s: Store) => s.clientCode?.toLowerCase().includes(filterClientCode.toLowerCase()));
+      
+      setStores(filteredStores);
+      
+      // Set pagination info
+      if (data.pagination) {
+        setTotalPages(data.pagination.pages);
+        setTotalStores(data.pagination.total);
+      }
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to load stores' });
       setStores([]);
     } finally {
-      setLoading(false);
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 800) {
+        setTimeout(() => setLoading(false), 800 - elapsed);
+      } else {
+        setLoading(false);
+      }
       setRefreshing(false);
     }
   };
@@ -101,7 +161,23 @@ export default function RFQScreen() {
       Toast.show({ type: 'success', text1: 'RFQ generated successfully!' });
       setSelectedStoreIds(new Set());
     } catch (error: any) {
-      Toast.show({ type: 'error', text1: 'Failed to generate RFQ' });
+      // Enhanced error handling
+      if (error.response?.status === 400 && error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.skippedStores && errorData.skippedStores.length > 0) {
+          const reasons = errorData.skippedStores.map((s: any) => `${s.storeId}: ${s.reason}`).join('; ');
+          Toast.show({ 
+            type: 'error', 
+            text1: 'RFQ Generation Failed', 
+            text2: reasons,
+            visibilityTime: 6000
+          });
+        } else {
+          Toast.show({ type: 'error', text1: errorData.error || 'Failed to generate RFQ' });
+        }
+      } else {
+        Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to generate RFQ' });
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -220,7 +296,7 @@ export default function RFQScreen() {
             <Search size={20} color={theme.colors.textSecondary} />
             <TextInput
               style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search stores, dealers..."
+              placeholder="Search stores, dealers, client codes..."
               placeholderTextColor={theme.colors.textSecondary}
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -234,29 +310,10 @@ export default function RFQScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Filter size={16} color={theme.colors.textSecondary} />
               <Text style={{ color: theme.colors.text, fontSize: 14, marginLeft: 8 }}>
-                {filterStatus === 'ALL' ? 'All Status' : filterStatus.replace(/_/g, ' ')}
+                Advanced Filters
               </Text>
             </View>
           </TouchableOpacity>
-          
-          {showFilters && (
-            <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
-              {['ALL', ...Object.values(StoreStatus)].map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  onPress={() => {
-                    setFilterStatus(status);
-                    setShowFilters(false);
-                  }}
-                  style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                >
-                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>
-                    {status === 'ALL' ? 'All Status' : status.replace(/_/g, ' ')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
           
           {stores.length > 0 && (
             <TouchableOpacity 
@@ -290,6 +347,7 @@ export default function RFQScreen() {
               refreshing={refreshing}
               onRefresh={() => {
                 setRefreshing(true);
+                setPage(1);
                 fetchStores();
               }}
               colors={[theme.colors.primary]}
@@ -297,13 +355,198 @@ export default function RFQScreen() {
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                No stores found matching filters
+              <FileSpreadsheet size={48} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
+                {debouncedSearch ? 'No stores found' : 'No stores available'}
               </Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, marginTop: 8, textAlign: 'center' }}>
+                {debouncedSearch 
+                  ? `No stores match "${debouncedSearch}". Try a different search term.`
+                  : 'There are no stores available for RFQ generation.'}
+              </Text>
+              {debouncedSearch && (
+                <TouchableOpacity 
+                  onPress={() => setSearchTerm('')}
+                  style={{ 
+                    backgroundColor: theme.colors.primary, 
+                    paddingHorizontal: 16, 
+                    paddingVertical: 8, 
+                    borderRadius: 8, 
+                    marginTop: 16 
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Clear Search</Text>
+                </TouchableOpacity>
+              )}
             </View>
+          }
+          ListFooterComponent={
+            totalPages > 1 ? (
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                paddingVertical: 16, 
+                paddingHorizontal: 16,
+                backgroundColor: theme.colors.surface,
+                borderRadius: 8,
+                marginTop: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalStores)} of {totalStores} entries
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.max(1, p - 1))} 
+                    disabled={page === 1}
+                    style={{ 
+                      padding: 8, 
+                      borderRadius: 6, 
+                      backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary,
+                      opacity: page === 1 ? 0.5 : 1
+                    }}
+                  >
+                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFFFFF'} />
+                  </TouchableOpacity>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', paddingHorizontal: 8 }}>
+                    {page}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
+                    disabled={page === totalPages}
+                    style={{ 
+                      padding: 8, 
+                      borderRadius: 6, 
+                      backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary,
+                      opacity: page === totalPages ? 0.5 : 1
+                    }}
+                  >
+                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFFFFF'} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null
           }
         />
       )}
+      
+      {/* Advanced Filters Modal */}
+      <Modal
+        visible={showFilters}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFilters(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ 
+            backgroundColor: theme.colors.background, 
+            borderTopLeftRadius: 20, 
+            borderTopRightRadius: 20, 
+            paddingTop: 20,
+            maxHeight: '80%'
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Advanced Filters</Text>
+              <TouchableOpacity onPress={() => setShowFilters(false)}>
+                <X size={24} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={[
+                { label: 'Status', value: filterStatus, setValue: setFilterStatus, options: ['ALL', ...Object.values(StoreStatus)] },
+                { label: 'Zone', value: filterZone, setValue: setFilterZone, isInput: true },
+                { label: 'State', value: filterState, setValue: setFilterState, isInput: true },
+                { label: 'District', value: filterDistrict, setValue: setFilterDistrict, isInput: true },
+                { label: 'City', value: filterCity, setValue: setFilterCity, isInput: true },
+                { label: 'Vendor Code', value: filterVendorCode, setValue: setFilterVendorCode, isInput: true },
+                { label: 'Dealer Code', value: filterDealerCode, setValue: setFilterDealerCode, isInput: true },
+                { label: 'Client Code', value: filterClientCode, setValue: setFilterClientCode, isInput: true },
+                { label: 'PO Number', value: filterPONumber, setValue: setFilterPONumber, isInput: true },
+                { label: 'Invoice No', value: filterInvoiceNo, setValue: setFilterInvoiceNo, isInput: true },
+              ]}
+              keyExtractor={(item) => item.label}
+              renderItem={({ item }) => (
+                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                    {item.label}
+                  </Text>
+                  {item.isInput ? (
+                    <TextInput
+                      style={{ 
+                        backgroundColor: theme.colors.surface, 
+                        borderRadius: 8, 
+                        paddingHorizontal: 12, 
+                        paddingVertical: 10, 
+                        color: theme.colors.text, 
+                        borderWidth: 1, 
+                        borderColor: theme.colors.border 
+                      }}
+                      placeholder={`Enter ${item.label.toLowerCase()}`}
+                      placeholderTextColor={theme.colors.textSecondary}
+                      value={item.value}
+                      onChangeText={item.setValue}
+                    />
+                  ) : (
+                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                      {item.options?.map((option) => (
+                        <TouchableOpacity
+                          key={option}
+                          onPress={() => item.setValue(option)}
+                          style={{ 
+                            padding: 12, 
+                            borderBottomWidth: 1, 
+                            borderBottomColor: theme.colors.border,
+                            backgroundColor: item.value === option ? theme.colors.primary + '20' : 'transparent'
+                          }}
+                        >
+                          <Text style={{ 
+                            color: item.value === option ? theme.colors.primary : theme.colors.text, 
+                            fontSize: 14,
+                            fontWeight: item.value === option ? '600' : '400'
+                          }}>
+                            {option === 'ALL' ? 'All Status' : option.replace(/_/g, ' ')}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+            />
+            
+            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setFilterStatus('ALL');
+                  setFilterZone('');
+                  setFilterState('');
+                  setFilterDistrict('');
+                  setFilterCity('');
+                  setFilterVendorCode('');
+                  setFilterDealerCode('');
+                  setFilterClientCode('');
+                  setFilterPONumber('');
+                  setFilterInvoiceNo('');
+                  setPage(1);
+                }}
+                style={{ 
+                  backgroundColor: theme.colors.surface, 
+                  padding: 12, 
+                  borderRadius: 8, 
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.colors.border
+                }}
+              >
+                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Clear All Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

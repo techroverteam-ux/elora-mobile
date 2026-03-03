@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { Camera, Upload, CheckCircle2, Loader2, ArrowLeft, Ruler, FileText, ImageIcon } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeAPI } from '../../lib/api';
+import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
@@ -42,8 +42,8 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
   const loadStoreData = async () => {
     try {
-      const response = await storeAPI.getStoreById(storeId);
-      const store = response.data.store;
+      const response = await storeService.getById(storeId);
+      const store = response.store;
       setStoreData(store);
       
       // Initialize installation photos object based on recce photos count
@@ -116,7 +116,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
               formData.append('installationPhotosData', JSON.stringify(photosData));
 
-              await storeAPI.submitInstallation(storeId, formData);
+              await storeService.submitInstallation(storeId, formData);
               
               Toast.show({
                 type: 'success',
