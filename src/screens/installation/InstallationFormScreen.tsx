@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import imageService from '../../services/imageService';
 
 interface InstallationFormProps {
   route: {
@@ -227,7 +228,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               {initialPhotos.slice(0, 4).map((photo: string, idx: number) => (
                 <View key={idx} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
                   <Image
-                    source={{ uri: getPhotoUrl(photo) || '' }}
+                    source={{ uri: imageService.getFullImageUrl(photo) }}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
@@ -274,7 +275,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                     </Text>
                     <View style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
                       <Image
-                        source={{ uri: getPhotoUrl(reccePhoto.photo) || '' }}
+                        source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="cover"
                       />

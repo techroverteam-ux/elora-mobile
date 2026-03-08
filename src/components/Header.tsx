@@ -36,8 +36,8 @@ const Header = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar backgroundColor="#E6A500" barStyle="light-content" />
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <StatusBar backgroundColor="#E6A500" barStyle="light-content" translucent={false} />
       
       <LinearGradient
         colors={['#F6B21C', '#FECC00', '#E6A500']}

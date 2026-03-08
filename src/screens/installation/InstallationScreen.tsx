@@ -578,7 +578,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
                   >
                     <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFFFFF'} />
                   </TouchableOpacity>
-                </div>
+                </View>
               </View>
             ) : null
           }

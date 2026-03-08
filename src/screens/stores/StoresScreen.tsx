@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
+import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import PageSkeleton from '../../components/PageSkeleton';
+import BulkUpload from '../../components/BulkUpload';
 
 interface Store {
   _id: string;
@@ -62,8 +64,28 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignStage, setAssignStage] = useState<'RECCE' | 'INSTALLATION'>('RECCE');
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [singleAssignTarget, setSingleAssignTarget] = useState<Store | null>(null);
+
+  // Additional filters
+  const [filterCity, setFilterCity] = useState('');
+  const [filterClientCode, setFilterClientCode] = useState('');
+  const [filterClientName, setFilterClientName] = useState('');
+  const [clients, setClients] = useState<any[]>([]);
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  
+  // Download menu state
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState<{storeId: string; type: string} | null>(null);
+  
+  // New store form data
+  const [newStoreData, setNewStoreData] = useState({
+    zone: '', state: '', district: '', city: '',
+    vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
+    clientCode: '',
+    latitude: '', longitude: ''
+  });
 
   // Add Store Modal - using ref to prevent re-render issues
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(() => {
@@ -79,10 +101,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   const fetchClients = async () => {
     try {
-      const { data } = await storeService.getClients();
-      setClients(data.clients || data || []);
+      const response = await storeService.getClients();
+      setClients(response.clients || response.data?.clients || response.data || []);
     } catch (error) {
       console.error('Failed to fetch clients', error);
+      setClients([]);
     }
   };
 
@@ -593,28 +616,27 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Store Operations</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage and track all store activities</Text>
+      {/* Enhanced Header */}
+      <LinearGradient
+        colors={['#F6B21C', '#FECC00']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerTitleSection}>
+            <Text style={styles.headerTitle}>Store Operations</Text>
+            <Text style={styles.headerSubtitle}>Manage and track all store activities</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={styles.headerActions}>
+            <BulkUpload onUploadComplete={fetchStores} />
             <TouchableOpacity 
               onPress={handleExportStores} 
               disabled={isExporting}
-              style={{ 
-                backgroundColor: '#10B981', 
-                paddingHorizontal: 12, 
-                paddingVertical: 8, 
-                borderRadius: 8,
-                opacity: isExporting ? 0.6 : 1
-              }}
+              style={[styles.headerButton, { opacity: isExporting ? 0.6 : 1 }]}
             >
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Download size={16} color="#FFF" />
+                <Download size={18} color="#FFF" />
               )}
             </TouchableOpacity>
             <TouchableOpacity 
@@ -623,98 +645,114 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 setIsAddStoreModalOpen(true);
                 setTimeout(() => console.log('Modal state after click:', isAddStoreModalOpen), 100);
               }} 
-              style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+              style={styles.headerButton}
             >
-              <Plus size={16} color="#FFF" />
+              <Plus size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
+      </LinearGradient>
 
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            <Search size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search stores, dealers..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
-          </View>
-          
-          {/* Additional Filters Row */}
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput
-              style={{ flex: 1, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, color: theme.colors.text, fontSize: 14 }}
-              placeholder="Filter by City"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={filterCity}
-              onChangeText={setFilterCity}
-            />
-            <TextInput
-              style={{ flex: 1, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, color: theme.colors.text, fontSize: 14 }}
-              placeholder="Client Code"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={filterClientCode}
-              onChangeText={setFilterClientCode}
-            />
-          </View>
-          
+      {/* Search and Filters */}
+      <View style={styles.filtersContainer}>
+        <View style={styles.searchContainer}>
+          <Search size={20} color={theme.colors.textSecondary} />
+          <TextInput
+            style={[styles.searchInput, { color: theme.colors.text }]}
+            placeholder="Search stores, dealers..."
+            placeholderTextColor={theme.colors.textSecondary}
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+        </View>
+        
+        {/* Filter Pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterPills}>
           <TouchableOpacity 
             onPress={() => setShowStatusFilter(!showStatusFilter)}
-            style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            style={[styles.filterPill, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
           >
-            <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+            <Text style={[styles.filterPillText, { color: theme.colors.text }]}>
               {filterStatus === 'ALL' ? 'All Status' : filterStatus.replace(/_/g, ' ')}
             </Text>
-            <ChevronDown size={16} color={theme.colors.textSecondary} />
+            <ChevronDown size={14} color={theme.colors.textSecondary} />
           </TouchableOpacity>
           
-          {showStatusFilter && (
-            <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
-              {['ALL', ...Object.values(StoreStatus)].map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  onPress={() => {
-                    setFilterStatus(status);
-                    setShowStatusFilter(false);
-                  }}
-                  style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                >
-                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>
-                    {status === 'ALL' ? 'All Status' : status.replace(/_/g, ' ')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+          {filterCity && (
+            <View style={[styles.activeFilter, { backgroundColor: theme.colors.primary + '20' }]}>
+              <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>City: {filterCity}</Text>
             </View>
           )}
           
-          {selectedStoreIds.size > 0 && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity 
-                onPress={() => handleBulkAssign('RECCE')}
-                style={{ flex: 1, backgroundColor: '#3B82F6', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <UserPlus size={16} color="#FFF" />
-                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                  Assign Recce ({selectedStoreIds.size})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => handleBulkAssign('INSTALLATION')}
-                style={{ backgroundColor: '#10B981', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <UserPlus size={16} color="#FFF" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleBulkDelete}
-                style={{ backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Trash2 size={16} color="#FFF" />
-              </TouchableOpacity>
+          {filterClientCode && (
+            <View style={[styles.activeFilter, { backgroundColor: theme.colors.primary + '20' }]}>
+              <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>Client: {filterClientCode}</Text>
             </View>
           )}
+        </ScrollView>
+        
+        {/* Additional Filters Row */}
+        <View style={styles.additionalFilters}>
+          <TextInput
+            style={[styles.filterInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text }]}
+            placeholder="Filter by City"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={filterCity}
+            onChangeText={setFilterCity}
+          />
+          <TextInput
+            style={[styles.filterInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text }]}
+            placeholder="Client Code"
+            placeholderTextColor={theme.colors.textSecondary}
+            value={filterClientCode}
+            onChangeText={setFilterClientCode}
+          />
         </View>
+        
+        {showStatusFilter && (
+          <View style={[styles.statusDropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            {['ALL', ...Object.values(StoreStatus)].map((status) => (
+              <TouchableOpacity
+                key={status}
+                onPress={() => {
+                  setFilterStatus(status);
+                  setShowStatusFilter(false);
+                }}
+                style={[styles.statusOption, { borderBottomColor: theme.colors.border }]}
+              >
+                <Text style={[styles.statusOptionText, { color: theme.colors.text }]}>
+                  {status === 'ALL' ? 'All Status' : status.replace(/_/g, ' ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        
+        {selectedStoreIds.size > 0 && (
+          <View style={styles.bulkActions}>
+            <TouchableOpacity 
+              onPress={() => handleBulkAssign('RECCE')}
+              style={[styles.bulkActionButton, { backgroundColor: '#3B82F6' }]}
+            >
+              <UserPlus size={16} color="#FFF" />
+              <Text style={styles.bulkActionText}>
+                Assign Recce ({selectedStoreIds.size})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => handleBulkAssign('INSTALLATION')}
+              style={[styles.bulkActionIcon, { backgroundColor: '#10B981' }]}
+            >
+              <UserPlus size={16} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleBulkDelete}
+              style={[styles.bulkActionIcon, { backgroundColor: '#EF4444' }]}
+            >
+              <Trash2 size={16} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -898,13 +936,34 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Client Code *</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.clientCode}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, clientCode: text })}
-                        placeholder="e.g., CLI001"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
+                      <TouchableOpacity
+                        onPress={() => setShowClientDropdown(!showClientDropdown)}
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                      >
+                        <Text style={{ color: newStoreData.clientCode ? theme.colors.text : theme.colors.textSecondary, fontSize: 16 }}>
+                          {newStoreData.clientCode ? `${clients.find(c => c.clientCode === newStoreData.clientCode)?.clientName || newStoreData.clientCode} (${newStoreData.clientCode})` : 'Select Client'}
+                        </Text>
+                        <ChevronDown size={16} color={theme.colors.textSecondary} />
+                      </TouchableOpacity>
+                      {showClientDropdown && (
+                        <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 150 }}>
+                          <ScrollView>
+                            {clients.map((client) => (
+                              <TouchableOpacity
+                                key={client._id}
+                                onPress={() => {
+                                  setNewStoreData({ ...newStoreData, clientCode: client.clientCode });
+                                  setShowClientDropdown(false);
+                                }}
+                                style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                              >
+                                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{client.clientName}</Text>
+                                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{client.clientCode}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
                   </View>
                   
@@ -1121,3 +1180,153 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitleSection: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  filtersContainer: {
+    padding: 20,
+    paddingBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  filterPills: {
+    marginBottom: 16,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 12,
+  },
+  filterPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  activeFilter: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  activeFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  additionalFilters: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  filterInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statusDropdown: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  statusOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+  },
+  statusOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bulkActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  bulkActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  bulkActionText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  bulkActionIcon: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -1,3 +1,4 @@
+// src/services/elementService.ts
 import api from '../lib/api';
 
 export const elementService = {
@@ -10,12 +11,12 @@ export const elementService = {
     return data;
   },
 
-  create: async (elementData: { name: string; standardRate: number }) => {
+  create: async (elementData: any) => {
     const { data } = await api.post('/elements', elementData);
     return data;
   },
 
-  update: async (id: string, elementData: { name: string; standardRate: number }) => {
+  update: async (id: string, elementData: any) => {
     const { data } = await api.put(`/elements/${id}`, elementData);
     return data;
   },
@@ -25,13 +26,18 @@ export const elementService = {
     return data;
   },
 
-  getById: async (id: string) => {
-    const { data } = await api.get(`/elements/${id}`);
+  getByClient: async (clientId: string) => {
+    const { data } = await api.get(`/clients/${clientId}/elements`);
     return data;
   },
 
-  getAllElements: async () => {
-    const { data } = await api.get('/elements/all');
+  assignToClient: async (clientId: string, elementIds: string[]) => {
+    const { data } = await api.post(`/clients/${clientId}/elements`, { elementIds });
+    return data;
+  },
+
+  updateClientElement: async (clientId: string, elementId: string, customRate: number) => {
+    const { data } = await api.put(`/clients/${clientId}/elements/${elementId}`, { customRate });
     return data;
   },
 };

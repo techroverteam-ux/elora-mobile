@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeService } from '../../services/storeService';
+import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import { testRecceAPI, debugStorage } from '../../utils/testRecceAPI';
 
 interface RecceAssignment {
   _id: string;
@@ -86,21 +87,11 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         page,
         limit,
         search: debouncedSearch || undefined,
+        status: filterStatus,
       };
       
-      // Filter by recce-related statuses only - matching web portal logic
-      if (filterStatus !== 'ALL') {
-        params.status = filterStatus;
-      } else {
-        // Show all recce-related stores (including completed for admins)
-        const statuses = isAdmin 
-          ? 'RECCE_ASSIGNED,RECCE_SUBMITTED,RECCE_APPROVED,RECCE_REJECTED,INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED'
-          : 'RECCE_ASSIGNED,RECCE_SUBMITTED,RECCE_APPROVED,RECCE_REJECTED';
-        params.status = statuses;
-      }
-      
       console.log('RecceScreen: API params:', params);
-      const response = await storeService.getAll(params);
+      const response = await recceService.getAssignments(params);
       console.log('RecceScreen: API response:', response);
       
       if (!response || !response.stores) {
@@ -109,17 +100,8 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         return;
       }
       
-      // Additional client-side filter for admin users
-      let recceStores = isAdmin 
-        ? response.stores.filter((store: any) => 
-            store.recce?.submittedDate // Only show stores that have recce data
-          )
-        : response.stores.filter((store: any) => 
-            ['RECCE_ASSIGNED', 'RECCE_SUBMITTED', 'RECCE_APPROVED', 'RECCE_REJECTED'].includes(store.currentStatus)
-          );
-      
       // Transform stores to assignment format
-      const filteredAssignments = recceStores
+      const filteredAssignments = response.stores
         .filter((store: any) => store.location && store.location.city)
         .map((store: any) => ({
           _id: store._id,
@@ -181,7 +163,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const blob = await storeService.exportRecce();
+      const blob = await recceService.export();
       await fileService.downloadFile(blob, 'Recce_Export.xlsx');
       Toast.show({ type: 'success', text1: 'Recce data exported successfully!' });
     } catch (error) {
@@ -198,7 +180,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
     }
     setIsDownloadingPPT(true);
     try {
-      const blob = await storeService.bulkPpt(Array.from(selectedAssignments), 'recce');
+      const blob = await recceService.bulkPpt(Array.from(selectedAssignments));
       await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pptx`);
       Toast.show({ type: 'success', text1: `Downloaded PPT with ${selectedAssignments.size} stores` });
       setSelectedAssignments(new Set());
@@ -209,6 +191,26 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
     }
   };
 
+  const handleDebugAPI = async () => {
+    console.log('Debug button pressed');
+    await debugStorage();
+    const result = await testRecceAPI();
+    
+    if (result.success) {
+      Toast.show({ 
+        type: 'success', 
+        text1: 'API Test Successful', 
+        text2: `Found ${result.storeCount} stores` 
+      });
+    } else {
+      Toast.show({ 
+        type: 'error', 
+        text1: 'API Test Failed', 
+        text2: result.error 
+      });
+    }
+  };
+
   const handleBulkPDFDownload = async () => {
     if (selectedAssignments.size === 0) {
       Toast.show({ type: 'error', text1: 'Please select assignments' });
@@ -216,7 +218,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
     }
     setIsDownloadingPDF(true);
     try {
-      const blob = await storeService.bulkPdf(Array.from(selectedAssignments), 'recce');
+      const blob = await recceService.bulkPdf(Array.from(selectedAssignments));
       await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pdf`);
       Toast.show({ type: 'success', text1: `Downloaded PDF with ${selectedAssignments.size} stores` });
       setSelectedAssignments(new Set());
@@ -367,6 +369,9 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your recce assignments</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity onPress={handleDebugAPI} style={{ backgroundColor: '#6366F1', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Debug API</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={handleExport} disabled={isExporting} style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}>
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />

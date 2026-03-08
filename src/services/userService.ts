@@ -1,13 +1,8 @@
 import api from '../lib/api';
-import { User } from '../types';
 
 export const userService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', String(params.page));
-    if (params?.limit) queryParams.append('limit', String(params.limit));
-    if (params?.search) queryParams.append('search', params.search);
-    const { data } = await api.get(`/users?${queryParams.toString()}`);
+  getAll: async (params?: any) => {
+    const { data } = await api.get('/users', { params });
     return data;
   },
 
@@ -16,12 +11,12 @@ export const userService = {
     return data;
   },
 
-  create: async (userData: { name: string; email: string; password: string; roles: string[]; isActive: boolean }) => {
+  create: async (userData: any) => {
     const { data } = await api.post('/users', userData);
     return data;
   },
 
-  update: async (id: string, userData: Partial<User>) => {
+  update: async (id: string, userData: any) => {
     const { data } = await api.put(`/users/${id}`, userData);
     return data;
   },
@@ -32,42 +27,36 @@ export const userService = {
   },
 
   toggleStatus: async (id: string, isActive: boolean) => {
-    const { data } = await api.put(`/users/${id}`, { isActive });
+    const { data } = await api.patch(`/users/${id}/status`, { isActive });
     return data;
   },
 
-  getByRole: async (roleCode: string) => {
-    const { data } = await api.get(`/users/role/${roleCode}`);
+  bulkUpdate: async (userIds: string[], updateData: any) => {
+    const { data } = await api.put('/users/bulk', { userIds, updateData });
     return data;
   },
 
-  export: async (params?: { search?: string }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.search) queryParams.append('search', params.search);
-    const { data } = await api.get(`/users/export?${queryParams.toString()}`, { responseType: 'blob' });
+  bulkDelete: async (userIds: string[]) => {
+    const { data } = await api.delete('/users/bulk', { data: { userIds } });
     return data;
   },
 
-  downloadTemplate: async () => {
-    const { data } = await api.get('/users/template', { responseType: 'blob' });
-    return data;
-  },
-
-  uploadBulk: async (files: FormData) => {
-    const { data } = await api.post('/users/upload', files, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  export: async (params?: any) => {
+    const response = await api.get('/users/export', { 
+      params,
+      responseType: 'blob'
     });
-    return data;
+    return response.data;
   },
 
-  getStats: async (id: string) => {
-    const { data } = await api.get(`/users/${id}/stats`);
-    return data;
-  },
-
-  bulkAssignStores: async (userId: string, formData: FormData) => {
-    const { data } = await api.post(`/users/${userId}/bulk-assign-stores`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  uploadBulk: async (file: any) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const { data } = await api.post('/users/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     return data;
   },

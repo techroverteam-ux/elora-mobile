@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
 import { locationService } from '../../services/locationService';
+import imageService from '../../services/imageService';
 
 interface RecceFormProps {
   route: {
@@ -83,13 +84,14 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         address: store.location?.address || store.address || '123 Main St, City, State 12345'
       }));
       
-      // Fetch client elements if clientId exists
-      if (store.clientId) {
+      // Fetch client elements if clientCode exists
+      if (store.clientCode) {
         try {
-          const clientRes = await storeService.getById(store.clientId);
-          setClientElements(clientRes.client?.elements || []);
+          const elementsRes = await storeService.getElements();
+          setClientElements(elementsRes.elements || []);
         } catch (err) {
-          console.error('Failed to fetch client elements:', err);
+          console.error('Failed to fetch elements:', err);
+          setClientElements([]);
         }
       }
       
@@ -100,7 +102,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         // Load existing initial photos
         if (store.recce.initialPhotos && store.recce.initialPhotos.length > 0) {
           const existingInitialPhotos = store.recce.initialPhotos.map((photo: string) => 
-            photo.startsWith('http') ? photo : `https://storage.enamorimpex.com/${photo}`
+            imageService.getFullImageUrl(photo)
           );
           setInitialPhotos(existingInitialPhotos);
         }
@@ -109,7 +111,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         if (store.recce.reccePhotos && store.recce.reccePhotos.length > 0) {
           const existingReccePhotos = store.recce.reccePhotos.map((rp: any) => ({
             file: null,
-            photo: rp.photo.startsWith('http') ? rp.photo : `https://storage.enamorimpex.com/${rp.photo}`,
+            photo: imageService.getFullImageUrl(rp.photo),
             width: String(rp.measurements.width || ''),
             height: String(rp.measurements.height || ''),
             unit: rp.measurements.unit || 'in',
@@ -253,7 +255,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         
         const existingInitialPhotos = initialPhotos
           .filter(photo => photo.startsWith('http'))
-          .map(photo => photo.replace('https://storage.enamorimpex.com/', ''));
+          .map(photo => photo.replace(imageService.baseUrl + '/', ''));
         submitFormData.append('existingInitialPhotos', JSON.stringify(existingInitialPhotos));
       }
 

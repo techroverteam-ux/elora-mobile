@@ -2,9 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { MapPin, Calendar, User, IndianRupee, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
-import { storeAPI } from '../../lib/api';
+import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import StoreDetailsEditor from '../../components/StoreDetailsEditor';
+import ImageGallery from '../../components/ImageGallery';
+import PhotoApproval from '../../components/PhotoApproval';
+import imageService from '../../services/imageService';
 
 interface StoreDetailProps {
   route: {
@@ -107,7 +111,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
   const fetchStoreDetail = async () => {
     try {
       setLoading(true);
-      const { data } = await storeAPI.getStoreById(storeId);
+      const { data } = await storeService.getById(storeId);
       setStore(data.store);
     } catch (error) {
       console.error('Error fetching store detail:', error);
@@ -289,6 +293,15 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
               <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
                 Dealer Info
               </Text>
+              <View style={{ flex: 1 }} />
+              <StoreDetailsEditor 
+                storeId={storeId}
+                initialData={store}
+                onUpdate={(updatedData) => {
+                  setStore({ ...store, ...updatedData });
+                  Toast.show({ type: 'success', text1: 'Store updated successfully' });
+                }}
+              />
             </View>
             
             <View style={{ gap: 8 }}>
@@ -549,7 +562,139 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
           </View>
         </View>
 
-        {/* Basic Information */}
+        {/* Recce Details with Images */}
+        {store.recce && (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+              Recce Details
+            </Text>
+            
+            {store.recce.submittedDate && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Submitted:</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
+                  {formatDate(store.recce.submittedDate)}
+                </Text>
+              </View>
+            )}
+            
+            {store.recce.notes && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Notes:</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 4 }}>
+                  {store.recce.notes}
+                </Text>
+              </View>
+            )}
+            
+            {/* Initial Photos */}
+            {store.recce.initialPhotos && store.recce.initialPhotos.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <ImageGallery 
+                  images={store.recce.initialPhotos}
+                  title="Initial Photos"
+                  columns={3}
+                />
+              </View>
+            )}
+            
+            {/* Recce Photos with Approval */}
+            {store.recce.reccePhotos && store.recce.reccePhotos.length > 0 && (
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: theme.colors.text, marginBottom: 12 }}>
+                  Recce Photos with Measurements
+                </Text>
+                {store.recce.reccePhotos.map((photo: any, index: number) => (
+                  <View key={index} style={{
+                    backgroundColor: theme.colors.background,
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 12,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border
+                  }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text, marginBottom: 8 }}>
+                      Photo {index + 1}
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Image
+                          source={{ uri: imageService.getFullImageUrl(photo.photo) }}
+                          style={{ width: '100%', height: 120, borderRadius: 6 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>Measurements:</Text>
+                        <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>
+                          {photo.measurements?.width} × {photo.measurements?.height} {photo.measurements?.unit}
+                        </Text>
+                        {photo.elements && photo.elements.length > 0 && (
+                          <>
+                            <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 4 }}>Element:</Text>
+                            <Text style={{ color: theme.colors.text, fontSize: 12 }}>
+                              {photo.elements[0].elementName}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    
+                    <PhotoApproval
+                      storeId={storeId}
+                      photoIndex={index}
+                      photoUrl={imageService.getFullImageUrl(photo.photo)}
+                      currentStatus={photo.approvalStatus}
+                      rejectionReason={photo.rejectionReason}
+                      onStatusChange={fetchStoreDetail}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+        
+        {/* Installation Details with Images */}
+        {store.installation && (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+              Installation Details
+            </Text>
+            
+            {store.installation.submittedDate && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Completed:</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
+                  {formatDate(store.installation.submittedDate)}
+                </Text>
+              </View>
+            )}
+            
+            {store.installation.photos && store.installation.photos.length > 0 && (
+              <ImageGallery 
+                images={store.installation.photos.map((p: any) => p.installationPhoto)}
+                title="Installation Photos"
+                columns={2}
+              />
+            )}
+          </View>
+        )}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 

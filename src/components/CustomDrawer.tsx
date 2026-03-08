@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Modal, Animated } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'react-native-linear-gradient';
@@ -21,12 +22,15 @@ import {
   Moon,
   LogOut,
   X,
-  CheckCircle
+  CheckCircle,
+  Building2,
+  CreditCard
 } from 'lucide-react-native';
 
 const CustomDrawer = (props: any) => {
   const { logout, user } = useAuth();
   const { darkMode, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -71,13 +75,13 @@ const CustomDrawer = (props: any) => {
   // Navigation items with permission modules
   const navigation = [
     { name: 'Dashboard', href: 'Dashboard', icon: Home, module: 'dashboard', alwaysShow: true },
+    { name: 'Client Management', href: 'Clients', icon: UserCheck, module: 'clients' },
     { name: 'User Management', href: 'Users', icon: Users, module: 'users' },
     { name: 'Role Management', href: 'Roles', icon: Shield, module: 'roles' },
     { name: 'Store Operations', href: 'Stores', icon: Store, module: 'stores' },
     { name: 'Recce', href: 'Recce', icon: Search, module: 'recce' },
     { name: 'Installation', href: 'Installation', icon: Wrench, module: 'installation' },
     { name: 'Element Mapping', href: 'Elements', icon: Map, module: 'elements' },
-    { name: 'Client Management', href: 'Clients', icon: UserCheck, module: 'clients' },
     { name: 'RFQ Generation', href: 'RFQ', icon: FileText, module: 'stores' },
     { name: 'Enquiries', href: 'Enquiries', icon: HelpCircle, module: 'enquiries' },
     { name: 'Reports', href: 'Reports', icon: BarChart3, module: 'reports', alwaysShow: true },
@@ -118,20 +122,28 @@ const CustomDrawer = (props: any) => {
 
   return (
     <View style={[styles.container, { backgroundColor: darkMode ? '#1F2937' : '#fff' }]}>
-          <LinearGradient
-            colors={['#F6B21C', '#FECC00']}
-            style={styles.header}
-          >
-            <Image
-              source={require('../assets/images/logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            <Text style={[styles.userText, { color: darkMode ? '#F9FAFB' : '#fff' }]}>Welcome, {user?.name || 'User'}</Text>
-            <Text style={[styles.roleText, { color: darkMode ? 'rgba(249,250,251,0.8)' : 'rgba(255,255,255,0.8)' }]}>
-              {user?.roles?.[0]?.name || user?.roles?.[0]?.code || 'Member'}
-            </Text>
-          </LinearGradient>
+      {/* Simplified Banking Header */}
+      <LinearGradient
+        colors={darkMode ? ['#1F2937', '#374151'] : ['#F6B21C', '#FECC00']}
+        style={[styles.header, { paddingTop: insets.top + 16 }]}
+      >
+        {/* Dynamic Logo based on theme */}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={[
+              styles.logoImage,
+              !darkMode && { tintColor: '#1F2937' } // Dark logo for light theme
+            ]}
+            resizeMode="contain"
+          />
+        </View>
+        
+        {/* Simple Tagline */}
+        <Text style={[styles.tagline, { color: darkMode ? 'rgba(249,250,251,0.8)' : 'rgba(255,255,255,0.9)' }]}>
+          Business Management Suite
+        </Text>
+      </LinearGradient>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {navigation.map((item, index) => {
@@ -272,203 +284,201 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    backgroundColor: '#F6B21C',
-    padding: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  logoContainer: {
+    marginBottom: 8,
+    alignItems: 'center',
   },
   logoImage: {
-    width: 120,
-    height: 30,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 2,
-    elevation: 5,
+    width: 160,
+    height: 40,
   },
-  userText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 10,
-    letterSpacing: 0.3,
-  },
-  roleText: {
-    color: 'rgba(255,255,255,0.8)',
+  tagline: {
     fontSize: 12,
-    marginTop: 4,
     fontWeight: '500',
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    marginHorizontal: 12,
+    marginVertical: 2,
+    borderRadius: 12,
     backgroundColor: 'transparent',
   },
   menuIcon: {
-    marginRight: 12,
+    marginRight: 16,
     width: 24,
   },
   menuText: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#333',
     fontWeight: '600',
     flex: 1,
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   footer: {
     padding: 20,
+    paddingBottom: 32,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
   logoutButton: {
     backgroundColor: '#F6B21C',
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#F6B21C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   logoutText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
   },
   logoutModal: {
     width: '100%',
-    maxWidth: 340,
-    borderRadius: 16,
+    maxWidth: 360,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
+    padding: 24,
+    paddingBottom: 20,
   },
   securityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   modalTitle: {
     flex: 1,
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   modalContent: {
-    padding: 24,
+    padding: 28,
   },
   modalMessage: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
-    lineHeight: 22,
+    marginBottom: 10,
+    lineHeight: 24,
   },
   modalSubMessage: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
+    marginBottom: 28,
+    lineHeight: 22,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 2,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
   },
   confirmButton: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   confirmButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
+    paddingVertical: 16,
+    gap: 10,
   },
   confirmButtonText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
   },
   toast: {
     position: 'absolute',
-    top: 60,
-    left: 20,
-    right: 20,
-    borderRadius: 12,
+    top: 80,
+    left: 24,
+    right: 24,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 12,
   },
   toastGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    gap: 14,
   },
   toastText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     flex: 1,
   },

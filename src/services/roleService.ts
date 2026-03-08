@@ -1,22 +1,22 @@
 import api from '../lib/api';
-import { Role } from '../types';
 
 export const roleService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', String(params.page));
-    if (params?.limit) queryParams.append('limit', String(params.limit));
-    if (params?.search) queryParams.append('search', params.search);
-    const { data } = await api.get(`/roles?${queryParams.toString()}`);
+  getAll: async (params?: any) => {
+    const { data } = await api.get('/roles', { params });
     return data;
   },
 
-  create: async (roleData: { name: string; code: string; permissions: any }) => {
+  getById: async (id: string) => {
+    const { data } = await api.get(`/roles/${id}`);
+    return data;
+  },
+
+  create: async (roleData: any) => {
     const { data } = await api.post('/roles', roleData);
     return data;
   },
 
-  update: async (id: string, roleData: Partial<Role>) => {
+  update: async (id: string, roleData: any) => {
     const { data } = await api.put(`/roles/${id}`, roleData);
     return data;
   },
@@ -26,13 +26,11 @@ export const roleService = {
     return data;
   },
 
-  getById: async (id: string) => {
-    const { data } = await api.get(`/roles/${id}`);
-    return data;
-  },
-
-  export: async () => {
-    const { data } = await api.get('/roles/export', { responseType: 'blob' });
-    return data;
+  export: async (params?: any) => {
+    const response = await api.get('/roles/export', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
   },
 };

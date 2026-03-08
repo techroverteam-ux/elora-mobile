@@ -9,13 +9,16 @@ import MaterialDesignIcons from '@react-native-vector-icons/material-design-icon
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { translateContent } from '../utils/contentTranslator';
 import { getResponsiveFontSize, isOldPhone } from '../utils/responsive';
+import { useAuth } from '../context/AuthContext';
 
 // Import stack navigators
 import HomeStack from './stack/HomeStack';
 import CategoriesStack from './stack/CategoriesStack';
-
 import AccountStack from './stack/AccountStack';
 import CustomDrawer from '../components/CustomDrawer';
+import RoleBasedFooter from '../components/RoleBasedFooter';
+
+// Import screens
 import SettingsScreen from '../screens/SettingsScreen';
 import AboutScreen from '../screens/AboutScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
@@ -28,6 +31,20 @@ import RecentlyPlayedScreen from '../screens/RecentlyPlayedScreen';
 import MiniPlayer from '../components/MiniPlayer';
 import { useCurrentPlayer } from '../context/CurrentPlayerContext';
 import AuthModalWrapper from './AuthModalWrapper';
+
+// Business screens
+import DashboardScreen from '../screens/dashboard/DashboardScreen';
+import ReportsScreen from '../screens/reports/ReportsScreen';
+import UsersScreen from '../screens/users/UsersScreen';
+import RolesScreen from '../screens/roles/RolesScreen';
+import ClientsScreen from '../screens/clients/ClientsScreen';
+import StoresScreen from '../screens/stores/StoresScreen';
+import RecceScreen from '../screens/recce/RecceScreen';
+import InstallationScreen from '../screens/installation/InstallationScreen';
+import EnquiriesScreen from '../screens/enquiries/EnquiriesScreen';
+import RFQScreen from '../screens/rfq/RFQScreen';
+import ElementsScreen from '../screens/elements/ElementsScreen';
+import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -153,7 +170,44 @@ function MyTabBar({ state, descriptors, navigation }: any) {
   );
 }
 
-// Tab Navigator Component
+// Business Tab Navigator with Role-based Footer
+const BusinessTabNavigator = () => {
+  const { user } = useAuth();
+  
+  const getUserRole = () => {
+    if (!user?.roles || user.roles.length === 0) return 'RECCE';
+    return user.roles[0]?.name || 'RECCE';
+  };
+
+  const userRole = getUserRole();
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Tab.Navigator
+        screenOptions={{ headerShown: false }}
+        tabBar={() => null} // Hide default tab bar
+      >
+        <Tab.Screen name="Dashboard" component={DashboardScreen} />
+        <Tab.Screen name="Analytics" component={AnalyticsScreen} />
+        <Tab.Screen name="Users" component={UsersScreen} />
+        <Tab.Screen name="Roles" component={RolesScreen} />
+        <Tab.Screen name="Clients" component={ClientsScreen} />
+        <Tab.Screen name="Stores" component={StoresScreen} />
+        <Tab.Screen name="Recce" component={RecceScreen} />
+        <Tab.Screen name="Installation" component={InstallationScreen} />
+        <Tab.Screen name="Reports" component={ReportsScreen} />
+        <Tab.Screen name="Enquiries" component={EnquiriesScreen} />
+        <Tab.Screen name="RFQ" component={RFQScreen} />
+        <Tab.Screen name="Elements" component={ElementsScreen} />
+      </Tab.Navigator>
+      
+      {/* Role-based Footer Navigation */}
+      <RoleBasedFooter />
+    </View>
+  );
+};
+
+// Tab Navigator Component (for media app)
 const TabNavigator = () => {
   const { 
     currentAudioItem, 
@@ -210,6 +264,13 @@ const TabNavigator = () => {
 
 // Main Dashboard with Drawer
 const DashboardNavigator = () => {
+  const { user } = useAuth();
+  
+  // Determine if user is in business mode (has business roles)
+  const isBusinessUser = user?.roles?.some(role => 
+    ['SUPER_ADMIN', 'CLIENT', 'STORE', 'RECCE', 'INSTALLATION'].includes(role?.name)
+  );
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
@@ -221,7 +282,12 @@ const DashboardNavigator = () => {
         },
       }}
     >
-      <Drawer.Screen name="MainTabs" component={TabNavigator} />
+      {isBusinessUser ? (
+        <Drawer.Screen name="MainTabs" component={BusinessTabNavigator} />
+      ) : (
+        <Drawer.Screen name="MainTabs" component={TabNavigator} />
+      )}
+      
       <Drawer.Screen name="BookmarksScreen" component={BookmarksScreen} />
       <Drawer.Screen name="RecentlyPlayedScreen" component={RecentlyPlayedScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />

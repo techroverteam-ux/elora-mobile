@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Building2 } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, StyleSheet } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Building2, MapPin, CreditCard, FileText } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { clientService } from '../../services/clientService';
+import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 
@@ -118,42 +119,53 @@ export default function ClientsScreen() {
   };
 
   const renderClient = ({ item }: { item: Client }) => (
-    <View style={{ backgroundColor: theme.colors.surface, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.colors.primary + '20', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-          <Building2 size={24} color={theme.colors.primary} />
+    <View style={[styles.clientCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <View style={styles.clientHeader}>
+        <LinearGradient
+          colors={['#06B6D4', '#0891B2']}
+          style={styles.clientIcon}
+        >
+          <Building2 size={24} color="#FFF" />
+        </LinearGradient>
+        <View style={styles.clientInfo}>
+          <Text style={[styles.clientName, { color: theme.colors.text }]}>{item.clientName}</Text>
+          <Text style={[styles.clientCode, { color: theme.colors.textSecondary }]}>{item.clientCode}</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 2 }}>{item.clientName}</Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{item.clientCode}</Text>
-        </View>
-      </View>
-
-      <View style={{ marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Branch:</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>{item.branchName}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Amount:</Text>
-          <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: 'bold' }}>₹{item.amount.toLocaleString()}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>GST:</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 12, fontFamily: 'monospace' }}>{item.gstNumber}</Text>
-        </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Elements:</Text>
-          <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>{item.elements.length} element(s)</Text>
+        <View style={[styles.amountBadge, { backgroundColor: '#10B98120' }]}>
+          <Text style={[styles.amountText, { color: '#10B981' }]}>₹{item.amount.toLocaleString()}</Text>
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={{ padding: 8, backgroundColor: '#3B82F620', borderRadius: 8 }}>
-          <Edit2 size={18} color="#3B82F6" />
+      <View style={styles.clientDetails}>
+        <View style={styles.detailRow}>
+          <View style={styles.detailIcon}>
+            <MapPin size={14} color={theme.colors.textSecondary} />
+          </View>
+          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Branch:</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{item.branchName}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <View style={styles.detailIcon}>
+            <CreditCard size={14} color={theme.colors.textSecondary} />
+          </View>
+          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>GST:</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text, fontFamily: 'monospace' }]}>{item.gstNumber}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <View style={styles.detailIcon}>
+            <FileText size={14} color={theme.colors.textSecondary} />
+          </View>
+          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Elements:</Text>
+          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{item.elements.length} element(s)</Text>
+        </View>
+      </View>
+
+      <View style={styles.clientActions}>
+        <TouchableOpacity onPress={() => handleEdit(item)} style={[styles.actionButton, { backgroundColor: '#F59E0B20' }]}>
+          <Edit2 size={16} color="#F59E0B" />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item._id)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
-          <Trash2 size={18} color="#EF4444" />
+        <TouchableOpacity onPress={() => handleDelete(item._id)} style={[styles.actionButton, { backgroundColor: '#EF444420' }]}>
+          <Trash2 size={16} color="#EF4444" />
         </TouchableOpacity>
       </View>
     </View>
@@ -161,25 +173,37 @@ export default function ClientsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Clients</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage clients</Text>
+      {/* Enhanced Header */}
+      <LinearGradient
+        colors={['#06B6D4', '#0891B2']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerTitleSection}>
+            <View style={styles.headerIconContainer}>
+              <Building2 size={28} color="#FFF" />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Client Management</Text>
+              <Text style={styles.headerSubtitle}>Manage client information and contracts</Text>
+            </View>
           </View>
-          <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-            <Plus size={20} color="#FFF" />
+          <TouchableOpacity onPress={handleCreate} style={styles.headerButton}>
+            <Plus size={18} color="#FFF" />
           </TouchableOpacity>
         </View>
+      </LinearGradient>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
           <Search size={20} color={theme.colors.textSecondary} />
           <TextInput
-            placeholder="Search clients..."
+            placeholder="Search clients by name or code..."
             placeholderTextColor={theme.colors.textSecondary}
             value={searchTerm}
             onChangeText={setSearchTerm}
-            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text }}
+            style={[styles.searchInput, { color: theme.colors.text }]}
           />
         </View>
       </View>
@@ -267,3 +291,169 @@ export default function ClientsScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitleSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  headerButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  searchSection: {
+    padding: 20,
+    paddingBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  clientCard: {
+    padding: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  clientHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  clientIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  clientInfo: {
+    flex: 1,
+  },
+  clientName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  clientCode: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'monospace',
+  },
+  amountBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  clientDetails: {
+    marginBottom: 16,
+    gap: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailIcon: {
+    width: 24,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    width: 80,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clientActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  actionButton: {
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

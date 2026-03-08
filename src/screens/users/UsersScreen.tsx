@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Download } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, ChevronLeft, ChevronRight, Download, Users as UsersIcon, UserCheck, Shield } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
 import { fileService } from '../../services/fileService';
+import { LinearGradient } from 'react-native-linear-gradient';
 import { User, Role } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
@@ -194,70 +195,90 @@ export default function UsersScreen() {
   };
 
   const renderUser = ({ item }: { item: User }) => (
-    <View style={{ backgroundColor: theme.colors.surface, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#FFF', fontSize: 20, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
+    <View style={[styles.userCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+      <View style={styles.userHeader}>
+        <LinearGradient
+          colors={['#8B5CF6', '#7C3AED']}
+          style={styles.userAvatar}
+        >
+          <Text style={styles.userAvatarText}>{item.name.charAt(0)}</Text>
+        </LinearGradient>
+        <View style={styles.userInfo}>
+          <Text style={[styles.userName, { color: theme.colors.text }]}>{item.name}</Text>
+          <Text style={[styles.userEmail, { color: theme.colors.textSecondary }]}>{item.email}</Text>
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{item.name}</Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>{item.email}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: item.isActive ? '#10B98120' : '#EF444420' }]}>
+          <Text style={[styles.statusText, { color: item.isActive ? '#10B981' : '#EF4444' }]}>
+            {item.isActive ? 'Active' : 'Inactive'}
+          </Text>
         </View>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
+      
+      <View style={styles.userRoles}>
         {item.roles.map(role => (
-          <View key={role._id} style={{ backgroundColor: theme.colors.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginRight: 6, marginBottom: 6 }}>
-            <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600' }}>{role.name}</Text>
+          <View key={role._id} style={[styles.roleChip, { backgroundColor: theme.colors.primary + '20' }]}>
+            <Shield size={12} color={theme.colors.primary} />
+            <Text style={[styles.roleText, { color: theme.colors.primary }]}>{role.name}</Text>
           </View>
         ))}
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <TouchableOpacity onPress={() => toggleStatus(item)} style={{ backgroundColor: item.isActive ? '#10B98120' : '#EF444420', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
-          <Text style={{ color: item.isActive ? '#10B981' : '#EF4444', fontSize: 12, fontWeight: '600' }}>{item.isActive ? 'Active' : 'Inactive'}</Text>
+      
+      <View style={styles.userActions}>
+        <TouchableOpacity onPress={() => toggleStatus(item)} style={[styles.actionButton, { backgroundColor: '#3B82F620' }]}>
+          <UserCheck size={16} color="#3B82F6" />
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={() => handleEdit(item)} style={{ padding: 8, backgroundColor: '#3B82F620', borderRadius: 8 }}>
-            <Edit2 size={18} color="#3B82F6" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
-            <Trash2 size={18} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => handleEdit(item)} style={[styles.actionButton, { backgroundColor: '#F59E0B20' }]}>
+          <Edit2 size={16} color="#F59E0B" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionButton, { backgroundColor: '#EF444420' }]}>
+          <Trash2 size={16} color="#EF4444" />
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Users</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage system users</Text>
+      {/* Enhanced Header */}
+      <LinearGradient
+        colors={['#8B5CF6', '#7C3AED']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerTitleSection}>
+            <View style={styles.headerIconContainer}>
+              <UsersIcon size={28} color="#FFF" />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>User Management</Text>
+              <Text style={styles.headerSubtitle}>Manage system users and permissions</Text>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={styles.headerActions}>
             <TouchableOpacity 
               onPress={handleExport} 
               disabled={isExporting}
-              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
+              style={[styles.headerButton, { opacity: isExporting ? 0.6 : 1 }]}
             >
-              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={16} color="#FFF" />}
+              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={18} color="#FFF" />}
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-              <Plus size={20} color="#FFF" />
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
+            <TouchableOpacity onPress={handleCreate} style={styles.headerButton}>
+              <Plus size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
+      </LinearGradient>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
           <Search size={20} color={theme.colors.textSecondary} />
           <TextInput
-            placeholder="Search users..."
+            placeholder="Search users by name or email..."
             placeholderTextColor={theme.colors.textSecondary}
             value={searchTerm}
             onChangeText={setSearchTerm}
-            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text }}
+            style={[styles.searchInput, { color: theme.colors.text }]}
           />
         </View>
       </View>
@@ -388,3 +409,170 @@ export default function UsersScreen() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerGradient: {
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerTitleSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFF',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  searchSection: {
+    padding: 20,
+    paddingBottom: 12,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  userCard: {
+    padding: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  userHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  userAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  userAvatarText: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  userRoles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+    gap: 8,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  roleText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  userActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

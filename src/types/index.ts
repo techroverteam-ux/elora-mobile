@@ -1,8 +1,11 @@
-export interface PermissionSet {
-  view: boolean;
-  create: boolean;
-  edit: boolean;
-  delete: boolean;
+export interface User {
+  _id: string;
+  name: string;
+  email: string;
+  roles: Role[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Role {
@@ -10,72 +13,35 @@ export interface Role {
   name: string;
   code: string;
   permissions: Record<string, PermissionSet>;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface User {
-  _id: string;
-  name: string;
-  email: string;
-  roles: Role[];
-  isActive: boolean;
-}
-
-export enum StoreStatus {
-  UPLOADED = 'UPLOADED',
-  RECCE_ASSIGNED = 'RECCE_ASSIGNED',
-  RECCE_SUBMITTED = 'RECCE_SUBMITTED',
-  RECCE_APPROVED = 'RECCE_APPROVED',
-  RECCE_REJECTED = 'RECCE_REJECTED',
-  INSTALLATION_ASSIGNED = 'INSTALLATION_ASSIGNED',
-  INSTALLATION_SUBMITTED = 'INSTALLATION_SUBMITTED',
-  INSTALLATION_REJECTED = 'INSTALLATION_REJECTED',
-  COMPLETED = 'COMPLETED',
+export interface PermissionSet {
+  view: boolean;
+  create: boolean;
+  edit: boolean;
+  delete: boolean;
 }
 
 export interface Store {
   _id: string;
-  storeId: string;
+  storeId?: string;
   dealerCode: string;
   storeName: string;
-  vendorCode?: string;
   clientCode?: string;
   location: {
-    zone?: string;
+    city: string;
     state?: string;
     district?: string;
-    city: string;
-    address: string;
-    coordinates?: { lat: number; lng: number };
+    zone?: string;
+    address?: string;
+    pincode?: string;
   };
-  commercials?: {
-    poNumber?: string;
-    poMonth?: string;
-    invoiceNumber?: string;
-    invoiceRemarks?: string;
-    totalCost?: number;
-  };
-  costDetails?: {
-    boardRate?: number;
-    totalBoardCost?: number;
-    angleCharges?: number;
-    scaffoldingCharges?: number;
-    transportation?: number;
-    flanges?: number;
-    lollipop?: number;
-    oneWayVision?: number;
-    sunboard?: number;
-  };
-  specs?: {
-    boardSize?: string;
-    type?: string;
-    width?: number;
-    height?: number;
-    qty?: number;
-  };
-  currentStatus: StoreStatus;
-  workflow: {
-    recceAssignedTo?: { _id: string; name: string; email: string };
-    installationAssignedTo?: { _id: string; name: string; email: string };
+  currentStatus: string;
+  assignedTo?: {
+    recce?: User;
+    installation?: User;
   };
   createdAt: string;
   updatedAt: string;
@@ -83,30 +49,81 @@ export interface Store {
 
 export interface Enquiry {
   _id: string;
-  title: string;
-  description: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  assignedTo?: User;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  status: 'NEW' | 'READ' | 'CONTACTED' | 'RESOLVED';
+  remark?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Recce {
+export interface RFQ {
   _id: string;
-  storeId: Store;
-  assignedDate: string;
-  submittedDate?: string;
-  sizes?: { width: number; height: number };
-  photos?: { front: string; side: string; closeUp: string };
-  notes?: string;
-  status: string;
+  stores: Store[];
+  generatedBy: User;
+  status: 'DRAFT' | 'SENT' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Installation {
-  _id: string;
-  storeId: Store;
-  assignedDate: string;
-  submittedDate?: string;
-  photos?: { after1?: string; after2?: string };
-  status: string;
+export interface Analytics {
+  overview: {
+    totalStores: number;
+    activeUsers: number;
+    totalAssigned: number;
+    pending: number;
+    submitted: number;
+    approved: number;
+    completed: number;
+    completionRate: number;
+  };
+  recce: {
+    total: number;
+    assigned: number;
+    submitted: number;
+    approved: number;
+    rejected: number;
+    completionRate: number;
+  };
+  installation: {
+    total: number;
+    assigned: number;
+    submitted: number;
+    completed: number;
+    completionRate: number;
+  };
+  recentActivity: {
+    newStores: number;
+    recceSubmissions: number;
+    installations: number;
+    submissionsLast7Days: number;
+  };
+  topPerformers: {
+    recce: Array<{ name: string; count: number }>;
+    installation: Array<{ name: string; count: number }>;
+  };
+  distribution: {
+    byCity: Array<{ _id: string; count: number }>;
+  };
+  assignments: Array<{
+    storeName: string;
+    dealerCode: string;
+    city: string;
+    state: string;
+    assignedTo: string;
+    role: string;
+    date: string;
+    status: string;
+    storeId: string;
+  }>;
+  myTasks: Array<{
+    storeName: string;
+    city: string;
+    district: string;
+    state: string;
+    status: string;
+    assignedDate: string;
+  }>;
 }

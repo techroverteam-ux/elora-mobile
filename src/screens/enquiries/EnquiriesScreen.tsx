@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, RefreshControl, Modal, ScrollView, TextInput } from 'react-native';
-import { MessageSquare, Mail, Phone, Clock, User, X } from 'lucide-react-native';
+import { MessageSquare, Mail, Phone, Clock, User, X, ChevronDown } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { enquiryService } from '../../services/enquiryService';
 import Toast from 'react-native-toast-message';
@@ -25,10 +25,26 @@ export default function EnquiriesScreen() {
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [remark, setRemark] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<'NEW' | 'READ' | 'CONTACTED' | 'RESOLVED'>('NEW');
+
+  const statusOptions = [
+    { value: 'read', label: 'READ' },
+    { value: 'CONTACTED', label: 'CONTACTED' },
+    { value: 'RESOLVED', label: 'RESOLVED' }
+  ];
 
   useEffect(() => {
     fetchEnquiries();
   }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
 
   const fetchEnquiries = async () => {
     try {
@@ -61,6 +77,7 @@ export default function EnquiriesScreen() {
   const openEnquiry = async (enquiry: Enquiry) => {
     setSelectedEnquiry(enquiry);
     setRemark(enquiry.remark || '');
+    setSelectedStatus(enquiry.status);
     
     if (enquiry.status === 'NEW') {
       try {
@@ -90,6 +107,33 @@ export default function EnquiriesScreen() {
     }
   };
 
+  const updateStatus = async (newStatus: 'read' | 'CONTACTED' | 'RESOLVED') => {
+    if (!selectedEnquiry) return;
+    
+    try {
+      setSaving(true);
+      await enquiryService.updateRemark(selectedEnquiry._id, remark.trim(), newStatus);
+      
+      setEnquiries(prev => {
+        const updated = prev.map(e => e._id === selectedEnquiry._id ? { ...e, status: newStatus, remark: remark.trim() } : e);
+        return updated.sort((a, b) => {
+          if (a.status === 'NEW' && b.status !== 'NEW') return -1;
+          if (a.status !== 'NEW' && b.status === 'NEW') return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      });
+      
+      setSelectedStatus(newStatus);
+      setSelectedEnquiry(prev => prev ? { ...prev, status: newStatus } : null);
+      setShowStatusDropdown(false);
+      Toast.show({ type: 'success', text1: 'Status updated successfully' });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to update status' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderEnquiry = ({ item }: { item: Enquiry }) => (
     <TouchableOpacity
       onPress={() => openEnquiry(item)}
@@ -101,7 +145,7 @@ export default function EnquiriesScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
             <Clock size={12} color={theme.colors.textSecondary} />
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
-              {new Date(item.createdAt).toLocaleDateString()}
+              {formatDate(item.createdAt)}
             </Text>
           </View>
         </View>
@@ -163,13 +207,31 @@ export default function EnquiriesScreen() {
               {selectedEnquiry && (
                 <>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <View style={{ backgroundColor: getStatusColor(selectedEnquiry.status) + '20', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
-                      <Text style={{ color: getStatusColor(selectedEnquiry.status), fontSize: 12, fontWeight: '600' }}>{selectedEnquiry.status}</Text>
-                    </View>
+                    <TouchableOpacity 
+                      onPress={() => setShowStatusDropdown(!showStatusDropdown)}
+                      style={{ backgroundColor: getStatusColor(selectedEnquiry.status) + '20', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, flexDirection: 'row', alignItems: 'center' }}
+                    >
+                      <Text style={{ color: getStatusColor(selectedEnquiry.status), fontSize: 12, fontWeight: '600', marginRight: 4 }}>{selectedEnquiry.status}</Text>
+                      <ChevronDown size={12} color={getStatusColor(selectedEnquiry.status)} />
+                    </TouchableOpacity>
                     <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                      {new Date(selectedEnquiry.createdAt).toLocaleString()}
+                      {formatDate(selectedEnquiry.createdAt)}
                     </Text>
                   </View>
+
+                  {showStatusDropdown && (
+                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
+                      {statusOptions.map((option) => (
+                        <TouchableOpacity
+                          key={option.value}
+                          onPress={() => updateStatus(option.value as 'read' | 'CONTACTED' | 'RESOLVED')}
+                          style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                        >
+                          <Text style={{ color: theme.colors.text, fontSize: 14 }}>{option.label}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
 
                   <View style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, marginBottom: 16 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

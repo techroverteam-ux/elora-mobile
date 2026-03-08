@@ -13,7 +13,7 @@ const api = axios.create({
 
 // Add token to requests
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('authToken');
+  const token = await AsyncStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -58,13 +58,13 @@ api.interceptors.response.use(
         if (refreshToken) {
           const response = await api.post('/auth/refresh', { refreshToken });
           const newToken = response.data.token;
-          await AsyncStorage.setItem('authToken', newToken);
+          await AsyncStorage.setItem('access_token', newToken);
           processQueue(null, newToken);
           return api(originalRequest);
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
-        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('access_token');
         await AsyncStorage.removeItem('refreshToken');
         console.log('Token refresh failed, user needs to login again');
         return Promise.reject(refreshError);
@@ -312,6 +312,21 @@ export const clientAPI = {
 
   // Delete client
   deleteClient: (id: string) => api.delete(`/clients/${id}`),
+};
+
+// Elements API endpoints
+export const elementsAPI = {
+  // Get all elements
+  getElements: () => api.get('/elements'),
+
+  // Create element
+  createElement: (elementData: any) => api.post('/elements', elementData),
+
+  // Update element
+  updateElement: (id: string, elementData: any) => api.put(`/elements/${id}`, elementData),
+
+  // Delete element
+  deleteElement: (id: string) => api.delete(`/elements/${id}`),
 };
 
 // Enquiry API endpoints

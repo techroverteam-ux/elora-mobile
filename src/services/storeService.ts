@@ -1,15 +1,8 @@
 import api from '../lib/api';
-import { Store } from '../types';
 
 export const storeService = {
-  getAll: async (params?: { page?: number; limit?: number; search?: string; status?: string; city?: string }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', String(params.page));
-    if (params?.limit) queryParams.append('limit', String(params.limit));
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.status && params.status !== 'ALL') queryParams.append('status', params.status);
-    if (params?.city) queryParams.append('city', params.city);
-    const { data } = await api.get(`/stores?${queryParams.toString()}`);
+  getAll: async (params?: any) => {
+    const { data } = await api.get('/stores', { params });
     return data;
   },
 
@@ -23,7 +16,7 @@ export const storeService = {
     return data;
   },
 
-  update: async (id: string, storeData: Partial<Store>) => {
+  update: async (id: string, storeData: any) => {
     const { data } = await api.put(`/stores/${id}`, storeData);
     return data;
   },
@@ -33,94 +26,48 @@ export const storeService = {
     return data;
   },
 
-  assign: async (storeIds: string[], userId: string, stage: 'RECCE' | 'INSTALLATION') => {
-    const { data } = await api.post('/stores/assign', { storeIds, userId, stage });
+  bulkUpdate: async (storeIds: string[], updateData: any) => {
+    const { data } = await api.put('/stores/bulk', { storeIds, updateData });
     return data;
   },
 
-  unassign: async (storeIds: string[], stage: 'RECCE' | 'INSTALLATION') => {
-    const { data } = await api.post('/stores/unassign', { storeIds, stage });
+  bulkDelete: async (storeIds: string[]) => {
+    const { data } = await api.delete('/stores/bulk', { data: { storeIds } });
     return data;
   },
 
-  approveRecce: async (id: string) => {
-    const { data } = await api.post(`/stores/${id}/recce/review`, { status: 'APPROVED' });
-    return data;
-  },
-
-  rejectRecce: async (id: string) => {
-    const { data } = await api.post(`/stores/${id}/recce/review`, { status: 'REJECTED' });
-    return data;
-  },
-
-  // File Export APIs
   export: async (params?: any) => {
-    const queryParams = new URLSearchParams();
-    if (params) Object.entries(params).forEach(([key, value]) => {
-      if (value) queryParams.append(key, String(value));
+    const response = await api.get('/stores/export', { 
+      params,
+      responseType: 'blob'
     });
-    const { data } = await api.get(`/stores/export?${queryParams.toString()}`, { responseType: 'blob' });
-    return data;
+    return response.data;
   },
 
-  exportRecce: async () => {
-    const { data } = await api.get('/stores/export/recce', { responseType: 'blob' });
-    return data;
-  },
-
-  exportInstallation: async () => {
-    const { data } = await api.get('/stores/export/installation', { responseType: 'blob' });
-    return data;
-  },
-
-  getTemplate: async () => {
-    const { data } = await api.get('/stores/template', { responseType: 'blob' });
-    return data;
-  },
-
-  getExcel: async (storeId: string, type: string) => {
-    const { data } = await api.get(`/stores/${storeId}/excel/${type}`, { responseType: 'blob' });
-    return data;
-  },
-
-  getPdf: async (storeId: string, type: string) => {
-    const { data } = await api.get(`/stores/${storeId}/pdf/${type}`, { responseType: 'blob' });
-    return data;
-  },
-
-  getPpt: async (storeId: string, type: string) => {
-    const { data } = await api.get(`/stores/${storeId}/ppt/${type}`, { responseType: 'blob' });
-    return data;
-  },
-
-  bulkPdf: async (storeIds: string[], type: string) => {
-    const { data } = await api.post('/stores/pdf/bulk', { storeIds, type }, { responseType: 'blob' });
-    return data;
-  },
-
-  bulkPpt: async (storeIds: string[], type: string) => {
-    const { data } = await api.post('/stores/ppt/bulk', { storeIds, type }, { responseType: 'blob' });
-    return data;
-  },
-
-  upload: async (formData: FormData) => {
-    const { data } = await api.post('/stores/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  uploadBulk: async (file: any) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const { data } = await api.post('/stores/bulk-upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     return data;
   },
 
-  submitRecce: async (id: string, formData: FormData) => {
-    const { data } = await api.post(`/stores/${id}/recce`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  assignRecce: async (storeId: string, userId: string) => {
+    const { data } = await api.post(`/stores/${storeId}/assign-recce`, { userId });
     return data;
   },
 
-  submitInstallation: async (id: string, formData: FormData) => {
-    const { data } = await api.post(`/stores/${id}/installation`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  assignInstallation: async (storeId: string, userId: string) => {
+    const { data } = await api.post(`/stores/${storeId}/assign-installation`, { userId });
+    return data;
+  },
+
+  reviewReccePhoto: async (storeId: string, photoIndex: number, status: 'APPROVED' | 'REJECTED', reason?: string) => {
+    const { data } = await api.put(`/stores/${storeId}/recce-photos/${photoIndex}/review`, { status, reason });
     return data;
   },
 };
