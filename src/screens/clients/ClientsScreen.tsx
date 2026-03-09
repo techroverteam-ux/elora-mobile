@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, StyleSheet } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, ChevronLeft, ChevronRight, Building2, MapPin, CreditCard, FileText } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, Building2, MapPin, CreditCard, Download } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { clientService } from '../../services/clientService';
-import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 
@@ -28,6 +27,8 @@ export default function ClientsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     clientName: '',
     branchName: '',
@@ -99,72 +100,66 @@ export default function ClientsScreen() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete Client', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await clientService.delete(id);
-            Toast.show({ type: 'success', text1: 'Client deleted' });
-            fetchClients();
-          } catch (error) {
-            Toast.show({ type: 'error', text1: 'Failed to delete client' });
-          }
-        },
-      },
-    ]);
+  const handleDelete = (client: Client) => {
+    setClientToDelete(client);
+    setDeleteModalVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!clientToDelete) return;
+    
+    try {
+      await clientService.delete(clientToDelete._id);
+      Toast.show({ type: 'success', text1: 'Client deleted successfully' });
+      setDeleteModalVisible(false);
+      setClientToDelete(null);
+      fetchClients();
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to delete client' });
+    }
   };
 
   const renderClient = ({ item }: { item: Client }) => (
-    <View style={[styles.clientCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-      <View style={styles.clientHeader}>
-        <LinearGradient
-          colors={['#06B6D4', '#0891B2']}
-          style={styles.clientIcon}
-        >
-          <Building2 size={24} color="#FFF" />
-        </LinearGradient>
-        <View style={styles.clientInfo}>
-          <Text style={[styles.clientName, { color: theme.colors.text }]}>{item.clientName}</Text>
-          <Text style={[styles.clientCode, { color: theme.colors.textSecondary }]}>{item.clientCode}</Text>
+    <View style={{ backgroundColor: theme.colors.surface, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+            {item.clientCode}
+          </Text>
+          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
+            {item.clientName}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MapPin size={12} color={theme.colors.textSecondary} />
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
+              {item.branchName}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.amountBadge, { backgroundColor: '#10B98120' }]}>
-          <Text style={[styles.amountText, { color: '#10B981' }]}>₹{item.amount.toLocaleString()}</Text>
+        <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+          <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>
+            ₹{item.amount.toLocaleString()}
+          </Text>
         </View>
       </View>
 
-      <View style={styles.clientDetails}>
-        <View style={styles.detailRow}>
-          <View style={styles.detailIcon}>
-            <MapPin size={14} color={theme.colors.textSecondary} />
-          </View>
-          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Branch:</Text>
-          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{item.branchName}</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+        <View>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>GST Number</Text>
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', fontFamily: 'monospace' }}>{item.gstNumber}</Text>
         </View>
-        <View style={styles.detailRow}>
-          <View style={styles.detailIcon}>
-            <CreditCard size={14} color={theme.colors.textSecondary} />
-          </View>
-          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>GST:</Text>
-          <Text style={[styles.detailValue, { color: theme.colors.text, fontFamily: 'monospace' }]}>{item.gstNumber}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <View style={styles.detailIcon}>
-            <FileText size={14} color={theme.colors.textSecondary} />
-          </View>
-          <Text style={[styles.detailLabel, { color: theme.colors.textSecondary }]}>Elements:</Text>
-          <Text style={[styles.detailValue, { color: theme.colors.text }]}>{item.elements.length} element(s)</Text>
+        <View>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Elements</Text>
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.elements.length}</Text>
         </View>
       </View>
 
-      <View style={styles.clientActions}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={[styles.actionButton, { backgroundColor: '#F59E0B20' }]}>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity onPress={() => handleEdit(item)} style={{ flex: 1, backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
           <Edit2 size={16} color="#F59E0B" />
+          <Text style={{ color: '#F59E0B', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item._id)} style={[styles.actionButton, { backgroundColor: '#EF444420' }]}>
+        <TouchableOpacity onPress={() => handleDelete(item)} style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8 }}>
           <Trash2 size={16} color="#EF4444" />
         </TouchableOpacity>
       </View>
@@ -173,37 +168,41 @@ export default function ClientsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Enhanced Header */}
-      <LinearGradient
-        colors={['#06B6D4', '#0891B2']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTitleSection}>
-            <View style={styles.headerIconContainer}>
-              <Building2 size={28} color="#FFF" />
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Client Management</Text>
-              <Text style={styles.headerSubtitle}>Manage client information and contracts</Text>
-            </View>
+      {/* Simple Header */}
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <View>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Client Management</Text>
+            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your clients</Text>
           </View>
-          <TouchableOpacity onPress={handleCreate} style={styles.headerButton}>
-            <Plus size={18} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity 
+              onPress={() => {
+                Toast.show({ 
+                  type: 'info', 
+                  text1: 'Export Feature', 
+                  text2: 'Please use web portal for downloads' 
+                });
+              }}
+              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+            >
+              <Download size={16} color="#FFF" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+              <Plus size={16} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </LinearGradient>
 
-      {/* Search Section */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
+        {/* Simple Search */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
           <Search size={20} color={theme.colors.textSecondary} />
           <TextInput
-            placeholder="Search clients by name or code..."
+            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
+            placeholder="Search clients..."
             placeholderTextColor={theme.colors.textSecondary}
             value={searchTerm}
             onChangeText={setSearchTerm}
-            style={[styles.searchInput, { color: theme.colors.text }]}
           />
         </View>
       </View>
@@ -215,19 +214,8 @@ export default function ClientsScreen() {
           data={clients}
           renderItem={renderClient}
           keyExtractor={item => item._id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 0 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchClients(); }} colors={[theme.colors.primary]} />}
-          ListFooterComponent={
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, gap: 12 }}>
-              <TouchableOpacity onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, opacity: page === 1 ? 0.5 : 1 }}>
-                <ChevronLeft size={20} color={theme.colors.text} />
-              </TouchableOpacity>
-              <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Page {page} of {totalPages}</Text>
-              <TouchableOpacity onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, opacity: page === totalPages ? 0.5 : 1 }}>
-                <ChevronRight size={20} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
-          }
         />
       )}
 
@@ -288,172 +276,41 @@ export default function ClientsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={deleteModalVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                <Trash2 size={32} color="#EF4444" />
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete Client</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
+                Are you sure you want to delete "{clientToDelete?.clientName}"? This action cannot be undone and will permanently remove all client data.
+              </Text>
+            </View>
+            
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setClientToDelete(null);
+                }}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmDelete}
+                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  headerGradient: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitleSection: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  headerButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  searchSection: {
-    padding: 20,
-    paddingBottom: 12,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  clientCard: {
-    padding: 20,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  clientHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  clientIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  clientCode: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'monospace',
-  },
-  amountBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  amountText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  clientDetails: {
-    marginBottom: 16,
-    gap: 12,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailIcon: {
-    width: 24,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    width: 80,
-  },
-  detailValue: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  clientActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-  },
-  actionButton: {
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

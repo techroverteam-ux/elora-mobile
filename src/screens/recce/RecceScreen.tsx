@@ -161,16 +161,11 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
   };
 
   const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const blob = await recceService.export();
-      await fileService.downloadFile(blob, 'Recce_Export.xlsx');
-      Toast.show({ type: 'success', text1: 'Recce data exported successfully!' });
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Export failed' });
-    } finally {
-      setIsExporting(false);
-    }
+    Toast.show({ 
+      type: 'info', 
+      text1: 'Export Feature', 
+      text2: 'Please use web portal for downloads' 
+    });
   };
 
   const handleBulkPPTDownload = async () => {
@@ -369,9 +364,6 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your recce assignments</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={handleDebugAPI} style={{ backgroundColor: '#6366F1', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
-              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600' }}>Debug API</Text>
-            </TouchableOpacity>
             <TouchableOpacity onPress={handleExport} disabled={isExporting} style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}>
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />

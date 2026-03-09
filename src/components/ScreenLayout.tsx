@@ -3,20 +3,21 @@ import { View, StyleSheet } from 'react-native';
 import Header from './Header';
 
 interface ScreenLayoutProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   status?: 'Completed' | 'Pending' | 'In Progress';
   onMenuPress: () => void;
+  onBackPress?: () => void;
+  showBackButton?: boolean;
   onProfilePress?: () => void;
   hasNotifications?: boolean;
   children: React.ReactNode;
 }
 
 const ScreenLayout: React.FC<ScreenLayoutProps> = ({
-  title,
-  subtitle,
-  status,
   onMenuPress,
+  onBackPress,
+  showBackButton = false,
   onProfilePress,
   hasNotifications = false,
   children
@@ -24,10 +25,9 @@ const ScreenLayout: React.FC<ScreenLayoutProps> = ({
   return (
     <View style={styles.container}>
       <Header
-        title={title}
-        subtitle={subtitle}
-        status={status}
         onMenuPress={onMenuPress}
+        onBackPress={onBackPress}
+        showBackButton={showBackButton}
         onProfilePress={onProfilePress}
         hasNotifications={hasNotifications}
       />

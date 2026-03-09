@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, Dimensions, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Dimensions, Alert, PermissionsAndroid, Platform } from 'react-native';
 import { Camera, X, Capture, RotateCcw, Check } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { permissionService } from '../services/permissionService';
 import Svg, { Line, Text as SvgText, G, Rect } from 'react-native-svg';
+import { launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 
 interface MeasurementCameraProps {
   visible: boolean;
@@ -43,12 +45,85 @@ export default function MeasurementCamera({
     
     setIsCapturing(true);
     
-    // Simulate photo capture with loading
-    setTimeout(() => {
-      const mockPhotoUri = `recce_${photoType}_${width}x${height}_${Date.now()}.jpg`;
-      setCapturedPhoto(mockPhotoUri);
+    try {
+      // Check camera permission first
+      const hasPermission = await permissionService.checkCameraPermission();
+      
+      if (!hasPermission) {
+        const granted = await permissionService.requestCameraPermission();
+        if (!granted) {
+          permissionService.showPermissionDeniedAlert();
+          setIsCapturing(false);
+          return;
+        }
+      }
+      
+      const options = {
+        mediaType: 'photo' as MediaType,
+        includeBase64: false,
+        maxHeight: 2000,
+        maxWidth: 2000,
+        quality: 0.8,
+        saveToPhotos: false,
+        cameraType: 'back' as const,
+        storageOptions: {
+          skipBackup: true,
+          path: 'images',
+        },
+      };
+      
+      console.log('Opening camera with options:', options);
+      
+      launchCamera(options, (response: ImagePickerResponse) => {
+        setIsCapturing(false);
+        
+        console.log('Camera response:', response);
+        
+        if (response.didCancel) {
+          console.log('User cancelled camera');
+          return;
+        }
+        
+        if (response.errorCode) {
+          let errorMessage = 'Camera error occurred';
+          switch (response.errorCode) {
+            case 'camera_unavailable':
+              errorMessage = 'Camera is not available on this device. Please ensure you are using a real device with a working camera.';
+              break;
+            case 'permission':
+              errorMessage = 'Camera permission denied. Please enable camera permission in settings.';
+              permissionService.showPermissionDeniedAlert();
+              return;
+            default:
+              errorMessage = `Camera error: ${response.errorMessage || response.errorCode}`;
+          }
+          
+          Alert.alert('Camera Error', errorMessage);
+          return;
+        }
+        
+        if (response.errorMessage) {
+          Alert.alert('Camera Error', `${response.errorMessage}\n\nNote: Camera functionality requires a real device with camera hardware.`);
+          return;
+        }
+        
+        if (response.assets && response.assets[0]) {
+          const photoUri = response.assets[0].uri;
+          if (photoUri) {
+            console.log('Photo captured successfully:', photoUri);
+            setCapturedPhoto(photoUri);
+          } else {
+            Alert.alert('Error', 'Failed to capture photo. Please try again.');
+          }
+        } else {
+          Alert.alert('Error', 'No photo was captured. Please try again.');
+        }
+      });
+    } catch (error) {
       setIsCapturing(false);
-    }, 1000);
+      console.error('Camera error:', error);
+      Alert.alert('Camera Error', 'Failed to open camera. Please ensure you are using a real device with camera access enabled.');
+    }
   };
 
   const handleConfirm = () => {
@@ -247,7 +322,7 @@ export default function MeasurementCamera({
                       textAnchor="middle"
                       fontWeight="bold"
                     >
-                      {width} ft
+                      {`${width} ft`}
                     </SvgText>
                     
                     {/* Height measurement label */}
@@ -267,7 +342,7 @@ export default function MeasurementCamera({
                       textAnchor="middle"
                       fontWeight="bold"
                     >
-                      {height} ft
+                      {`${height} ft`}
                     </SvgText>
                   </G>
                 </Svg>

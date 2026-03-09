@@ -1,29 +1,21 @@
 #!/bin/bash
 
-echo "🚀 Building Release APK for Client..."
+echo "Building Release APK..."
 
-# Clean previous builds
-echo "🧹 Cleaning previous builds..."
-cd android
-./gradlew clean
+# Use existing Java 15 (compatible with older Gradle)
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-15.0.2.jdk/Contents/Home
 
 # Build release APK
-echo "📦 Building release APK..."
+cd android
+./gradlew clean
 ./gradlew assembleRelease
 
-# Check if build was successful
-if [ $? -eq 0 ]; then
-    echo "✅ Build successful!"
-    echo "📱 APK location: android/app/build/outputs/apk/release/app-release.apk"
-    
-    # Copy APK to root with version name
-    cp app/build/outputs/apk/release/app-release.apk ../EloraMob-v1.3-release.apk
-    echo "📋 APK copied to: EloraMob-v1.3-release.apk"
-    
-    # Show APK info
-    echo "📊 APK Info:"
-    ls -lh ../EloraMob-v1.3-release.apk
+# Copy APK to root with timestamp
+if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+    TIMESTAMP=$(date +"%Y%m%d_%H%M")
+    cp app/build/outputs/apk/release/app-release.apk ../EloraMob_Camera_${TIMESTAMP}.apk
+    echo "✅ APK ready: EloraMob_Camera_${TIMESTAMP}.apk"
+    echo "📲 Share via WhatsApp using whatsapp-message-template.txt"
 else
-    echo "❌ Build failed!"
-    exit 1
+    echo "❌ Build failed"
 fi

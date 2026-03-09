@@ -220,20 +220,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   // Export Functions
   const handleExportStores = async () => {
-    setIsExporting(true);
-    try {
-      const params = {
-        status: filterStatus !== 'ALL' ? filterStatus : undefined,
-        search: searchTerm || undefined,
-      };
-      const blob = await storeService.export(params);
-      await fileService.downloadFile(blob, `Stores_Export_${Date.now()}.xlsx`);
-      Toast.show({ type: 'success', text1: 'Stores exported successfully!' });
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to export stores' });
-    } finally {
-      setIsExporting(false);
-    }
+    Toast.show({ 
+      type: 'info', 
+      text1: 'Export Feature', 
+      text2: 'Please use web portal for downloads' 
+    });
   };
 
   const handleBulkDelete = async () => {
@@ -449,7 +440,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           })
         }
       };
-      await storeService.create(payload);
+      const response = await storeService.create(payload);
       Toast.show({ type: 'success', text1: 'Store added successfully!' });
       setIsAddStoreModalOpen(false);
       setNewStoreData({
@@ -459,6 +450,18 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         latitude: '', longitude: ''
       });
       fetchStores();
+      
+      // Show assign recce option after successful store creation
+      if (response.store) {
+        setTimeout(() => {
+          Toast.show({
+            type: 'info',
+            text1: 'Store Created Successfully!',
+            text2: 'Tap the assign button (👤+) to assign recce inspection',
+            visibilityTime: 5000
+          });
+        }, 1000);
+      }
     } catch (error: any) {
       Toast.show({ type: 'error', text1: error.response?.data?.message || 'Failed to add store' });
     }
@@ -556,12 +559,13 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View</Text>
           </TouchableOpacity>
           
-          {item.currentStatus === StoreStatus.UPLOADED && (
+          {(item.currentStatus === StoreStatus.UPLOADED || !item.workflow.recceAssignedTo) && (
             <TouchableOpacity 
               onPress={() => openAssignModal('RECCE', item)} 
-              style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8 }}
+              style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'center' }}
             >
               <UserPlus size={16} color="#3B82F6" />
+              <Text style={{ color: '#3B82F6', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>Assign</Text>
             </TouchableOpacity>
           )}
           
@@ -585,9 +589,10 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           {item.currentStatus === StoreStatus.RECCE_APPROVED && (
             <TouchableOpacity 
               onPress={() => openAssignModal('INSTALLATION', item)} 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8 }}
+              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'center' }}
             >
               <UserPlus size={16} color="#10B981" />
+              <Text style={{ color: '#10B981', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>Install</Text>
             </TouchableOpacity>
           )}
           
@@ -616,27 +621,24 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Enhanced Header */}
-      <LinearGradient
-        colors={['#F6B21C', '#FECC00']}
-        style={styles.headerGradient}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.headerTitleSection}>
-            <Text style={styles.headerTitle}>Store Operations</Text>
-            <Text style={styles.headerSubtitle}>Manage and track all store activities</Text>
+      {/* Simple Header */}
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <View>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Store Operations</Text>
+            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage store activities</Text>
           </View>
-          <View style={styles.headerActions}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             <BulkUpload onUploadComplete={fetchStores} />
             <TouchableOpacity 
               onPress={handleExportStores} 
               disabled={isExporting}
-              style={[styles.headerButton, { opacity: isExporting ? 0.6 : 1 }]}
+              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
             >
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Download size={18} color="#FFF" />
+                <Download size={16} color="#FFF" />
               )}
             </TouchableOpacity>
             <TouchableOpacity 
@@ -645,114 +647,24 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 setIsAddStoreModalOpen(true);
                 setTimeout(() => console.log('Modal state after click:', isAddStoreModalOpen), 100);
               }} 
-              style={styles.headerButton}
+              style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
             >
-              <Plus size={18} color="#FFF" />
+              <Plus size={16} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
 
-      {/* Search and Filters */}
-      <View style={styles.filtersContainer}>
-        <View style={styles.searchContainer}>
+        {/* Simple Search */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
           <Search size={20} color={theme.colors.textSecondary} />
           <TextInput
-            style={[styles.searchInput, { color: theme.colors.text }]}
-            placeholder="Search stores, dealers..."
+            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
+            placeholder="Search stores..."
             placeholderTextColor={theme.colors.textSecondary}
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
         </View>
-        
-        {/* Filter Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterPills}>
-          <TouchableOpacity 
-            onPress={() => setShowStatusFilter(!showStatusFilter)}
-            style={[styles.filterPill, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-          >
-            <Text style={[styles.filterPillText, { color: theme.colors.text }]}>
-              {filterStatus === 'ALL' ? 'All Status' : filterStatus.replace(/_/g, ' ')}
-            </Text>
-            <ChevronDown size={14} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-          
-          {filterCity && (
-            <View style={[styles.activeFilter, { backgroundColor: theme.colors.primary + '20' }]}>
-              <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>City: {filterCity}</Text>
-            </View>
-          )}
-          
-          {filterClientCode && (
-            <View style={[styles.activeFilter, { backgroundColor: theme.colors.primary + '20' }]}>
-              <Text style={[styles.activeFilterText, { color: theme.colors.primary }]}>Client: {filterClientCode}</Text>
-            </View>
-          )}
-        </ScrollView>
-        
-        {/* Additional Filters Row */}
-        <View style={styles.additionalFilters}>
-          <TextInput
-            style={[styles.filterInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text }]}
-            placeholder="Filter by City"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={filterCity}
-            onChangeText={setFilterCity}
-          />
-          <TextInput
-            style={[styles.filterInput, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border, color: theme.colors.text }]}
-            placeholder="Client Code"
-            placeholderTextColor={theme.colors.textSecondary}
-            value={filterClientCode}
-            onChangeText={setFilterClientCode}
-          />
-        </View>
-        
-        {showStatusFilter && (
-          <View style={[styles.statusDropdown, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-            {['ALL', ...Object.values(StoreStatus)].map((status) => (
-              <TouchableOpacity
-                key={status}
-                onPress={() => {
-                  setFilterStatus(status);
-                  setShowStatusFilter(false);
-                }}
-                style={[styles.statusOption, { borderBottomColor: theme.colors.border }]}
-              >
-                <Text style={[styles.statusOptionText, { color: theme.colors.text }]}>
-                  {status === 'ALL' ? 'All Status' : status.replace(/_/g, ' ')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-        
-        {selectedStoreIds.size > 0 && (
-          <View style={styles.bulkActions}>
-            <TouchableOpacity 
-              onPress={() => handleBulkAssign('RECCE')}
-              style={[styles.bulkActionButton, { backgroundColor: '#3B82F6' }]}
-            >
-              <UserPlus size={16} color="#FFF" />
-              <Text style={styles.bulkActionText}>
-                Assign Recce ({selectedStoreIds.size})
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => handleBulkAssign('INSTALLATION')}
-              style={[styles.bulkActionIcon, { backgroundColor: '#10B981' }]}
-            >
-              <UserPlus size={16} color="#FFF" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleBulkDelete}
-              style={[styles.bulkActionIcon, { backgroundColor: '#EF4444' }]}
-            >
-              <Trash2 size={16} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        )}
       </View>
 
       {loading ? (
@@ -1181,152 +1093,3 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   );
 }
 
-const styles = StyleSheet.create({
-  headerGradient: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitleSection: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#FFF',
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  headerButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  filtersContainer: {
-    padding: 20,
-    paddingBottom: 12,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  filterPills: {
-    marginBottom: 16,
-  },
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 12,
-  },
-  filterPillText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 6,
-  },
-  activeFilter: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  activeFilterText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  additionalFilters: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  filterInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  statusDropdown: {
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  statusOption: {
-    padding: 16,
-    borderBottomWidth: 1,
-  },
-  statusOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bulkActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  bulkActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  bulkActionText: {
-    color: '#FFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  bulkActionIcon: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

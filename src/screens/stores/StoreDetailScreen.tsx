@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
-import { MapPin, Calendar, User, IndianRupee, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Image, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { MapPin, Calendar, User, IndianRupee, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet, UserPlus, CheckSquare, Square, Search, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
+import { userService } from '../../services/userService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 import StoreDetailsEditor from '../../components/StoreDetailsEditor';
@@ -103,16 +104,40 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
   const { storeId } = route.params;
   const [store, setStore] = useState<StoreDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Assignment modal state
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignStage, setAssignStage] = useState<'RECCE' | 'INSTALLATION'>('INSTALLATION');
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
 
   useEffect(() => {
     fetchStoreDetail();
   }, [storeId]);
 
+  // Filter users based on search term
+  useEffect(() => {
+    if (!userSearchTerm) {
+      setFilteredUsers(availableUsers);
+    } else {
+      const filtered = availableUsers.filter(user => 
+        user.name.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(userSearchTerm.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [userSearchTerm, availableUsers]);
+
   const fetchStoreDetail = async () => {
     try {
       setLoading(true);
-      const { data } = await storeService.getById(storeId);
-      setStore(data.store);
+      const response = await storeService.getById(storeId);
+      // Handle different response structures
+      const storeData = response.store || response.data?.store || response.data || response;
+      setStore(storeData);
     } catch (error) {
       console.error('Error fetching store detail:', error);
       Toast.show({ type: 'error', text1: 'Failed to load store details' });
@@ -171,6 +196,43 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
     }
   };
 
+  const openAssignModal = async (stage: 'RECCE' | 'INSTALLATION') => {
+    setAssignStage(stage);
+    setSelectedUserId('');
+    setUserSearchTerm('');
+    
+    try {
+      const roleCode = stage === 'RECCE' ? 'RECCE' : 'INSTALLATION';
+      const data = await userService.getByRole(roleCode);
+      setAvailableUsers(data.users || []);
+      setFilteredUsers(data.users || []);
+      setIsAssignModalOpen(true);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: `Failed to fetch ${stage} users` });
+      setAvailableUsers([]);
+      setFilteredUsers([]);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!selectedUserId) {
+      Toast.show({ type: 'error', text1: 'Please select a user' });
+      return;
+    }
+    
+    setIsAssigning(true);
+    try {
+      await storeService.assign([storeId], selectedUserId, assignStage);
+      Toast.show({ type: 'success', text1: 'Assignment successful!' });
+      setIsAssignModalOpen(false);
+      fetchStoreDetail(); // Refresh store data
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: error.response?.data?.message || 'Assignment failed' });
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   if (loading) {
     return <PageSkeleton type="dashboard" />;
   }
@@ -184,7 +246,8 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.background }} contentContainerStyle={{ padding: 16 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
         {/* Status Card */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
@@ -524,7 +587,7 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
             )}
 
             {/* Installation Information */}
-            {store.workflow.installationAssignedTo && (
+            {store.workflow.installationAssignedTo ? (
               <View>
                 <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
                   Installation Assigned To
@@ -558,6 +621,33 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                   </Text>
                 )}
               </View>
+            ) : (
+              // Show assign installation button if recce is approved but no installation assigned
+              store.currentStatus === 'RECCE_APPROVED' && (
+                <View style={{ alignItems: 'center', padding: 20 }}>
+                  <User size={32} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 12 }} />
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                    No Installation Assigned
+                  </Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 16 }}>
+                    Assign an installation user to proceed with the next phase
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => openAssignModal('INSTALLATION')}
+                    style={{
+                      backgroundColor: '#10B981',
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <UserPlus size={16} color="#FFF" />
+                    <Text style={{ color: '#FFF', marginLeft: 8, fontWeight: '600' }}>Assign Installation</Text>
+                  </TouchableOpacity>
+                </View>
+              )
             )}
           </View>
         </View>
@@ -720,5 +810,125 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
           </View>
         </View>
       </ScrollView>
-    );
+      
+      <Modal
+        visible={isAssignModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsAssignModalOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ 
+            backgroundColor: theme.colors.background, 
+            borderTopLeftRadius: 20, 
+            borderTopRightRadius: 20, 
+            maxHeight: '80%',
+            paddingBottom: 20
+          }}>
+            <View style={{ padding: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+                  Assign {assignStage}
+                </Text>
+                <TouchableOpacity onPress={() => setIsAssignModalOpen(false)}>
+                  <X size={24} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 16 }}>
+                <Search size={16} color={theme.colors.textSecondary} />
+                <TextInput
+                  style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, color: theme.colors.text, fontSize: 14 }}
+                  placeholder="Search by name or email..."
+                  placeholderTextColor={theme.colors.textSecondary}
+                  value={userSearchTerm}
+                  onChangeText={setUserSearchTerm}
+                />
+              </View>
+              
+              <ScrollView style={{ maxHeight: 300 }}>
+                {filteredUsers.map(user => (
+                  <TouchableOpacity
+                    key={user._id}
+                    onPress={() => setSelectedUserId(user._id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 8,
+                      marginBottom: 8,
+                      backgroundColor: selectedUserId === user._id ? theme.colors.primary + '20' : theme.colors.surface,
+                      borderWidth: 1,
+                      borderColor: selectedUserId === user._id ? theme.colors.primary : theme.colors.border
+                    }}
+                  >
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: selectedUserId === user._id ? theme.colors.primary : theme.colors.border,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12
+                    }}>
+                      <Text style={{
+                        color: selectedUserId === user._id ? '#FFF' : theme.colors.text,
+                        fontWeight: 'bold'
+                      }}>
+                        {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{user.name}</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{user.email}</Text>
+                    </View>
+                    {selectedUserId === user._id && (
+                      <CheckSquare size={20} color={theme.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+                {filteredUsers.length === 0 && (
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <User size={32} color={theme.colors.textSecondary} style={{ opacity: 0.5, marginBottom: 8 }} />
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>No users found</Text>
+                  </View>
+                )}
+              </ScrollView>
+              
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setIsAssignModalOpen(false)}
+                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
+                >
+                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAssign}
+                  disabled={!selectedUserId || isAssigning}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: (!selectedUserId || isAssigning) ? theme.colors.border : theme.colors.primary,
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {isAssigning ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <UserPlus size={16} color="#FFF" />
+                  )}
+                  <Text style={{ color: '#FFF', fontWeight: '600', marginLeft: 8 }}>
+                    {isAssigning ? 'Assigning...' : 'Assign'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }

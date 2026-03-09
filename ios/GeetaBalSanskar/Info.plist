@@ -35,6 +35,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to take photos during store inspections, capture measurement references, and document installation progress.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to photo library to save inspection photos</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

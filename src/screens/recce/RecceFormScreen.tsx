@@ -68,6 +68,10 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     updatedAddress: ''
   });
 
+  // Enhanced state for better UX
+  const [isResubmission, setIsResubmission] = useState(false);
+  const [showElementSelector, setShowElementSelector] = useState<number | null>(null);
+
   useEffect(() => {
     loadStoreData();
     getCurrentLocationAndAddress();
@@ -97,6 +101,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       
       // Load existing recce data if resubmission
       if (store.recce && store.recce.submittedDate) {
+        setIsResubmission(true);
         if (store.recce.notes) setNotes(store.recce.notes);
         
         // Load existing initial photos
@@ -329,7 +334,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const updateReccePhoto = (index: number, field: keyof ReccePhoto, value: string) => {
     const newReccePhotos = [...reccePhotos];
     if (field === 'elementId') {
-      const selectedElement = clientElements.find(el => el.elementId.toString() === value);
+      const selectedElement = clientElements.find(el => (el.elementId || el._id)?.toString() === value);
       newReccePhotos[index].elementId = value;
       newReccePhotos[index].elementName = selectedElement?.elementName || '';
     } else {
@@ -653,12 +658,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                 <View style={{ marginTop: 8, gap: 8 }}>
                   {clientElements.map((element: any) => (
                     <TouchableOpacity
-                      key={element.elementId}
-                      onPress={() => updateReccePhoto(index, 'elementId', element.elementId.toString())}
+                      key={element.elementId || element._id}
+                      onPress={() => updateReccePhoto(index, 'elementId', (element.elementId || element._id)?.toString() || '')}
                       style={{
-                        backgroundColor: reccePhoto.elementId === element.elementId.toString() ? theme.colors.primary + '20' : theme.colors.surface,
+                        backgroundColor: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary + '20' : theme.colors.surface,
                         borderWidth: 1,
-                        borderColor: reccePhoto.elementId === element.elementId.toString() ? theme.colors.primary : theme.colors.border,
+                        borderColor: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.border,
                         borderRadius: 8,
                         padding: 12,
                         flexDirection: 'row',
@@ -667,64 +672,107 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                       }}
                     >
                       <Text style={{ 
-                        color: reccePhoto.elementId === element.elementId.toString() ? theme.colors.primary : theme.colors.text, 
+                        color: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.text, 
                         fontSize: 14, 
                         fontWeight: '600' 
                       }}>
-                        {element.elementName}
+                        {element.elementName || 'Unknown Element'}
                       </Text>
                       <Text style={{ 
-                        color: reccePhoto.elementId === element.elementId.toString() ? theme.colors.primary : theme.colors.textSecondary, 
+                        color: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.textSecondary, 
                         fontSize: 12 
                       }}>
-                        ₹{element.customRate}
+                        ₹{element.customRate || 0}
                       </Text>
                     </TouchableOpacity>
-                  ))}
+                  ))}}
                 </View>
               </View>
             )}
             
-            {/* Photo Capture */}
-            <TouchableOpacity
-              onPress={() => captureReccePhoto(index)}
-              style={{
-                backgroundColor: reccePhoto.photo ? theme.colors.primary + '15' : theme.colors.background,
-                borderWidth: 2,
-                borderColor: reccePhoto.photo ? theme.colors.primary : theme.colors.border,
-                borderStyle: reccePhoto.photo ? 'solid' : 'dashed',
-                borderRadius: 12,
-                padding: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 120
-              }}
-            >
-              {reccePhoto.photo ? (
-                <View style={{ alignItems: 'center' }}>
-                  <Camera size={28} color={theme.colors.primary} />
-                  <Text style={{ color: theme.colors.primary, fontSize: 14, marginTop: 6, fontWeight: '700' }}>
-                    Photo Captured
-                  </Text>
-                  <Text style={{ color: theme.colors.primary, fontSize: 11, marginTop: 2, opacity: 0.8 }}>
-                    {reccePhoto.width} × {reccePhoto.height} ft
-                  </Text>
+            {/* Recce Photos with Measurements Preview */}
+            {reccePhoto.photo && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                  Photo Preview
+                </Text>
+                <View style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
+                  <Image 
+                    source={{ uri: reccePhoto.photo }} 
+                    style={{ width: '100%', height: 200, backgroundColor: theme.colors.background }} 
+                    resizeMode="cover" 
+                  />
+                  <View style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    padding: 12
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
+                      {reccePhoto.elementName || 'No element selected'}
+                    </Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' }}>
+                      {reccePhoto.width} × {reccePhoto.height} {reccePhoto.unit}
+                      {reccePhoto.width && reccePhoto.height && (
+                        <Text style={{ fontSize: 12, opacity: 0.8 }}>
+                          {' '}({reccePhoto.unit === 'in' 
+                            ? `${(parseFloat(reccePhoto.width) / 12).toFixed(2)} × ${(parseFloat(reccePhoto.height) / 12).toFixed(2)} ft`
+                            : `${parseFloat(reccePhoto.width).toFixed(2)} × ${parseFloat(reccePhoto.height).toFixed(2)} ft`
+                          })
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
                 </View>
-              ) : (
-                <View style={{ alignItems: 'center' }}>
-                  <Camera size={28} color={theme.colors.textSecondary} />
-                  <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
-                    Capture Board Photo
+                <TouchableOpacity
+                  onPress={() => captureReccePhoto(index)}
+                  style={{
+                    backgroundColor: theme.colors.primary + '15',
+                    borderWidth: 1,
+                    borderColor: theme.colors.primary,
+                    borderRadius: 8,
+                    padding: 12,
+                    alignItems: 'center',
+                    marginTop: 8
+                  }}
+                >
+                  <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600' }}>
+                    Retake Photo
                   </Text>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
-                    {reccePhoto.width && reccePhoto.height 
-                      ? `Will show ${reccePhoto.width} × ${reccePhoto.height} ft guide` 
-                      : 'Enter measurements first'
-                    }
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+                </TouchableOpacity>
+              </View>
+            )}
+            
+            {/* Photo Capture Button */}
+            {!reccePhoto.photo && (
+              <TouchableOpacity
+                onPress={() => captureReccePhoto(index)}
+                style={{
+                  backgroundColor: theme.colors.background,
+                  borderWidth: 2,
+                  borderColor: theme.colors.border,
+                  borderStyle: 'dashed',
+                  borderRadius: 12,
+                  padding: 20,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 120
+                }}
+              >
+                <Camera size={28} color={theme.colors.textSecondary} />
+                <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
+                  Capture Board Photo
+                </Text>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                  {reccePhoto.width && reccePhoto.height 
+                    ? `Will show ${reccePhoto.width} × ${reccePhoto.height} ${reccePhoto.unit} guide` 
+                    : 'Enter measurements first'
+                  }
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
         

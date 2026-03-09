@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
-import { LinearGradient } from 'react-native-linear-gradient';
-import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity, Menu, Bell, ChevronDown } from 'lucide-react-native';
+import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PageSkeleton from '../components/PageSkeleton';
+import Header from '../components/Header';
 
 interface DashboardData {
   overview: {
@@ -59,11 +58,8 @@ interface DashboardData {
 }
 
 export default function DashboardScreen({ onMenuPress, onProfilePress }: { onMenuPress: () => void; onProfilePress?: () => void }) {
-  console.log('DashboardScreen: Component initialized');
-  
   const { theme } = useTheme();
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -186,54 +182,11 @@ export default function DashboardScreen({ onMenuPress, onProfilePress }: { onMen
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Professional Header */}
-      <View style={{ paddingTop: insets.top, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 12 }}>
-        <LinearGradient
-          colors={['#F6B21C', '#FECC00', '#E6A500']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ paddingBottom: 16 }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 18 }}>
-            <TouchableOpacity 
-              onPress={onMenuPress} 
-              style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)' }}
-            >
-              <Menu size={22} color="#FFFFFF" strokeWidth={2.5} />
-            </TouchableOpacity>
-            
-            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.2, fontFamily: 'System' }}>Dashboard</Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontWeight: '500' }}>Welcome back, {user?.name}</Text>
-            </View>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <TouchableOpacity style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.12)' }}>
-                <Bell size={20} color="#FFFFFF" strokeWidth={2} />
-                <View style={{ position: 'absolute', top: 10, right: 10, width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF4444' }} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                onPress={() => onProfilePress && onProfilePress()}
-                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 22, paddingLeft: 12, paddingRight: 4, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF', marginRight: 4 }}>
-                    {user?.name?.split(' ')[0] || 'User'}
-                  </Text>
-                  <ChevronDown size={14} color="rgba(255,255,255,0.8)" />
-                </View>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' }}>
-                  <Text style={{ color: '#E6A500', fontSize: 14, fontWeight: '700' }}>
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </LinearGradient>
-        <View style={{ height: 1, backgroundColor: 'rgba(246,178,28,0.1)' }} />
-      </View>
+      <Header
+        onMenuPress={onMenuPress}
+        onProfilePress={onProfilePress}
+        hasNotifications={true}
+      />
 
       <ScrollView 
         style={{ flex: 1 }}
@@ -263,36 +216,156 @@ export default function DashboardScreen({ onMenuPress, onProfilePress }: { onMen
                 </View>
               </View>
 
-              {/* Recce Operations */}
+              {/* Recce Operations Chart */}
               <View style={{ backgroundColor: theme.colors.surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                 <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>Recce Operations</Text>
-                <View style={{ gap: 12 }}>
+                
+                {/* Circular Progress Chart */}
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: theme.colors.border, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    <View style={{ 
+                      width: 100, 
+                      height: 100, 
+                      borderRadius: 50, 
+                      backgroundColor: '#3B82F6', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      transform: [{ rotate: `${(dashboardData?.recce.completionRate || 0) * 3.6}deg` }]
+                    }}>
+                      <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: 'bold' }}>{dashboardData?.recce.completionRate || 0}%</Text>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>Success</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Bar Chart */}
+                <View style={{ flexDirection: 'row', alignItems: 'end', justifyContent: 'space-between', height: 100, marginBottom: 16 }}>
+                  {[
+                    { label: 'Assigned', value: dashboardData?.recce.assigned || 0, color: '#3B82F6' },
+                    { label: 'Submitted', value: dashboardData?.recce.submitted || 0, color: '#F59E0B' },
+                    { label: 'Approved', value: dashboardData?.recce.approved || 0, color: '#10B981' },
+                    { label: 'Rejected', value: dashboardData?.recce.rejected || 0, color: '#EF4444' }
+                  ].map((item, idx) => {
+                    const maxValue = Math.max(dashboardData?.recce.assigned || 0, dashboardData?.recce.submitted || 0, dashboardData?.recce.approved || 0, dashboardData?.recce.rejected || 0);
+                    const height = maxValue > 0 ? (item.value / maxValue) * 70 : 0;
+                    return (
+                      <View key={idx} style={{ alignItems: 'center', flex: 1 }}>
+                        <View style={{
+                          backgroundColor: item.color,
+                          width: 20,
+                          height: height,
+                          borderRadius: 4,
+                          marginBottom: 8
+                        }} />
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10, textAlign: 'center' }}>
+                          {item.label}
+                        </Text>
+                        <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: 'bold' }}>
+                          {item.value}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                <View style={{ gap: 8 }}>
                   <ProgressBar label="Assigned" value={dashboardData?.recce.assigned || 0} total={dashboardData?.recce.total || 0} color="#3B82F6" theme={theme} />
                   <ProgressBar label="Submitted" value={dashboardData?.recce.submitted || 0} total={dashboardData?.recce.total || 0} color="#F59E0B" theme={theme} />
                   <ProgressBar label="Approved" value={dashboardData?.recce.approved || 0} total={dashboardData?.recce.total || 0} color="#10B981" theme={theme} />
-                  <ProgressBar label="Rejected" value={dashboardData?.recce.rejected || 0} total={dashboardData?.recce.total || 0} color="#EF4444" theme={theme} />
-                </View>
-                <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>Success Rate</Text>
-                    <Text style={{ color: '#10B981', fontSize: 18, fontWeight: 'bold' }}>{dashboardData?.recce.completionRate || 0}%</Text>
-                  </View>
                 </View>
               </View>
 
-              {/* Installation Operations */}
+              {/* Installation Operations Chart */}
               <View style={{ backgroundColor: theme.colors.surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
                 <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>Installation Operations</Text>
-                <View style={{ gap: 12 }}>
+                
+                {/* Donut Chart */}
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ width: 120, height: 120, position: 'relative' }}>
+                    {/* Background Circle */}
+                    <View style={{ 
+                      width: 120, 
+                      height: 120, 
+                      borderRadius: 60, 
+                      backgroundColor: theme.colors.border,
+                      position: 'absolute'
+                    }} />
+                    
+                    {/* Progress Segments */}
+                    <View style={{ 
+                      width: 120, 
+                      height: 120, 
+                      borderRadius: 60,
+                      borderWidth: 15,
+                      borderColor: '#F97316',
+                      borderTopColor: 'transparent',
+                      borderRightColor: 'transparent',
+                      transform: [{ rotate: '0deg' }],
+                      position: 'absolute'
+                    }} />
+                    
+                    <View style={{ 
+                      width: 120, 
+                      height: 120, 
+                      borderRadius: 60,
+                      borderWidth: 15,
+                      borderColor: 'transparent',
+                      borderTopColor: '#3B82F6',
+                      borderRightColor: '#3B82F6',
+                      transform: [{ rotate: '90deg' }],
+                      position: 'absolute'
+                    }} />
+                    
+                    <View style={{ 
+                      width: 120, 
+                      height: 120, 
+                      borderRadius: 60,
+                      borderWidth: 15,
+                      borderColor: 'transparent',
+                      borderBottomColor: '#10B981',
+                      borderLeftColor: '#10B981',
+                      transform: [{ rotate: '180deg' }],
+                      position: 'absolute'
+                    }} />
+                    
+                    {/* Center Text */}
+                    <View style={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: 'bold' }}>{dashboardData?.installation.completionRate || 0}%</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>Complete</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Line Chart Simulation */}
+                <View style={{ height: 60, marginBottom: 16, flexDirection: 'row', alignItems: 'end' }}>
+                  {[20, 35, 25, 45, 30, 50, 40].map((height, idx) => (
+                    <View key={idx} style={{ flex: 1, alignItems: 'center' }}>
+                      <View style={{
+                        width: 4,
+                        height: height,
+                        backgroundColor: idx === 6 ? '#10B981' : '#3B82F6',
+                        borderRadius: 2,
+                        marginBottom: 4
+                      }} />
+                      {idx === 6 && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981' }} />}
+                    </View>
+                  ))}
+                </View>
+
+                <View style={{ gap: 8 }}>
                   <ProgressBar label="Assigned" value={dashboardData?.installation.assigned || 0} total={dashboardData?.installation.total || 0} color="#F97316" theme={theme} />
                   <ProgressBar label="Submitted" value={dashboardData?.installation.submitted || 0} total={dashboardData?.installation.total || 0} color="#3B82F6" theme={theme} />
                   <ProgressBar label="Completed" value={dashboardData?.installation.completed || 0} total={dashboardData?.installation.total || 0} color="#10B981" theme={theme} />
-                </View>
-                <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>Completion Rate</Text>
-                    <Text style={{ color: '#10B981', fontSize: 18, fontWeight: 'bold' }}>{dashboardData?.installation.completionRate || 0}%</Text>
-                  </View>
                 </View>
               </View>
 

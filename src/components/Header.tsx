@@ -1,12 +1,14 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Modal } from 'react-native';
-import { LinearGradient } from 'react-native-linear-gradient';
+import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Modal, Image } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Menu, Bell, MapPin, User, LogOut, Settings, ChevronDown } from 'lucide-react-native';
+import { useTheme } from '../context/ThemeContext';
+import { Menu, Bell, User, LogOut, Settings, ChevronDown, Sun, Moon, ArrowLeft } from 'lucide-react-native';
+import Toast from 'react-native-toast-message';
 
 interface HeaderProps {
   onMenuPress: () => void;
+  onBackPress?: () => void;
+  showBackButton?: boolean;
   title?: string;
   subtitle?: string;
   status?: 'Completed' | 'Pending' | 'In Progress';
@@ -15,7 +17,9 @@ interface HeaderProps {
 }
 
 const Header = ({ 
-  onMenuPress, 
+  onMenuPress,
+  onBackPress,
+  showBackButton = false,
   title = 'Dashboard', 
   subtitle,
   status,
@@ -23,86 +27,87 @@ const Header = ({
   hasNotifications = false 
 }: HeaderProps) => {
   const { user, logout } = useAuth();
-  const insets = useSafeAreaInsets();
+  const { darkMode, toggleTheme, theme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'Completed': return '#10B981';
-      case 'Pending': return '#F59E0B';
-      case 'In Progress': return '#3B82F6';
-      default: return '#6B7280';
-    }
-  };
+  const colors = theme.colors;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <StatusBar backgroundColor="#E6A500" barStyle="light-content" translucent={false} />
+    <View style={[styles.container, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+      <StatusBar 
+        backgroundColor={colors.background} 
+        barStyle={darkMode ? 'light-content' : 'dark-content'} 
+        translucent={false} 
+      />
       
-      <LinearGradient
-        colors={['#F6B21C', '#FECC00', '#E6A500']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
-        <View style={styles.content}>
-          {/* Left Menu Button */}
-          <TouchableOpacity style={styles.iconButton} onPress={onMenuPress}>
-            <Menu size={22} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
-          
-          {/* Center Title Area */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>{title}</Text>
-            {subtitle && (
-              <View style={styles.subtitleRow}>
-                <MapPin size={10} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.subtitle}>{subtitle}</Text>
-              </View>
-            )}
-          </View>
-          
-          {/* Right Actions */}
-          <View style={styles.rightActions}>
-            {/* Notification Bell */}
-            <TouchableOpacity style={styles.notificationButton}>
-              <Bell size={20} color="#FFFFFF" strokeWidth={2} />
-              {hasNotifications && <View style={styles.notificationBadge} />}
-            </TouchableOpacity>
-            
-            {/* Profile Button */}
+      <View style={[styles.content, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        {/* Left Menu/Back Button and Logo */}
+        <View style={styles.leftSection}>
+          {showBackButton ? (
             <TouchableOpacity 
-              style={styles.profileButton}
-              onPress={() => setShowProfileMenu(true)}
+              style={[styles.iconButton, { backgroundColor: colors.surface }]} 
+              onPress={onBackPress}
             >
-              <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>
-                  {user?.name?.split(' ')[0] || 'User'}
-                </Text>
-                <ChevronDown size={14} color="rgba(255,255,255,0.8)" />
-              </View>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                </Text>
-              </View>
+              <ArrowLeft size={20} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
-          </View>
+          ) : (
+            <TouchableOpacity 
+              style={[styles.iconButton, { backgroundColor: colors.surface }]} 
+              onPress={onMenuPress}
+            >
+              <Menu size={20} color={colors.text} strokeWidth={2} />
+            </TouchableOpacity>
+          )}
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
         
-        {/* Status Chip */}
-        {status && (
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusChip, { backgroundColor: getStatusColor(status) }]}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>{status}</Text>
-            </View>
-          </View>
-        )}
-      </LinearGradient>
-      
-      {/* Professional Shadow */}
-      <View style={styles.shadowLine} />
+        {/* Spacer */}
+        <View style={styles.spacer} />
+        
+        {/* Right Actions */}
+        <View style={styles.rightActions}>
+          {/* Notifications */}
+          <TouchableOpacity 
+            style={[styles.iconButton, { backgroundColor: colors.surface }]}
+            onPress={() => {
+              Toast.show({
+                type: 'info',
+                text1: 'Notifications',
+                text2: '3 new updates available'
+              });
+            }}
+          >
+            <Bell size={18} color={colors.text} strokeWidth={2} />
+            <View style={styles.notificationBadge} />
+          </TouchableOpacity>
+          
+          {/* Theme Toggle */}
+          <TouchableOpacity 
+            style={[styles.iconButton, { backgroundColor: colors.surface }]} 
+            onPress={toggleTheme}
+          >
+            {darkMode ? (
+              <Sun size={18} color={colors.text} />
+            ) : (
+              <Moon size={18} color={colors.text} />
+            )}
+          </TouchableOpacity>
+          
+          {/* Profile Button */}
+          <TouchableOpacity 
+            style={[styles.profileButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowProfileMenu(true)}
+          >
+            <Text style={styles.avatarText}>
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
       
       {/* Profile Menu Modal */}
       <Modal
@@ -115,21 +120,21 @@ const Header = ({
           style={styles.modalOverlay}
           onPress={() => setShowProfileMenu(false)}
         >
-          <View style={[styles.profileMenu, { top: insets.top + 75 }]}>
-            <View style={styles.profileMenuHeader}>
-              <View style={styles.profileMenuAvatar}>
+          <View style={[styles.profileMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.profileMenuHeader, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+              <View style={[styles.profileMenuAvatar, { backgroundColor: colors.primary }]}>
                 <Text style={styles.profileMenuAvatarText}>
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </Text>
               </View>
               <View style={styles.profileMenuInfo}>
-                <Text style={styles.profileMenuName}>
+                <Text style={[styles.profileMenuName, { color: colors.text }]}>
                   {user?.name ? String(user.name) : 'User'}
                 </Text>
-                <Text style={styles.profileMenuEmail}>
+                <Text style={[styles.profileMenuEmail, { color: colors.textSecondary }]}>
                   {user?.email ? String(user.email) : 'No email'}
                 </Text>
-                <View style={styles.profileMenuRole}>
+                <View style={[styles.profileMenuRole, { backgroundColor: colors.primary }]}>
                   <Text style={styles.profileMenuRoleText}>
                     {user?.roles?.[0]?.name || user?.roles?.[0]?.code || 'Member'}
                   </Text>
@@ -137,7 +142,7 @@ const Header = ({
               </View>
             </View>
             
-            <View style={styles.profileMenuDivider} />
+            <View style={[styles.profileMenuDivider, { backgroundColor: colors.border }]} />
             
             <TouchableOpacity
               style={styles.profileMenuItem}
@@ -146,22 +151,22 @@ const Header = ({
                 onProfilePress && onProfilePress();
               }}
             >
-              <User size={18} color="#F6B21C" />
-              <Text style={styles.profileMenuItemText}>View Profile</Text>
+              <User size={18} color={colors.primary} />
+              <Text style={[styles.profileMenuItemText, { color: colors.text }]}>View Profile</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
               style={styles.profileMenuItem}
               onPress={() => setShowProfileMenu(false)}
             >
-              <Settings size={18} color="#F6B21C" />
-              <Text style={styles.profileMenuItemText}>Settings</Text>
+              <Settings size={18} color={colors.primary} />
+              <Text style={[styles.profileMenuItemText, { color: colors.text }]}>Settings</Text>
             </TouchableOpacity>
             
-            <View style={styles.profileMenuDivider} />
+            <View style={[styles.profileMenuDivider, { backgroundColor: colors.border }]} />
             
             <TouchableOpacity
-              style={[styles.profileMenuItem, styles.logoutItem]}
+              style={[styles.profileMenuItem, { backgroundColor: darkMode ? '#2D1B1B' : '#FEF2F2' }]}
               onPress={() => {
                 setShowProfileMenu(false);
                 logout();
@@ -180,145 +185,54 @@ const Header = ({
 const styles = StyleSheet.create({
   container: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 12,
-  },
-  gradient: {
-    paddingBottom: 16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 3,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     height: 64,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
   },
   iconButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 8,
   },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    letterSpacing: 0.2,
-    fontFamily: 'System',
-  },
-  subtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  subtitle: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
-    marginLeft: 3,
-    fontWeight: '500',
-  },
-  rightActions: {
+  leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  spacer: {
+    flex: 1,
   },
-  notificationBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FF4444',
+  logo: {
+    width: 100,
+    height: 32,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   profileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 22,
-    paddingLeft: 12,
-    paddingRight: 4,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  profileName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginRight: 4,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   avatarText: {
-    color: '#E6A500',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  statusContainer: {
-    alignItems: 'center',
-    paddingBottom: 6,
-  },
-  statusChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  statusDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
-    marginRight: 6,
-  },
-  statusText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  shadowLine: {
-    height: 1,
-    backgroundColor: 'rgba(246,178,28,0.1)',
   },
   modalOverlay: {
     flex: 1,
@@ -326,8 +240,8 @@ const styles = StyleSheet.create({
   },
   profileMenu: {
     position: 'absolute',
+    top: 80,
     right: 16,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -336,20 +250,18 @@ const styles = StyleSheet.create({
     elevation: 15,
     minWidth: 260,
     overflow: 'hidden',
+    borderWidth: 1,
   },
   profileMenuHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F8FAFC',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   profileMenuAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#F6B21C',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -365,15 +277,12 @@ const styles = StyleSheet.create({
   profileMenuName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1E293B',
   },
   profileMenuEmail: {
     fontSize: 12,
-    color: '#64748B',
     marginTop: 2,
   },
   profileMenuRole: {
-    backgroundColor: '#F6B21C',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -389,7 +298,6 @@ const styles = StyleSheet.create({
   },
   profileMenuDivider: {
     height: 1,
-    backgroundColor: '#E2E8F0',
   },
   profileMenuItem: {
     flexDirection: 'row',
@@ -399,17 +307,20 @@ const styles = StyleSheet.create({
   profileMenuItemText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#374151',
     fontWeight: '500',
-  },
-  logoutItem: {
-    borderTopWidth: 1,
-    borderTopColor: '#FEE2E2',
-    backgroundColor: '#FEF2F2',
   },
   logoutText: {
     color: '#DC2626',
     fontWeight: '600',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF4444',
   },
 });
 

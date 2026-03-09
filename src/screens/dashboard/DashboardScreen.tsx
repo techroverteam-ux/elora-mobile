@@ -6,19 +6,41 @@ import { LinearGradient } from 'react-native-linear-gradient';
 import { dashboardService } from '../../services/dashboardService';
 import { Store, Users, CheckCircle, Clock, TrendingUp, BarChart3, Calendar, Target, Award, Zap } from 'lucide-react-native';
 import Toast from 'react-native-toast-message';
+import RecceUserDashboard from './RecceUserDashboard';
+import InstallationUserDashboard from './InstallationUserDashboard';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: { navigation?: any }) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Check user role
+  const userRole = user?.roles?.[0]?.code || user?.roles?.[0]?.name;
+  const isRecceUser = userRole === 'RECCE' || userRole?.toLowerCase().includes('recce');
+  const isInstallationUser = userRole === 'INSTALLATION' || userRole?.toLowerCase().includes('installation');
+  const isAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  // Show role-specific dashboards
+  if (isRecceUser && !isAdmin) {
+    return <RecceUserDashboard navigation={navigation} />;
+  }
+  
+  if (isInstallationUser && !isAdmin) {
+    return <InstallationUserDashboard navigation={navigation} />;
+  }
+
   useEffect(() => {
-    fetchStats();
-  }, []);
+    // Only fetch admin stats for admin users
+    if (isAdmin) {
+      fetchStats();
+    } else {
+      setLoading(false);
+    }
+  }, [isAdmin]);
 
   const fetchStats = async () => {
     try {

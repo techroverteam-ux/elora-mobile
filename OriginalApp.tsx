@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { permissionService } from './src/services/permissionService';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -42,6 +43,22 @@ function AppContent() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('Dashboard');
   const [navigationParams, setNavigationParams] = useState<any>(null);
+  const [permissionsRequested, setPermissionsRequested] = useState(false);
+
+  // Request permissions when app starts
+  useEffect(() => {
+    const requestPermissions = async () => {
+      if (!permissionsRequested) {
+        console.log('App started - requesting camera permissions...');
+        await permissionService.requestInitialPermissions();
+        setPermissionsRequested(true);
+      }
+    };
+    
+    if (!showSplash && isAuthenticated) {
+      requestPermissions();
+    }
+  }, [showSplash, isAuthenticated, permissionsRequested]);
 
   const openDrawer = () => {
     setIsDrawerOpen(true);
@@ -66,7 +83,6 @@ function AppContent() {
       case 'Users':
         return (
           <ScreenLayout 
-            title="User Management" 
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
@@ -76,7 +92,6 @@ function AppContent() {
       case 'Roles':
         return (
           <ScreenLayout 
-            title="Role Management" 
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
@@ -86,7 +101,6 @@ function AppContent() {
       case 'Stores':
         return (
           <ScreenLayout 
-            title="Store Operations" 
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
@@ -96,9 +110,9 @@ function AppContent() {
       case 'StoreDetail':
         return (
           <ScreenLayout 
-            title={navigationParams?.storeName || "Store Details"}
-            subtitle={navigationParams?.dealerCode}
             onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Stores')}
+            showBackButton={true}
             onProfilePress={() => navigateToScreen('Profile')}
           >
             <StoreDetailScreen 
@@ -110,10 +124,9 @@ function AppContent() {
       case 'RecceDetail':
         return (
           <ScreenLayout 
-            title="Recce Details"
-            subtitle={navigationParams?.storeName}
-            status={navigationParams?.status}
             onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Recce')}
+            showBackButton={true}
             onProfilePress={() => navigateToScreen('Profile')}
           >
             <RecceDetailScreen 
@@ -180,7 +193,6 @@ function AppContent() {
       case 'Clients':
         return (
           <ScreenLayout 
-            title="Client Management" 
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
@@ -220,7 +232,6 @@ function AppContent() {
       case 'Analytics':
         return (
           <ScreenLayout 
-            title="Analytics" 
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
@@ -230,8 +241,9 @@ function AppContent() {
       case 'RecceForm':
         return (
           <ScreenLayout 
-            title="Submit Recce" 
             onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Recce')}
+            showBackButton={true}
             onProfilePress={() => navigateToScreen('Profile')}
           >
             <RecceFormScreen 
@@ -246,7 +258,7 @@ function AppContent() {
   };
 
   if (showSplash) {
-    setTimeout(() => setShowSplash(false), 5000);
+    setTimeout(() => setShowSplash(false), 3000); // Reduced splash time
     return <SplashScreen />;
   }
 

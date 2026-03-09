@@ -46,7 +46,7 @@ const Sidebar = ({navigation, currentRoute}: SidebarProps) => {
     {name: 'Element Mapping', route: 'Elements', icon: Layers, module: 'elements'},
     {name: 'Client Management', route: 'Clients', icon: Building2, module: 'clients'},
     {name: 'RFQ Generation', route: 'RFQ', icon: FileSpreadsheet, module: 'rfq', alwaysShow: true},
-    {name: 'Reports', route: 'Reports', icon: BarChart3, module: 'reports', alwaysShow: true},
+    {name: 'Analytics', route: 'Analytics', icon: BarChart3, module: 'analytics', alwaysShow: true},
   ];
 
   const colors = {

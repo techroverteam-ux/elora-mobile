@@ -60,4 +60,9 @@ export const userService = {
     });
     return data;
   },
+
+  getByRole: async (roleCode: string) => {
+    const { data } = await api.get(`/users/role/${roleCode}`);
+    return data;
+  },
 };
