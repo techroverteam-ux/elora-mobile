@@ -40,6 +40,7 @@ function InstallationStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="InstallationList" component={InstallationScreen} />
       <Stack.Screen name="InstallationDetail" component={InstallationScreen} />
+      <Stack.Screen name="InstallationForm" component={require('../screens/installation/InstallationFormScreen').default} />
     </Stack.Navigator>
   );
 }

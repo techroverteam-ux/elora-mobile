@@ -31,7 +31,8 @@ import EnquiriesScreen from './src/screens/enquiries/EnquiriesScreen';
 import ReportsScreen from './src/screens/reports/ReportsScreen';
 import AnalyticsScreen from './src/screens/analytics/AnalyticsScreen';
 import RecceFormScreen from './src/screens/recce/RecceFormScreen';
-import NotificationsScreen from './src/screens/notifications/NotificationsScreen';
+import RecceReviewScreen from './src/screens/recce/RecceReviewScreen';
+import InstallationFormScreen from './src/screens/installation/InstallationFormScreen';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = 280;
@@ -236,6 +237,34 @@ function AppContent() {
             onProfilePress={() => navigateToScreen('Profile')}
           >
             <AnalyticsScreen />
+          </ScreenLayout>
+        );
+      case 'InstallationForm':
+        return (
+          <ScreenLayout 
+            onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Installation')}
+            showBackButton={true}
+            onProfilePress={() => navigateToScreen('Profile')}
+          >
+            <InstallationFormScreen 
+              route={{ params: navigationParams }}
+              navigation={{ goBack: () => navigateToScreen('Installation') }}
+            />
+          </ScreenLayout>
+        );
+      case 'RecceReview':
+        return (
+          <ScreenLayout 
+            onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Recce')}
+            showBackButton={true}
+            onProfilePress={() => navigateToScreen('Profile')}
+          >
+            <RecceReviewScreen 
+              route={{ params: navigationParams }}
+              navigation={{ goBack: () => navigateToScreen('Recce') }}
+            />
           </ScreenLayout>
         );
       case 'RecceForm':

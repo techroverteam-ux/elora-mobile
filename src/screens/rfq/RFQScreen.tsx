@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -157,8 +157,34 @@ export default function RFQScreen() {
     setIsGenerating(true);
     try {
       const blob = await rfqService.generate(Array.from(selectedStoreIds));
-      await fileService.downloadFile(blob, `RFQ_${Date.now()}.xlsx`);
-      Toast.show({ type: 'success', text1: 'RFQ generated successfully!' });
+      const filename = `RFQ_${Date.now()}.xlsx`;
+      
+      try {
+        // Try to download first
+        await fileService.downloadFile(blob, filename);
+        Toast.show({ type: 'success', text1: 'RFQ downloaded successfully!' });
+      } catch (downloadError) {
+        // If download fails, offer to share
+        Alert.alert(
+          'Download Failed',
+          'Unable to save file to device. Would you like to share it instead?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Share', 
+              onPress: async () => {
+                try {
+                  await fileService.shareFile(blob, filename);
+                  Toast.show({ type: 'success', text1: 'RFQ shared successfully!' });
+                } catch (shareError) {
+                  Toast.show({ type: 'error', text1: 'Failed to share RFQ' });
+                }
+              }
+            }
+          ]
+        );
+      }
+      
       setSelectedStoreIds(new Set());
     } catch (error: any) {
       // Enhanced error handling

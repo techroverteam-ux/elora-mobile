@@ -266,7 +266,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <MapPin size={12} color={theme.colors.textSecondary} />
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
-                  {item.store.location.city}, {item.store.location.state}
+                  {item.store.location.city}{item.store.location.state ? `, ${item.store.location.state}` : ''}
                 </Text>
               </View>
             </View>
@@ -342,12 +342,22 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             </TouchableOpacity>
           )}
           
-          {(item.status === 'RECCE_SUBMITTED' || item.status === 'RECCE_APPROVED') && (
+          {isAdmin && item.status === 'RECCE_SUBMITTED' && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('RecceReview', { storeId: item.store._id })} 
+              style={{ backgroundColor: '#8B5CF620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+            >
+              <CheckSquare size={16} color="#8B5CF6" />
+              <Text style={{ color: '#8B5CF6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Review Photos</Text>
+            </TouchableOpacity>
+          )}
+          
+          {(item.status === 'RECCE_APPROVED' || (item.status === 'RECCE_SUBMITTED' && !isAdmin)) && (
             <TouchableOpacity 
               style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
             >
               <CheckSquare size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Recce Submitted</Text>
+              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Recce Complete</Text>
             </TouchableOpacity>
           )}
         </View>

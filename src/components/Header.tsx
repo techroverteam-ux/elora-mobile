@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar, Modal, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Menu, Bell, User, LogOut, Settings, ChevronDown, Sun, Moon, ArrowLeft } from 'lucide-react-native';
@@ -29,15 +30,16 @@ const Header = ({
   const { user, logout } = useAuth();
   const { darkMode, toggleTheme, theme } = useTheme();
   const [showProfileMenu, setShowProfileMenu] = React.useState(false);
+  const insets = useSafeAreaInsets();
 
   const colors = theme.colors;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, borderBottomColor: colors.border, paddingTop: insets.top }]}>
       <StatusBar 
         backgroundColor={colors.background} 
         barStyle={darkMode ? 'light-content' : 'dark-content'} 
-        translucent={false} 
+        translucent={true} 
       />
       
       <View style={[styles.content, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>

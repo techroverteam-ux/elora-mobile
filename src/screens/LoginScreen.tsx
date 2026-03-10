@@ -10,8 +10,10 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import {Mail, Lock, Eye, EyeOff, RefreshCw, AlertCircle} from 'lucide-react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAuth} from '../context/AuthContext';
 import {useTheme} from '../context/ThemeContext';
 import FastImage from 'react-native-fast-image';
@@ -21,9 +23,10 @@ const {width} = Dimensions.get('window');
 const LoginScreen = () => {
   const {login} = useAuth();
   const {darkMode} = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const [email, setEmail] = useState('admin@elora.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [captchaCode, setCaptchaCode] = useState('');
   const [userCaptcha, setUserCaptcha] = useState('');
@@ -34,13 +37,6 @@ const LoginScreen = () => {
     generateCaptcha();
   }, []);
 
-  useEffect(() => {
-    // Auto-fill captcha for development after it's generated
-    if (captchaCode) {
-      setUserCaptcha(captchaCode);
-    }
-  }, [captchaCode]);
-
   const generateCaptcha = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -48,11 +44,27 @@ const LoginScreen = () => {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     setCaptchaCode(code);
-    setUserCaptcha('');
+    setUserCaptcha(''); // Clear user input when generating new captcha
   };
 
   const handleSubmit = async () => {
     setError('');
+
+    // Validate required fields
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Please enter your password.');
+      return;
+    }
+
+    if (!userCaptcha.trim()) {
+      setError('Please enter the captcha code.');
+      return;
+    }
 
     if (userCaptcha !== captchaCode) {
       setError('Incorrect captcha code. Please try again.');
@@ -88,8 +100,13 @@ const LoginScreen = () => {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, {backgroundColor: colors.bg}]}
+      style={[styles.container, {backgroundColor: colors.bg, paddingTop: insets.top}]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <StatusBar 
+        backgroundColor={colors.bg} 
+        barStyle={darkMode ? 'light-content' : 'dark-content'} 
+        translucent={true} 
+      />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} bounces={false}>
         {/* Logo */}
         <View style={styles.logoContainer}>

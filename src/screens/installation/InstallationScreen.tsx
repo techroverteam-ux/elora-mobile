@@ -80,22 +80,26 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     
     try {
       setLoading(true);
-      const params = {
-        page,
-        limit,
-        search: debouncedSearch || undefined,
-      };
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      if (debouncedSearch) params.append('search', debouncedSearch);
       
       // Filter by installation-related statuses only
       if (filterStatus !== 'ALL') {
-        params.status = filterStatus;
+        params.append('status', filterStatus);
       } else {
         // Show only stores that have been assigned to installation
-        params.status = 'INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED';
+        params.append('status', 'INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED');
       }
       
-      console.log('InstallationScreen: API params:', params);
-      const response = await storeService.getAll(params);
+      console.log('InstallationScreen: API params:', params.toString());
+      const response = await storeService.getAll({ 
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+        status: filterStatus !== 'ALL' ? filterStatus : 'INSTALLATION_ASSIGNED,INSTALLATION_SUBMITTED,COMPLETED'
+      });
       console.log('InstallationScreen: API response:', response);
       
       if (!response || !response.stores) {

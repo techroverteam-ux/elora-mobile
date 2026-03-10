@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
-import { ArrowLeft, MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle, Clock, X } from 'lucide-react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle, Clock, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -15,13 +15,12 @@ interface InstallationDetailProps {
   };
   navigation: {
     goBack: () => void;
-    navigate: (screen: string, params?: any) => void;
+    navigate?: (screen: string, params?: any) => void;
   };
 }
 
 export default function InstallationDetailScreen({ route, navigation }: InstallationDetailProps) {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const { storeId } = route.params;
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -75,33 +74,6 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={{ 
-        backgroundColor: theme.colors.primary, 
-        paddingTop: insets.top, 
-        paddingBottom: 16, 
-        paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8, marginRight: 12 }}>
-            <ArrowLeft size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' }}>
-              Installation Details
-            </Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>
-              {store.storeName} - {store.storeId || store.dealerCode}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {/* Status Card */}
         <View style={{ 
@@ -145,7 +117,40 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
           )}
         </View>
 
-        {/* Store Details Grid */}
+        {/* Assignment Info */}
+        <View style={{ 
+          backgroundColor: theme.colors.surface, 
+          borderRadius: 12, 
+          padding: 16, 
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: theme.colors.border
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+            Assignment Details
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Recce Completed By</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {store.workflow?.recceAssignedTo?.name || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                {store.workflow?.recceSubmittedAt ? new Date(store.workflow.recceSubmittedAt).toLocaleDateString() : '-'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Installation Assigned To</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {store.workflow?.installationAssignedTo?.name || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                {store.workflow?.installationAssignedAt ? new Date(store.workflow.installationAssignedAt).toLocaleDateString() : '-'}
+              </Text>
+            </View>
+          </View>
+        </View>
         <View style={{ marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             {/* Location Card */}
@@ -188,6 +193,12 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                 <Building2 size={16} color="#F59E0B" />
                 <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Dealer</Text>
               </View>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Store ID: {store.storeId || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Client Code: {store.clientCode || '-'}
+              </Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
                 Code: {store.dealerCode}
               </Text>
@@ -259,6 +270,40 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
             </View>
           </View>
         </View>
+
+        {/* Initial Photos Reference */}
+        {store.recce?.initialPhotos && store.recce.initialPhotos.length > 0 && (
+          <View style={{ 
+            backgroundColor: '#3B82F620', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: '#3B82F650'
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Camera size={20} color="#3B82F6" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
+                Initial Photos ({store.recce.initialPhotos.length})
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {store.recce.initialPhotos.slice(0, 6).map((photo: string, index: number) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => setSelectedImage(imageService.getFullImageUrl(photo))}
+                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#3B82F6' }}
+                >
+                  <Image
+                    source={{ uri: imageService.getFullImageUrl(photo) }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Recce Photos Reference */}
         {store.recce?.reccePhotos && store.recce.reccePhotos.length > 0 && (
@@ -357,6 +402,11 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                         <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
                           {store.recce.reccePhotos[installationPhoto.reccePhotoIndex].measurements.width} × {store.recce.reccePhotos[installationPhoto.reccePhotoIndex].measurements.height} {store.recce.reccePhotos[installationPhoto.reccePhotoIndex].measurements.unit}
                         </Text>
+                        {store.recce.reccePhotos[installationPhoto.reccePhotoIndex].elements && store.recce.reccePhotos[installationPhoto.reccePhotoIndex].elements.length > 0 && (
+                          <Text style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
+                            Element: {store.recce.reccePhotos[installationPhoto.reccePhotoIndex].elements[0].elementName}
+                          </Text>
+                        )}
                       </View>
                     </View>
                   )}
@@ -366,16 +416,16 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
                       Installation Photo
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => setSelectedImage(imageService.getFullImageUrl(installationPhoto.photo))}
-                      style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#10B981' }}
-                    >
-                      <Image
-                        source={{ uri: imageService.getFullImageUrl(installationPhoto.photo) }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => setSelectedImage(imageService.getFullImageUrl(installationPhoto.photo))}
+                        style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#10B981' }}
+                      >
+                        <Image
+                          source={{ uri: imageService.getFullImageUrl(installationPhoto.photo) }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
                     <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <CheckCircle size={12} color="#10B981" />
@@ -410,9 +460,9 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
         )}
 
         {/* Action Buttons */}
-        {store.currentStatus === 'INSTALLATION_ASSIGNED' && (
+        {store.currentStatus === 'INSTALLATION_ASSIGNED' && navigation.navigate && (
           <TouchableOpacity
-            onPress={() => navigation.navigate('InstallationForm', { storeId: store._id })}
+            onPress={() => navigation.navigate!('InstallationForm', { storeId: store._id })}
             style={{
               backgroundColor: '#10B981',
               padding: 16,
@@ -435,7 +485,7 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => setSelectedImage(null)}
-            style={{ position: 'absolute', top: insets.top + 20, right: 20, zIndex: 1 }}
+            style={{ position: 'absolute', top: 40, right: 20, zIndex: 1 }}
           >
             <X size={30} color="#FFFFFF" />
           </TouchableOpacity>

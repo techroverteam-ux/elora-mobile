@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, Text } from 'react-native'
 import FastImage, { Source, ResizeMode as FastImageResizeMode } from 'react-native-fast-image'
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons'
+import imageService from '../services/imageService'
 
 type ResizeMode = 'contain' | 'cover' | 'stretch' | 'center'
 
@@ -44,6 +45,13 @@ const CustomFastImage: React.FC<CustomFastImageProps> = ({
   if (typeof imageUrl === 'string' && imageUrl.startsWith('http')) {
     source = {
       uri: imageUrl,
+      priority: FastImage.priority.normal,
+    }
+  } else if (typeof imageUrl === 'string') {
+    // Convert relative path to full URL
+    const fullUrl = imageService.getFullImageUrl(imageUrl)
+    source = {
+      uri: fullUrl,
       priority: FastImage.priority.normal,
     }
   } else {

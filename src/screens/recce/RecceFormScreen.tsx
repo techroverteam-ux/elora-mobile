@@ -6,6 +6,7 @@ import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
+import ElementDropdown from '../../components/ElementDropdown';
 import { locationService } from '../../services/locationService';
 import imageService from '../../services/imageService';
 
@@ -88,13 +89,13 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         address: store.location?.address || store.address || '123 Main St, City, State 12345'
       }));
       
-      // Fetch client elements if clientCode exists
-      if (store.clientCode) {
+      // Fetch client elements if clientId exists
+      if (store.clientId) {
         try {
-          const elementsRes = await storeService.getElements();
-          setClientElements(elementsRes.elements || []);
+          const clientRes = await storeService.getClientElements(store.clientId);
+          setClientElements(clientRes.elements || []);
         } catch (err) {
-          console.error('Failed to fetch elements:', err);
+          console.error('Failed to fetch client elements:', err);
           setClientElements([]);
         }
       }
@@ -642,51 +643,14 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
                   Select Element *
                 </Text>
-                <View style={{
-                  backgroundColor: theme.colors.background,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                  borderRadius: 8,
-                  padding: 12
-                }}>
-                  <Text style={{ color: reccePhoto.elementId ? theme.colors.text : theme.colors.textSecondary, fontSize: 16 }}>
-                    {reccePhoto.elementName || 'Select an element'}
-                  </Text>
-                </View>
-                
-                {/* Element Options */}
-                <View style={{ marginTop: 8, gap: 8 }}>
-                  {clientElements.map((element: any) => (
-                    <TouchableOpacity
-                      key={element.elementId || element._id}
-                      onPress={() => updateReccePhoto(index, 'elementId', (element.elementId || element._id)?.toString() || '')}
-                      style={{
-                        backgroundColor: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary + '20' : theme.colors.surface,
-                        borderWidth: 1,
-                        borderColor: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.border,
-                        borderRadius: 8,
-                        padding: 12,
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <Text style={{ 
-                        color: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.text, 
-                        fontSize: 14, 
-                        fontWeight: '600' 
-                      }}>
-                        {element.elementName || 'Unknown Element'}
-                      </Text>
-                      <Text style={{ 
-                        color: reccePhoto.elementId === (element.elementId || element._id)?.toString() ? theme.colors.primary : theme.colors.textSecondary, 
-                        fontSize: 12 
-                      }}>
-                        ₹{element.customRate || 0}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}}
-                </View>
+                <ElementDropdown
+                  elements={clientElements}
+                  selectedElementId={reccePhoto.elementId}
+                  selectedElementName={reccePhoto.elementName}
+                  onSelect={(elementId) => updateReccePhoto(index, 'elementId', elementId)}
+                  isOpen={showElementSelector === index}
+                  onToggle={() => setShowElementSelector(showElementSelector === index ? null : index)}
+                />
               </View>
             )}
             

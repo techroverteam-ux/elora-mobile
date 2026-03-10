@@ -121,36 +121,18 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={{ 
-        backgroundColor: theme.colors.primary, 
-        paddingTop: insets.top, 
-        paddingBottom: 16, 
-        paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8, marginRight: 12 }}>
-            <ArrowLeft size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' }}>
-              {store.storeName}
-            </Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>
-              {store.storeId || store.dealerCode} • {store.currentStatus?.replace(/_/g, ' ')}
-            </Text>
-          </View>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12 }}>
+        {/* Store Info */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+            {store.storeName}
+          </Text>
+          <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+            {store.storeId || store.dealerCode} • {store.currentStatus?.replace(/_/g, ' ')}
+          </Text>
         </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
         {/* Store Details Grid */}
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             {/* Location Card */}
             <View style={{ 
@@ -270,7 +252,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
             backgroundColor: theme.colors.surface, 
             borderRadius: 12, 
             padding: 16, 
-            marginBottom: 16,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: theme.colors.border
           }}>
@@ -284,13 +266,18 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
               {store.recce.initialPhotos.map((photo: string, index: number) => (
                 <TouchableOpacity
                   key={index}
-                  onPress={() => setSelectedImage(imageService.getFullImageUrl(photo))}
+                  onPress={() => {
+                    const fullImageUrl = imageService.getFullImageUrl(photo);
+                    setSelectedImage(fullImageUrl);
+                  }}
                   style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden' }}
                 >
                   <Image
                     source={{ uri: imageService.getFullImageUrl(photo) }}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
+                    onError={() => {}}
+                    onLoad={() => {}}
                   />
                 </TouchableOpacity>
               ))}
@@ -304,7 +291,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
             backgroundColor: theme.colors.surface, 
             borderRadius: 12, 
             padding: 16, 
-            marginBottom: 16,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: theme.colors.border
           }}>
@@ -406,7 +393,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
             backgroundColor: theme.colors.surface, 
             borderRadius: 12, 
             padding: 16, 
-            marginBottom: 16,
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: theme.colors.border
           }}>

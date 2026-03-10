@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Camera, Upload, CheckCircle2, Loader2, ArrowLeft, Ruler, FileText, ImageIcon } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
+import { Camera, Upload, CheckCircle2, Loader2, Ruler, FileText, ImageIcon, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -22,13 +22,13 @@ interface InstallationFormProps {
 
 export default function InstallationFormScreen({ route, navigation }: InstallationFormProps) {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
   const { storeId } = route.params;
   const [loading, setLoading] = useState(false);
   const [storeData, setStoreData] = useState<any>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: string | null}>({});
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: '',
@@ -97,6 +97,9 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             setModalVisible(false);
             try {
               setLoading(true);
+              console.log('InstallationForm: Starting submission');
+              console.log('InstallationForm: reccePhotosCount:', reccePhotosCount);
+              console.log('InstallationForm: installationPhotos:', installationPhotos);
               
               // Create FormData exactly like web portal
               const formData = new FormData();
@@ -105,6 +108,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
               for (let i = 0; i < reccePhotosCount; i++) {
                 if (installationPhotos[i]) {
+                  console.log(`InstallationForm: Adding photo ${i}:`, installationPhotos[i]);
                   formData.append(`installationPhoto${fileIndex}`, {
                     uri: installationPhotos[i],
                     type: 'image/jpeg',
@@ -115,8 +119,10 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                 }
               }
 
+              console.log('InstallationForm: photosData:', photosData);
               formData.append('installationPhotosData', JSON.stringify(photosData));
-
+              
+              console.log('InstallationForm: Calling submitInstallation API');
               await storeService.submitInstallation(storeId, formData);
               
               Toast.show({
@@ -127,10 +133,13 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               
               navigation.goBack();
             } catch (error: any) {
+              console.error('InstallationForm: Submission error:', error);
+              console.error('InstallationForm: Error response:', error.response);
+              console.error('InstallationForm: Error message:', error.message);
               Toast.show({
                 type: 'error',
                 text1: 'Submission Failed',
-                text2: error.response?.data?.message || 'Failed to complete installation'
+                text2: error.response?.data?.message || error.message || 'Failed to complete installation'
               });
             } finally {
               setLoading(false);
@@ -159,13 +168,6 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     setCameraVisible(false);
   };
 
-  const getPhotoUrl = (path: string | undefined) => {
-    if (!path) return null;
-    const API_BASE_URL = 'https://elora-api-smoky.vercel.app';
-    const cleanPath = path.startsWith('/') || path.startsWith('\\\\') ? path.slice(1) : path;
-    return `${API_BASE_URL}/${cleanPath.replace(/\\\\/g, '/')}`;
-  };
-
   if (!storeData) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -179,34 +181,101 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Header */}
-      <View style={{ 
-        backgroundColor: theme.colors.primary, 
-        paddingTop: insets.top, 
-        paddingBottom: 16, 
-        paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 5
-      }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8, marginRight: 12 }}>
-            <ArrowLeft size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' }}>
-              Complete Installation
-            </Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>
-              {storeData.storeName} - {storeData.storeId || storeData.dealerCode}
-            </Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+        {/* Assignment Info */}
+        <View style={{ 
+          backgroundColor: theme.colors.surface, 
+          borderRadius: 12, 
+          padding: 16, 
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: theme.colors.border
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+            Assignment Details
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Recce Completed By</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {storeData.workflow?.recceAssignedTo?.name || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                {storeData.workflow?.recceSubmittedAt ? new Date(storeData.workflow.recceSubmittedAt).toLocaleDateString() : '-'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Installation Assigned To</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {storeData.workflow?.installationAssignedTo?.name || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                {storeData.workflow?.installationAssignedAt ? new Date(storeData.workflow.installationAssignedAt).toLocaleDateString() : '-'}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+        <View style={{ 
+          backgroundColor: theme.colors.surface, 
+          borderRadius: 12, 
+          padding: 16, 
+          marginBottom: 16,
+          borderWidth: 1,
+          borderColor: theme.colors.border
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
+            Store Details
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Store Info</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                ID: {storeData.storeId || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Client: {storeData.clientCode || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                Dealer: {storeData.dealerCode || '-'}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Location</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {storeData.location?.city || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                {storeData.location?.state || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                Zone: {storeData.location?.zone || '-'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Board Specs</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {storeData.specs?.width || '-'} × {storeData.specs?.height || '-'} ft
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                Qty: {storeData.specs?.qty || 1}
+              </Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Contact</Text>
+              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
+                {storeData.contact?.personName || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                {storeData.contact?.mobile || '-'}
+              </Text>
+            </View>
+          </View>
+        </View>
         {/* Initial Photos Reference */}
         {initialPhotos.length > 0 && (
           <View style={{ 
@@ -226,13 +295,13 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {initialPhotos.slice(0, 4).map((photo: string, idx: number) => (
-                <View key={idx} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
+                <TouchableOpacity key={idx} onPress={() => setSelectedImage(photo)} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
                   <Image
-                    source={{ uri: imageService.getFullImageUrl(photo) }}
+                    source={{ uri: photo.startsWith('http') ? photo : imageService.getFullImageUrl(photo) }}
                     style={{ width: '100%', height: '100%' }}
                     resizeMode="cover"
                   />
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -273,17 +342,22 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                     <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
                       Recce Photo (Reference)
                     </Text>
-                    <View style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
+                    <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
                       <Image
                         source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
                         style={{ width: '100%', height: '100%' }}
                         resizeMode="cover"
                       />
-                    </View>
+                    </TouchableOpacity>
                     <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
                       <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
                         {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
                       </Text>
+                      {reccePhoto.elements && reccePhoto.elements.length > 0 && (
+                        <Text style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
+                          Element: {reccePhoto.elements[0].elementName}
+                        </Text>
+                      )}
                     </View>
                   </View>
                   
@@ -386,6 +460,25 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         height={reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0'}
         photoType="front"
       />
+      
+      {/* Image Preview Modal */}
+      <Modal visible={!!selectedImage} transparent={true} onRequestClose={() => setSelectedImage(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => setSelectedImage(null)}
+            style={{ position: 'absolute', top: 40, right: 20, zIndex: 1 }}
+          >
+            <X size={30} color="#FFFFFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={{ width: '90%', height: '80%' }}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
       
       <CustomModal
         visible={modalVisible}
