@@ -12,6 +12,27 @@ import ScreenLayout from './src/components/ScreenLayout';
 import CustomDrawer from './src/components/CustomDrawer';
 import Toast from 'react-native-toast-message';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
+import Logger from './src/utils/logger';
+
+// Limit console logs to prevent LogBox overflow
+if (!__DEV__) {
+  Logger.disableAll();
+} else {
+  // In development, limit console logs to prevent overflow
+  const originalConsoleLog = console.log;
+  let logCount = 0;
+  const MAX_LOGS = 1000;
+  
+  console.log = (...args) => {
+    if (logCount < MAX_LOGS) {
+      originalConsoleLog(...args);
+      logCount++;
+    } else if (logCount === MAX_LOGS) {
+      originalConsoleLog('Console log limit reached. Further logs will be suppressed.');
+      logCount++;
+    }
+  };
+}
 
 // Import all existing screens (excluding problematic ones)
 import UsersScreen from './src/screens/users/UsersScreen';
@@ -50,7 +71,6 @@ function AppContent() {
   useEffect(() => {
     const requestPermissions = async () => {
       if (!permissionsRequested) {
-        console.log('App started - requesting camera permissions...');
         await permissionService.requestInitialPermissions();
         setPermissionsRequested(true);
       }
@@ -112,13 +132,22 @@ function AppContent() {
         return (
           <ScreenLayout 
             onMenuPress={openDrawer}
-            onBackPress={() => navigateToScreen('Stores')}
+            onBackPress={() => {
+              // Determine where to go back based on navigation params
+              const fromScreen = navigationParams?.fromScreen || 'Stores';
+              navigateToScreen(fromScreen);
+            }}
             showBackButton={true}
             onProfilePress={() => navigateToScreen('Profile')}
           >
             <StoreDetailScreen 
               route={{ params: navigationParams }}
-              navigation={{ goBack: () => navigateToScreen('Stores') }}
+              navigation={{ 
+                goBack: () => {
+                  const fromScreen = navigationParams?.fromScreen || 'Stores';
+                  navigateToScreen(fromScreen);
+                }
+              }}
             />
           </ScreenLayout>
         );
@@ -287,7 +316,7 @@ function AppContent() {
   };
 
   if (showSplash) {
-    setTimeout(() => setShowSplash(false), 3000); // Reduced splash time
+    setTimeout(() => setShowSplash(false), 2000); // Reduced splash time
     return <SplashScreen />;
   }
 
@@ -296,7 +325,11 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        <LoginScreen />
+      </View>
+    );
   }
 
   return (

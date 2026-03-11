@@ -1,90 +1,50 @@
-import RNFS from 'react-native-fs';
-
+// Logger utility to manage console logs
 class Logger {
-  private static logFile = `${RNFS.DocumentDirectoryPath}/app_logs.txt`;
-
-  private static async writeToFile(logEntry: string) {
-    try {
-      const exists = await RNFS.exists(this.logFile);
-      if (!exists) {
-        await RNFS.writeFile(this.logFile, '', 'utf8');
-      }
-      await RNFS.appendFile(this.logFile, logEntry + '\n', 'utf8');
-    } catch (error) {
-      console.error('Failed to write to log file:', error);
+  private static isDevelopment = __DEV__;
+  
+  static log(...args: any[]) {
+    if (this.isDevelopment) {
+      console.log(...args);
     }
   }
-
-  static log(step: string, message: string, data?: any) {
-    const timestamp = new Date().toISOString();
-    const logEntry = `🔍 [${timestamp}] ${step}: ${message}`;
-    console.log(logEntry);
-    this.writeToFile(logEntry);
-    
-    if (data) {
-      const dataEntry = `📊 Data: ${JSON.stringify(data, null, 2)}`;
-      console.log(dataEntry);
-      this.writeToFile(dataEntry);
+  
+  static error(...args: any[]) {
+    if (this.isDevelopment) {
+      console.error(...args);
     }
   }
-
-  static error(step: string, message: string, error?: any) {
-    const timestamp = new Date().toISOString();
-    const logEntry = `❌ [${timestamp}] ${step}: ${message}`;
-    console.error(logEntry);
-    this.writeToFile(logEntry);
-    
-    if (error) {
-      const errorEntry = `💥 Error: ${error}`;
-      const stackEntry = `📋 Stack: ${error?.stack}`;
-      const detailsEntry = `🔧 Details: ${JSON.stringify(error, null, 2)}`;
-      
-      console.error(errorEntry);
-      console.error(stackEntry);
-      console.error(detailsEntry);
-      
-      this.writeToFile(errorEntry);
-      this.writeToFile(stackEntry);
-      this.writeToFile(detailsEntry);
+  
+  static warn(...args: any[]) {
+    if (this.isDevelopment) {
+      console.warn(...args);
     }
   }
-
-  static success(step: string, message: string, data?: any) {
-    const timestamp = new Date().toISOString();
-    const logEntry = `✅ [${timestamp}] ${step}: ${message}`;
-    console.log(logEntry);
-    this.writeToFile(logEntry);
-    
-    if (data) {
-      const dataEntry = `📊 Data: ${JSON.stringify(data, null, 2)}`;
-      console.log(dataEntry);
-      this.writeToFile(dataEntry);
+  
+  static info(...args: any[]) {
+    if (this.isDevelopment) {
+      console.info(...args);
     }
   }
-
-  static warn(step: string, message: string, data?: any) {
-    const timestamp = new Date().toISOString();
-    const logEntry = `⚠️ [${timestamp}] ${step}: ${message}`;
-    console.warn(logEntry);
-    this.writeToFile(logEntry);
-    
-    if (data) {
-      const dataEntry = `📊 Data: ${JSON.stringify(data, null, 2)}`;
-      console.warn(dataEntry);
-      this.writeToFile(dataEntry);
+  
+  static debug(...args: any[]) {
+    if (this.isDevelopment) {
+      console.debug(...args);
     }
   }
-
-  static async getLogFile(): Promise<string> {
-    return this.logFile;
+  
+  // Disable all console logs (useful for production or when debugging LogBox issues)
+  static disableAll() {
+    console.log = () => {};
+    console.error = () => {};
+    console.warn = () => {};
+    console.info = () => {};
+    console.debug = () => {};
   }
-
-  static async clearLogs() {
-    try {
-      await RNFS.writeFile(this.logFile, '', 'utf8');
-    } catch (error) {
-      console.error('Failed to clear log file:', error);
-    }
+  
+  // Re-enable console logs
+  static enableAll() {
+    // Console methods are global, no need to require
+    // Just remove the disable overrides if any
   }
 }
 

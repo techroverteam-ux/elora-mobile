@@ -16,6 +16,13 @@ export type RootStackParamList = {
   GalleryList: { initialIndex?: number };
 };
 
+export type RecceStackParamList = {
+  RecceList: undefined;
+  RecceDetail: { storeId: string };
+  RecceForm: { storeId?: string; recceId?: string };
+  RecceReview: { storeId: string };
+};
+
 export type HomeStackParamList = {
   HomeMain: undefined;
   AllAudios: undefined;

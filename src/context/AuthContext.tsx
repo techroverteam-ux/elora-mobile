@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../lib/api';
+import { AppState, DeviceEventEmitter } from 'react-native';
 
 interface User {
   _id: string;
@@ -16,6 +17,10 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  refreshToken: () => Promise<boolean>;
+  isAdmin: () => boolean;
+  isFieldWorker: () => boolean;
+  canViewCommercialInfo: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,34 +29,68 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Handle app state changes to check token validity
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active' && user) {
+        // Check auth when app becomes active
+        checkAuth();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [user]);
+
+  // Handle token expiration events
+  useEffect(() => {
+    const handleTokenExpired = () => {
+      logout();
+    };
+
+    // Use React Native's DeviceEventEmitter for cross-component communication
+    const subscription = DeviceEventEmitter.addListener('tokenExpired', handleTokenExpired);
+    return () => subscription.remove();
+  }, []);
+
   const checkAuth = async () => {
     try {
-      console.log('AuthContext: Checking authentication...');
-      
       // Check if we have stored tokens first
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        console.log('AuthContext: No stored token found');
         setUser(null);
-        setIsLoading(false);
         return;
       }
       
       // Use same endpoint as web portal
       const response = await api.get('/auth/me');
-      console.log('AuthContext: Auth response:', response.data);
       
       if (response.data) {
         setUser(response.data);
-        console.log('AuthContext: User authenticated', response.data.name);
       } else {
         setUser(null);
-        console.log('AuthContext: No user data received');
       }
-    } catch (error) {
-      console.log('AuthContext: Auth check failed', error?.message || 'Network error');
-      // Clear invalid token
+    } catch (error: any) {
+      // If it's a 401 error, try to refresh token first
+      if (error?.response?.status === 401) {
+        const refreshSuccess = await refreshToken();
+        if (refreshSuccess) {
+          // Retry auth check with new token
+          try {
+            const retryResponse = await api.get('/auth/me');
+            if (retryResponse.data) {
+              setUser(retryResponse.data);
+              return;
+            }
+          } catch (retryError) {
+            // Retry failed
+          }
+        }
+      }
+      
+      // Clear invalid tokens and logout user
       await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('refreshToken');
       setUser(null);
     } finally {
@@ -61,20 +100,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkAuth();
+    
+    // Set up periodic token validation (every 5 minutes)
+    const tokenCheckInterval = setInterval(() => {
+      if (user) {
+        checkAuth();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(tokenCheckInterval);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
-      console.log('AuthContext: Attempting login for', email);
-      
       // Use same login approach as web portal
       const response = await api.post('/auth/login', { email, password });
-      console.log('AuthContext: Login response data:', response.data);
       
       // Store tokens if provided
       if (response.data.token) {
         await AsyncStorage.setItem('authToken', response.data.token);
+        await AsyncStorage.setItem('access_token', response.data.token);
       }
       if (response.data.refreshToken) {
         await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
@@ -84,34 +129,86 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const userResponse = await api.get('/auth/me');
       if (userResponse.data) {
         setUser(userResponse.data);
-        console.log('AuthContext: Login successful for', userResponse.data.name);
         return { success: true };
       } else {
         throw new Error('Login failed - no user data received');
       }
     } catch (error: any) {
-      console.error('AuthContext: Login failed', error);
       const message = error.response?.data?.message || error.message || 'Login failed';
       return { success: false, message };
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
+      
+      if (!storedRefreshToken) {
+        return false;
+      }
+      
+      const response = await api.post('/auth/refresh', { refreshToken: storedRefreshToken });
+      
+      if (response.data.token) {
+        // Store new tokens
+        await AsyncStorage.setItem('authToken', response.data.token);
+        await AsyncStorage.setItem('access_token', response.data.token);
+        
+        if (response.data.refreshToken) {
+          await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+        }
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      // Clear all tokens on refresh failure
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('access_token');
+      await AsyncStorage.removeItem('refreshToken');
+      return false;
     }
   };
 
   const logout = async () => {
     try {
-      console.log('AuthContext: Logging out user');
       // Call logout API to clear server-side session
       await api.post('/auth/logout');
     } catch (error) {
-      console.error('AuthContext: Logout API call failed:', error);
+      // Logout API call failed, continue with local cleanup
     } finally {
-      // Clear local data
+      // Clear all local data
       await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('refreshToken');
       setUser(null);
-      console.log('AuthContext: User logged out');
     }
+  };
+
+  // Role checking utilities
+  const isAdmin = (): boolean => {
+    if (!user || !user.roles) return false;
+    return user.roles.some(role => 
+      role.name === 'ADMIN' || 
+      role.name === 'SUPER_ADMIN' || 
+      role.name === 'MANAGER'
+    );
+  };
+
+  const isFieldWorker = (): boolean => {
+    if (!user || !user.roles) return false;
+    return user.roles.some(role => 
+      role.name === 'RECCE' || 
+      role.name === 'INSTALLATION' ||
+      role.name === 'FIELD_WORKER'
+    );
+  };
+
+  const canViewCommercialInfo = (): boolean => {
+    // Only admins and managers can view commercial information
+    // Field workers (recce, installation) cannot see pricing/costs
+    return isAdmin() && !isFieldWorker();
   };
 
   return (
@@ -123,6 +220,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         logout,
         checkAuth,
+        refreshToken,
+        isAdmin,
+        isFieldWorker,
+        canViewCommercialInfo,
       }}
     >
       {children}

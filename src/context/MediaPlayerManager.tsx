@@ -43,10 +43,9 @@ export const MediaPlayerManagerProvider: React.FC<{ children: React.ReactNode }>
             isPlaying: player.isPlaying,
             currentItem: null // Will be set by CurrentPlayerContext
           };
-          console.log('Audio state saved:', savedAudioStateRef.current);
         }
       } catch (error) {
-        console.log('Error saving audio state:', error);
+        // Error saving audio state - continue silently
       }
     });
   };
@@ -60,7 +59,7 @@ export const MediaPlayerManagerProvider: React.FC<{ children: React.ReactNode }>
         if (player.pause) player.pause();
         if (player.reset) player.reset();
       } catch (error) {
-        console.log('Error stopping audio player:', error);
+        // Error stopping audio player - continue silently
       }
     });
   };
@@ -70,7 +69,7 @@ export const MediaPlayerManagerProvider: React.FC<{ children: React.ReactNode }>
       try {
         if (player.setPaused) player.setPaused(true);
       } catch (error) {
-        console.log('Error stopping video player:', error);
+        // Error stopping video player - continue silently
       }
     });
   };
@@ -89,10 +88,9 @@ export const MediaPlayerManagerProvider: React.FC<{ children: React.ReactNode }>
             }, 500);
           }
         } catch (error) {
-          console.log('Error restoring audio state:', error);
+          // Error restoring audio state - continue silently
         }
       });
-      console.log('Audio state restored:', state);
     }
   };
 

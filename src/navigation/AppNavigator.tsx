@@ -28,8 +28,9 @@ function RecceStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="RecceList" component={RecceScreen} />
-      <Stack.Screen name="RecceDetail" component={RecceScreen} />
-      <Stack.Screen name="RecceForm" component={RecceScreen} />
+      <Stack.Screen name="RecceDetail" component={require('../screens/recce/RecceDetailScreen').default} />
+      <Stack.Screen name="RecceForm" component={require('../screens/recce/RecceFormScreen').default} />
+      <Stack.Screen name="RecceReview" component={require('../screens/recce/RecceReviewScreen').default} />
     </Stack.Navigator>
   );
 }

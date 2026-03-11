@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import HomeStack from './stack/HomeStack';
 import CategoriesStack from './stack/CategoriesStack';
 import AccountStack from './stack/AccountStack';
+import RecceStack from './stack/RecceStack';
 import CustomDrawer from '../components/CustomDrawer';
 import RoleBasedFooter from '../components/RoleBasedFooter';
 
@@ -39,7 +40,6 @@ import UsersScreen from '../screens/users/UsersScreen';
 import RolesScreen from '../screens/roles/RolesScreen';
 import ClientsScreen from '../screens/clients/ClientsScreen';
 import StoresScreen from '../screens/stores/StoresScreen';
-import RecceScreen from '../screens/recce/RecceScreen';
 import InstallationScreen from '../screens/installation/InstallationScreen';
 import EnquiriesScreen from '../screens/enquiries/EnquiriesScreen';
 import RFQScreen from '../screens/rfq/RFQScreen';
@@ -193,7 +193,7 @@ const BusinessTabNavigator = () => {
         <Tab.Screen name="Roles" component={RolesScreen} />
         <Tab.Screen name="Clients" component={ClientsScreen} />
         <Tab.Screen name="Stores" component={StoresScreen} />
-        <Tab.Screen name="Recce" component={RecceScreen} />
+        <Tab.Screen name="Recce" component={RecceStack} />
         <Tab.Screen name="Installation" component={InstallationScreen} />
         <Tab.Screen name="Reports" component={ReportsScreen} />
         <Tab.Screen name="Enquiries" component={EnquiriesScreen} />

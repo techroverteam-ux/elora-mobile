@@ -13,7 +13,11 @@ const api = axios.create({
 
 // Add token to requests
 api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('access_token');
+  // Check both possible token storage keys for compatibility
+  let token = await AsyncStorage.getItem('authToken');
+  if (!token) {
+    token = await AsyncStorage.getItem('access_token');
+  }
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -58,15 +62,30 @@ api.interceptors.response.use(
         if (refreshToken) {
           const response = await api.post('/auth/refresh', { refreshToken });
           const newToken = response.data.token;
+          
+          // Store token with both keys for compatibility
+          await AsyncStorage.setItem('authToken', newToken);
           await AsyncStorage.setItem('access_token', newToken);
+          
+          // Update refresh token if provided
+          if (response.data.refreshToken) {
+            await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+          }
+          
           processQueue(null, newToken);
           return api(originalRequest);
         }
       } catch (refreshError) {
         processQueue(refreshError, null);
+        // Clear all token storage keys
+        await AsyncStorage.removeItem('authToken');
         await AsyncStorage.removeItem('access_token');
         await AsyncStorage.removeItem('refreshToken');
-        console.log('Token refresh failed, user needs to login again');
+        
+        // Notify the app that user needs to re-authenticate using React Native events
+        const { DeviceEventEmitter } = require('react-native');
+        DeviceEventEmitter.emit('tokenExpired');
+        
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

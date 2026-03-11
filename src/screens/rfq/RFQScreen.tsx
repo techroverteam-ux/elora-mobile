@@ -7,7 +7,12 @@ import { storeService } from '../../services/storeService';
 import { rfqService } from '../../services/rfqService';
 import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native';
+
+interface RFQScreenProps {
+  navigation?: {
+    navigate: (screenName: string, params?: any) => void;
+  };
+}
 
 interface Store {
   _id: string;
@@ -15,9 +20,16 @@ interface Store {
   dealerCode: string;
   storeName: string;
   clientCode?: string;
+  vendorCode?: string;
   location: {
     city: string;
     state?: string;
+    zone?: string;
+    district?: string;
+  };
+  commercials?: {
+    poNumber?: string;
+    invoiceNumber?: string;
   };
   currentStatus: string;
 }
@@ -32,10 +44,9 @@ enum StoreStatus {
   COMPLETED = 'COMPLETED'
 }
 
-export default function RFQScreen() {
+export default function RFQScreen({ navigation }: RFQScreenProps = {}) {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const navigation = useNavigation();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -159,31 +170,49 @@ export default function RFQScreen() {
       const blob = await rfqService.generate(Array.from(selectedStoreIds));
       const filename = `RFQ_${Date.now()}.xlsx`;
       
-      try {
-        // Try to download first
-        await fileService.downloadFile(blob, filename);
-        Toast.show({ type: 'success', text1: 'RFQ downloaded successfully!' });
-      } catch (downloadError) {
-        // If download fails, offer to share
-        Alert.alert(
-          'Download Failed',
-          'Unable to save file to device. Would you like to share it instead?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Share', 
-              onPress: async () => {
-                try {
-                  await fileService.shareFile(blob, filename);
-                  Toast.show({ type: 'success', text1: 'RFQ shared successfully!' });
-                } catch (shareError) {
-                  Toast.show({ type: 'error', text1: 'Failed to share RFQ' });
-                }
+      // Try direct share first (no permission needed)
+      Alert.alert(
+        'RFQ Generated',
+        'Your RFQ has been generated successfully. How would you like to proceed?',
+        [
+          {
+            text: 'Share Now',
+            onPress: async () => {
+              try {
+                await fileService.directShare(blob, filename);
+              } catch (shareError) {
+                // Removed console.error to prevent memory issues
+                Toast.show({ type: 'error', text1: 'Failed to share RFQ' });
               }
             }
-          ]
-        );
-      }
+          },
+          {
+            text: 'Download',
+            onPress: async () => {
+              try {
+                await fileService.downloadFile(blob, filename);
+                Toast.show({ type: 'success', text1: 'RFQ downloaded successfully!' });
+              } catch (downloadError) {
+                // Removed console.error to prevent memory issues
+                // Fallback to share if download fails
+                Alert.alert(
+                  'Download Failed',
+                  'Unable to save file to device. Sharing instead...',
+                  [
+                    { text: 'OK', onPress: async () => {
+                      try {
+                        await fileService.directShare(blob, filename);
+                      } catch (shareError) {
+                        Toast.show({ type: 'error', text1: 'Failed to share RFQ' });
+                      }
+                    }}
+                  ]
+                );
+              }
+            }
+          }
+        ]
+      );
       
       setSelectedStoreIds(new Set());
     } catch (error: any) {
@@ -273,7 +302,26 @@ export default function RFQScreen() {
         </View>
 
         <TouchableOpacity 
-          onPress={() => (navigation as any)?.navigate('StoreDetail', { storeId: item._id })} 
+          onPress={() => {
+            try {
+              if (navigation && navigation.navigate) {
+                navigation.navigate('StoreDetail', { storeId: item._id, fromScreen: 'RFQ' });
+              } else {
+                Toast.show({ 
+                  type: 'info', 
+                  text1: 'Navigation not available', 
+                  text2: 'Please use the main stores section to view details' 
+                });
+              }
+            } catch (error) {
+              // Removed console.error to prevent memory issues
+              Toast.show({ 
+                type: 'error', 
+                text1: 'Navigation failed', 
+                text2: 'Unable to open store details' 
+              });
+            }
+          }} 
           style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
         >
           <Eye size={16} color="#3B82F6" />

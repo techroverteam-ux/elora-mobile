@@ -36,11 +36,12 @@ export default function LoginScreen() {
       const result = await login(email, password);
       if (!result.success) {
         Alert.alert('Login Failed', result.message || 'Please try again');
+        setIsLoading(false); // Reset loading state on failure
       }
+      // Don't reset loading state on success - let AuthContext handle navigation
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Reset loading state on error
     }
   };
 
@@ -125,6 +126,7 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.eyeIcon}
+                    activeOpacity={0.7}
                   >
                     {showPassword ? (
                       <EyeOff color={colors.textSecondary} size={20} />

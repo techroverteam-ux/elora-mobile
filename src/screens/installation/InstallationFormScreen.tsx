@@ -27,7 +27,8 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   const [storeData, setStoreData] = useState<any>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
-  const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: string | null}>({});
+  const [currentPhotoType, setCurrentPhotoType] = useState<'before' | 'after' | 'closeup'>('before');
+  const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: {before?: string, after?: string, closeup?: string}}>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -49,14 +50,13 @@ export default function InstallationFormScreen({ route, navigation }: Installati
       
       // Initialize installation photos object based on recce photos count
       if (store.recce?.reccePhotos) {
-        const initialPhotos: {[key: number]: string | null} = {};
+        const initialPhotos: {[key: number]: {before?: string, after?: string, closeup?: string}} = {};
         store.recce.reccePhotos.forEach((_: any, index: number) => {
-          initialPhotos[index] = null;
+          initialPhotos[index] = { before: undefined, after: undefined, closeup: undefined };
         });
         setInstallationPhotos(initialPhotos);
       }
     } catch (error) {
-      console.error('Failed to load store data:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
@@ -78,10 +78,23 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
   const handleSubmit = async () => {
     const reccePhotosCount = storeData?.recce?.reccePhotos?.length || 0;
-    const uploadedCount = Object.values(installationPhotos).filter(photo => photo !== null).length;
     
-    if (uploadedCount < reccePhotosCount) {
-      showModal('Photos Required', `Please upload installation photos for all ${reccePhotosCount} boards.`, 'error');
+    // Check minimum 2 photos per board (before + after)
+    let missingPhotos = [];
+    for (let i = 0; i < reccePhotosCount; i++) {
+      const boardPhotos = installationPhotos[i] || {};
+      const photoCount = Object.values(boardPhotos).filter(photo => photo).length;
+      if (photoCount < 2) {
+        missingPhotos.push(`Board ${i + 1} (needs ${2 - photoCount} more photos)`);
+      }
+    }
+    
+    if (missingPhotos.length > 0) {
+      showModal(
+        'Minimum Photos Required', 
+        `Each board requires minimum 2 photos (Before & After installation).\n\nMissing photos for:\n${missingPhotos.join('\n')}`, 
+        'error'
+      );
       return;
     }
 
@@ -97,32 +110,44 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             setModalVisible(false);
             try {
               setLoading(true);
-              console.log('InstallationForm: Starting submission');
-              console.log('InstallationForm: reccePhotosCount:', reccePhotosCount);
-              console.log('InstallationForm: installationPhotos:', installationPhotos);
               
-              // Create FormData exactly like web portal
+              // Create FormData matching the expected server format
               const formData = new FormData();
-              const photosData: Array<{ reccePhotoIndex: number }> = [];
+              const installationPhotosData: Array<{ 
+                reccePhotoIndex: number, 
+                photoType: string,
+                measurements?: any 
+              }> = [];
               let fileIndex = 0;
 
               for (let i = 0; i < reccePhotosCount; i++) {
-                if (installationPhotos[i]) {
-                  console.log(`InstallationForm: Adding photo ${i}:`, installationPhotos[i]);
-                  formData.append(`installationPhoto${fileIndex}`, {
-                    uri: installationPhotos[i],
-                    type: 'image/jpeg',
-                    name: `installation_${i}.jpg`,
-                  } as any);
-                  photosData.push({ reccePhotoIndex: i });
-                  fileIndex++;
-                }
+                const boardPhotos = installationPhotos[i] || {};
+                const reccePhoto = storeData.recce.reccePhotos[i];
+                
+                // Add each photo type for this board
+                Object.entries(boardPhotos).forEach(([photoType, photoUri]) => {
+                  if (photoUri) {
+                    formData.append(`installationPhoto${fileIndex}`, {
+                      uri: photoUri,
+                      type: 'image/jpeg',
+                      name: `installation_board${i + 1}_${photoType}.jpg`,
+                    } as any);
+                    
+                    installationPhotosData.push({ 
+                      reccePhotoIndex: i, 
+                      photoType,
+                      measurements: reccePhoto.measurements
+                    });
+                    fileIndex++;
+                  }
+                });
               }
-
-              console.log('InstallationForm: photosData:', photosData);
-              formData.append('installationPhotosData', JSON.stringify(photosData));
               
-              console.log('InstallationForm: Calling submitInstallation API');
+              // Add metadata
+              formData.append('installationPhotosData', JSON.stringify(installationPhotosData));
+              formData.append('totalBoards', reccePhotosCount.toString());
+              formData.append('completedAt', new Date().toISOString());
+              
               await storeService.submitInstallation(storeId, formData);
               
               Toast.show({
@@ -133,9 +158,6 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               
               navigation.goBack();
             } catch (error: any) {
-              console.error('InstallationForm: Submission error:', error);
-              console.error('InstallationForm: Error response:', error.response);
-              console.error('InstallationForm: Error message:', error.message);
               Toast.show({
                 type: 'error',
                 text1: 'Submission Failed',
@@ -151,15 +173,19 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     );
   };
 
-  const captureInstallationPhoto = (index: number) => {
+  const captureInstallationPhoto = (index: number, photoType: 'before' | 'after' | 'closeup') => {
     setCurrentPhotoIndex(index);
+    setCurrentPhotoType(photoType);
     setCameraVisible(true);
   };
 
   const handlePhotoCapture = (photoUri: string) => {
     setInstallationPhotos(prev => ({
       ...prev,
-      [currentPhotoIndex]: photoUri
+      [currentPhotoIndex]: {
+        ...prev[currentPhotoIndex],
+        [currentPhotoType]: photoUri
+      }
     }));
     setCameraVisible(false);
   };
@@ -307,7 +333,6 @@ export default function InstallationFormScreen({ route, navigation }: Installati
           </View>
         )}
 
-        {/* Recce Photos & Installation Upload */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 
@@ -320,90 +345,181 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             Installation Photos for Each Board
           </Text>
           <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>
-            Upload installation photo for each recce board ({reccePhotos.length} boards)
+            Upload minimum 2 photos per board: Before & After installation ({reccePhotos.length} boards)
           </Text>
           
           <View style={{ gap: 16 }}>
-            {reccePhotos.map((reccePhoto: any, index: number) => (
-              <View key={index} style={{ 
-                backgroundColor: theme.colors.background, 
-                borderRadius: 12, 
-                padding: 16,
-                borderWidth: 1,
-                borderColor: theme.colors.border
-              }}>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginBottom: 12 }}>
-                  Board {index + 1}
-                </Text>
-                
-                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                  {/* Recce Photo Reference */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
-                      Recce Photo (Reference)
+            {reccePhotos.map((reccePhoto: any, index: number) => {
+              const boardPhotos = installationPhotos[index] || {};
+              const photoCount = Object.values(boardPhotos).filter(photo => photo).length;
+              
+              return (
+                <View key={index} style={{ 
+                  backgroundColor: theme.colors.background, 
+                  borderRadius: 12, 
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: photoCount >= 2 ? '#10B981' : theme.colors.border
+                }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
+                      Board {index + 1}
                     </Text>
-                    <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
-                      <Image
-                        source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
-                      />
-                    </TouchableOpacity>
-                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
-                        {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
+                    <View style={{ 
+                      backgroundColor: photoCount >= 2 ? '#10B98120' : '#F59E0B20', 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 4, 
+                      borderRadius: 12 
+                    }}>
+                      <Text style={{ 
+                        color: photoCount >= 2 ? '#10B981' : '#F59E0B', 
+                        fontSize: 10, 
+                        fontWeight: 'bold' 
+                      }}>
+                        {photoCount}/2+ Photos
                       </Text>
-                      {reccePhoto.elements && reccePhoto.elements.length > 0 && (
-                        <Text style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
-                          Element: {reccePhoto.elements[0].elementName}
-                        </Text>
-                      )}
                     </View>
                   </View>
                   
-                  {/* Installation Photo */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
-                      Installation Photo *
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => captureInstallationPhoto(index)}
-                      style={{
-                        aspectRatio: 1,
-                        backgroundColor: installationPhotos[index] ? theme.colors.primary + '15' : theme.colors.background,
-                        borderWidth: 2,
-                        borderColor: installationPhotos[index] ? '#10B981' : theme.colors.border,
-                        borderStyle: installationPhotos[index] ? 'solid' : 'dashed',
-                        borderRadius: 8,
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {installationPhotos[index] ? (
-                        <View style={{ alignItems: 'center' }}>
-                          <Camera size={24} color="#10B981" />
-                          <Text style={{ color: '#10B981', fontSize: 12, marginTop: 4, fontWeight: '600' }}>
-                            Captured
-                          </Text>
-                        </View>
-                      ) : (
-                        <View style={{ alignItems: 'center' }}>
-                          <Camera size={24} color={theme.colors.textSecondary} />
-                          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
-                            Capture
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                    <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
-                      <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>
-                        With {reccePhoto.measurements.width} × {reccePhoto.measurements.height} overlay
+                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+                    {/* Recce Photo Reference */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
+                        Recce Photo (Reference)
                       </Text>
+                      <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
+                        <Image
+                          source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
+                          style={{ width: '100%', height: '100%' }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                      <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
+                        <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
+                          {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
+                        </Text>
+                        {reccePhoto.elements && reccePhoto.elements.length > 0 && (
+                          <Text style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
+                            Element: {reccePhoto.elements[0].elementName}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* Installation Photos Grid */}
+                  <View style={{ gap: 12 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: theme.colors.text }}>
+                      Installation Photos (Minimum 2 Required)
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {/* Before Photo */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6 }}>
+                          Before Installation *
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => captureInstallationPhoto(index, 'before')}
+                          style={{
+                            aspectRatio: 1,
+                            backgroundColor: boardPhotos.before ? theme.colors.primary + '15' : theme.colors.background,
+                            borderWidth: 2,
+                            borderColor: boardPhotos.before ? '#10B981' : theme.colors.border,
+                            borderStyle: boardPhotos.before ? 'solid' : 'dashed',
+                            borderRadius: 8,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {boardPhotos.before ? (
+                            <Image
+                              source={{ uri: boardPhotos.before }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                              <Camera size={20} color={theme.colors.textSecondary} />
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
+                                Before
+                              </Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {/* After Photo */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6 }}>
+                          After Installation *
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => captureInstallationPhoto(index, 'after')}
+                          style={{
+                            aspectRatio: 1,
+                            backgroundColor: boardPhotos.after ? theme.colors.primary + '15' : theme.colors.background,
+                            borderWidth: 2,
+                            borderColor: boardPhotos.after ? '#10B981' : theme.colors.border,
+                            borderStyle: boardPhotos.after ? 'solid' : 'dashed',
+                            borderRadius: 8,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {boardPhotos.after ? (
+                            <Image
+                              source={{ uri: boardPhotos.after }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                              <Camera size={20} color={theme.colors.textSecondary} />
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
+                                After
+                              </Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {/* Close-up Photo (Optional) */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280', marginBottom: 6 }}>
+                          Close-up (Optional)
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => captureInstallationPhoto(index, 'closeup')}
+                          style={{
+                            aspectRatio: 1,
+                            backgroundColor: boardPhotos.closeup ? theme.colors.primary + '15' : theme.colors.background,
+                            borderWidth: 2,
+                            borderColor: boardPhotos.closeup ? '#10B981' : theme.colors.border,
+                            borderStyle: boardPhotos.closeup ? 'solid' : 'dashed',
+                            borderRadius: 8,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          {boardPhotos.closeup ? (
+                            <Image
+                              source={{ uri: boardPhotos.closeup }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                              <Camera size={20} color={theme.colors.textSecondary} />
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
+                                Detail
+                              </Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
@@ -428,12 +544,18 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={loading || Object.values(installationPhotos).some(photo => photo === null)}
+            disabled={loading || Object.values(installationPhotos).some(boardPhotos => {
+              const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
+              return photoCount < 2;
+            })}
             style={{
               flex: 2,
               padding: 16,
               borderRadius: 12,
-              backgroundColor: Object.values(installationPhotos).some(photo => photo === null) ? theme.colors.border : '#10B981',
+              backgroundColor: Object.values(installationPhotos).some(boardPhotos => {
+                const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
+                return photoCount < 2;
+              }) ? theme.colors.border : '#10B981',
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'
@@ -458,7 +580,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         onCapture={handlePhotoCapture}
         width={reccePhotos[currentPhotoIndex]?.measurements?.width?.toString() || '0'}
         height={reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0'}
-        photoType="front"
+        photoType={currentPhotoType === 'before' ? 'front' : currentPhotoType === 'after' ? 'side' : 'closeUp'}
       />
       
       {/* Image Preview Modal */}

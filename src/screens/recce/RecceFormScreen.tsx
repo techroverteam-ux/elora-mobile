@@ -9,22 +9,22 @@ import CustomModal from '../../components/CustomModal';
 import ElementDropdown from '../../components/ElementDropdown';
 import { locationService } from '../../services/locationService';
 import imageService from '../../services/imageService';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
+import { RecceStackParamList } from '../../navigation/types';
+
+type RecceFormScreenNavigationProp = StackNavigationProp<RecceStackParamList, 'RecceForm'>;
+type RecceFormScreenRouteProp = RouteProp<RecceStackParamList, 'RecceForm'>;
 
 interface RecceFormProps {
-  route: {
-    params: {
-      recceId: string;
-      storeId?: string;
-    };
-  };
-  navigation: {
-    goBack: () => void;
-  };
+  route: RecceFormScreenRouteProp;
+  navigation: RecceFormScreenNavigationProp;
 }
 
 interface ReccePhoto {
   file?: File | null;
   photo: string | null;
+  localPhoto?: string | null; // For local preview before upload
   width: string;
   height: string;
   unit: string;
@@ -53,6 +53,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   
   const [notes, setNotes] = useState('');
   const [initialPhotos, setInitialPhotos] = useState<string[]>([]);
+  const [localInitialPhotos, setLocalInitialPhotos] = useState<string[]>([]); // Local storage for immediate preview
   const [reccePhotos, setReccePhotos] = useState<ReccePhoto[]>([{
     file: null,
     photo: null,
@@ -95,7 +96,6 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           const clientRes = await storeService.getClientElements(store.clientId);
           setClientElements(clientRes.elements || []);
         } catch (err) {
-          console.error('Failed to fetch client elements:', err);
           setClientElements([]);
         }
       }
@@ -111,13 +111,15 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             imageService.getFullImageUrl(photo)
           );
           setInitialPhotos(existingInitialPhotos);
+          setLocalInitialPhotos([]); // Clear local photos when loading from server
         }
         
         // Load existing recce photos
         if (store.recce.reccePhotos && store.recce.reccePhotos.length > 0) {
           const existingReccePhotos = store.recce.reccePhotos.map((rp: any) => ({
             file: null,
-            photo: imageService.getFullImageUrl(rp.photo),
+            photo: imageService.getFullImageUrl(rp.photo), // Server URL
+            localPhoto: null, // No local photo for existing
             width: String(rp.measurements.width || ''),
             height: String(rp.measurements.height || ''),
             unit: rp.measurements.unit || 'in',
@@ -128,7 +130,6 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         }
       }
     } catch (error) {
-      console.error('Failed to load store data:', error);
       setFormData(prev => ({
         ...prev,
         originalAddress: '123 Main St, City, State 12345',
@@ -149,7 +150,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         updatedAddress: addressData.formattedAddress || ''
       }));
     } catch (error) {
-      console.log('Location error:', error);
+      // Location error - continue without location
     } finally {
       setLocationLoading(false);
     }
@@ -187,7 +188,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     }
 
     for (let i = 0; i < reccePhotos.length; i++) {
-      if (!reccePhotos[i].photo) {
+      if (!reccePhotos[i].photo && !reccePhotos[i].localPhoto) {
         showModal('Error', `Please upload photo for recce photo ${i + 1}`, 'error');
         return;
       }
@@ -214,7 +215,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       const isResubmission = storeData?.recce?.submittedDate;
       
       // Add initial photos count and files
-      const newInitialPhotos = initialPhotos.filter(photo => !photo.startsWith('http'));
+      const newInitialPhotos = localInitialPhotos; // Use local photos for upload
       submitFormData.append('initialPhotosCount', newInitialPhotos.length.toString());
       newInitialPhotos.forEach((photoUri, index) => {
         submitFormData.append(`initialPhoto${index}`, {
@@ -224,9 +225,8 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         } as any);
       });
       
-      // Add recce photos data and files - filter only new photos with files
-      const newReccePhotos = reccePhotos.filter(rp => rp.file || (rp.photo && !rp.photo.startsWith('http')));
-      const reccePhotosData = newReccePhotos.map((rp) => ({
+      // Add recce photos data and files - handle both new and existing photos
+      const reccePhotosData = reccePhotos.map((rp) => ({
         width: rp.width,
         height: rp.height,
         unit: rp.unit,
@@ -234,11 +234,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       }));
       submitFormData.append('reccePhotosData', JSON.stringify(reccePhotosData));
       
+      // Add new photos (localPhoto) to FormData
       let photoIndex = 0;
       reccePhotos.forEach((rp) => {
-        if (rp.photo && !rp.photo.startsWith('http')) {
+        if (rp.localPhoto) {
           submitFormData.append(`reccePhoto${photoIndex}`, {
-            uri: rp.photo,
+            uri: rp.localPhoto,
             type: 'image/jpeg',
             name: `recce_${photoIndex}.jpg`,
           } as any);
@@ -267,6 +268,9 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
 
       await storeService.submitRecce(storeId || recceId, submitFormData);
       
+      // After successful upload, refresh data to get server URLs
+      await loadStoreData();
+      
       Toast.show({
         type: 'success',
         text1: isResubmission ? 'Recce Updated Successfully!' : 'Recce Submitted Successfully!',
@@ -286,7 +290,8 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   };
 
   const captureInitialPhoto = () => {
-    if (initialPhotos.length >= 10) {
+    const totalPhotos = initialPhotos.length + localInitialPhotos.length;
+    if (totalPhotos >= 10) {
       showModal('Limit Reached', 'Maximum 10 initial photos allowed', 'warning');
       return;
     }
@@ -307,21 +312,31 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
 
   const handlePhotoCapture = (photoUri: string) => {
     if (currentRecceIndex !== null) {
-      // Recce photo
+      // Recce photo - store locally for immediate preview
       const newReccePhotos = [...reccePhotos];
-      newReccePhotos[currentRecceIndex].photo = photoUri;
+      newReccePhotos[currentRecceIndex].localPhoto = photoUri; // Store in local for preview
+      newReccePhotos[currentRecceIndex].photo = null; // Clear server photo
       newReccePhotos[currentRecceIndex].file = null; // New photo, not a file
       setReccePhotos(newReccePhotos);
       setCurrentRecceIndex(null);
     } else {
-      // Initial photo
-      setInitialPhotos([...initialPhotos, photoUri]);
+      // Initial photo - store locally for immediate preview
+      setLocalInitialPhotos([...localInitialPhotos, photoUri]);
     }
     setCameraVisible(false);
   };
 
   const addReccePhoto = () => {
-    setReccePhotos([...reccePhotos, { file: null, photo: null, width: '', height: '', unit: 'in', elementId: '', elementName: '' }]);
+    setReccePhotos([...reccePhotos, { 
+      file: null, 
+      photo: null, 
+      localPhoto: null,
+      width: '', 
+      height: '', 
+      unit: 'in', 
+      elementId: '', 
+      elementName: '' 
+    }]);
   };
 
   const removeReccePhoto = (index: number) => {
@@ -482,18 +497,35 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             Upload initial photos of the store before starting measurements
           </Text>
           
+          {/* Debug info */}
+          {__DEV__ && (
+            <Text style={{ fontSize: 10, color: theme.colors.textSecondary, marginBottom: 8 }}>
+              Debug: Server: {initialPhotos.length}, Local: {localInitialPhotos.length} photos
+            </Text>
+          )}
+          
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {/* Display server photos first */}
             {initialPhotos.map((photo, index) => (
-              <View key={index} style={{ position: 'relative' }}>
+              <View key={`server-${index}`} style={{ position: 'relative' }}>
                 <View style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: theme.colors.primary + '20' }}>
-                  {photo.startsWith('http') ? (
-                    <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  ) : (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                      <Camera size={20} color={theme.colors.primary} />
-                      <Text style={{ color: theme.colors.primary, fontSize: 10, marginTop: 2 }}>Photo {index + 1}</Text>
-                    </View>
-                  )}
+                  <Image 
+                    source={{ uri: photo }} 
+                    style={{ width: '100%', height: '100%' }} 
+                    resizeMode="cover"
+                  />
+                  {/* Server photo indicator */}
+                  <View style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: 2,
+                    backgroundColor: '#10B981',
+                    borderRadius: 4,
+                    paddingHorizontal: 4,
+                    paddingVertical: 1
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: 'bold' }}>✓</Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   onPress={() => {
@@ -516,9 +548,53 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                 </TouchableOpacity>
               </View>
             ))}
+            
+            {/* Display local photos */}
+            {localInitialPhotos.map((photo, index) => (
+              <View key={`local-${index}`} style={{ position: 'relative' }}>
+                <View style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: theme.colors.primary + '20' }}>
+                  <Image 
+                    source={{ uri: photo }} 
+                    style={{ width: '100%', height: '100%' }} 
+                    resizeMode="cover"
+                  />
+                  {/* Local photo indicator */}
+                  <View style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: 2,
+                    backgroundColor: '#F59E0B',
+                    borderRadius: 4,
+                    paddingHorizontal: 4,
+                    paddingVertical: 1
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: 'bold' }}>📱</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    const newPhotos = localInitialPhotos.filter((_, i) => i !== index);
+                    setLocalInitialPhotos(newPhotos);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    backgroundColor: '#EF4444',
+                    borderRadius: 10,
+                    width: 20,
+                    height: 20,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={12} color="white" />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
           
-          {initialPhotos.length < 10 && (
+          {(initialPhotos.length + localInitialPhotos.length) < 10 && (
             <TouchableOpacity
               onPress={captureInitialPhoto}
               style={{
@@ -534,8 +610,13 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             >
               <Camera size={24} color={theme.colors.textSecondary} />
               <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 6, fontWeight: '600' }}>
-                Add Initial Photo ({initialPhotos.length}/10)
+                Add Initial Photo ({initialPhotos.length + localInitialPhotos.length}/10)
               </Text>
+              {localInitialPhotos.length > 0 && (
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 2 }}>
+                  {localInitialPhotos.length} pending upload
+                </Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -655,17 +736,31 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             )}
             
             {/* Recce Photos with Measurements Preview */}
-            {reccePhoto.photo && (
+            {(reccePhoto.photo || reccePhoto.localPhoto) && (
               <View style={{ marginBottom: 16 }}>
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
                   Photo Preview
                 </Text>
                 <View style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
                   <Image 
-                    source={{ uri: reccePhoto.photo }} 
+                    source={{ uri: reccePhoto.localPhoto || reccePhoto.photo }} 
                     style={{ width: '100%', height: 200, backgroundColor: theme.colors.background }} 
                     resizeMode="cover" 
                   />
+                  {/* Photo source indicator */}
+                  <View style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    backgroundColor: reccePhoto.localPhoto ? '#F59E0B' : '#10B981',
+                    borderRadius: 4,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' }}>
+                      {reccePhoto.localPhoto ? '📱 Local' : '✓ Server'}
+                    </Text>
+                  </View>
                   <View style={{
                     position: 'absolute',
                     bottom: 0,
@@ -710,7 +805,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             )}
             
             {/* Photo Capture Button */}
-            {!reccePhoto.photo && (
+            {!reccePhoto.photo && !reccePhoto.localPhoto && (
               <TouchableOpacity
                 onPress={() => captureReccePhoto(index)}
                 style={{
@@ -815,12 +910,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
 
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={loading || reccePhotos.some(rp => !rp.width || !rp.height || !rp.photo) || !formData.address}
+            disabled={loading || reccePhotos.some(rp => !rp.width || !rp.height || (!rp.photo && !rp.localPhoto)) || !formData.address}
             style={{
               flex: 2,
               padding: 16,
               borderRadius: 12,
-              backgroundColor: (reccePhotos.some(rp => !rp.width || !rp.height || !rp.photo) || !formData.address) ? theme.colors.border : theme.colors.primary,
+              backgroundColor: (reccePhotos.some(rp => !rp.width || !rp.height || (!rp.photo && !rp.localPhoto)) || !formData.address) ? theme.colors.border : theme.colors.primary,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'

@@ -6,16 +6,16 @@ import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
+import { RecceStackParamList } from '../../navigation/types';
+
+type RecceReviewScreenNavigationProp = StackNavigationProp<RecceStackParamList, 'RecceReview'>;
+type RecceReviewScreenRouteProp = RouteProp<RecceStackParamList, 'RecceReview'>;
 
 interface RecceReviewProps {
-  route: {
-    params: {
-      storeId: string;
-    };
-  };
-  navigation: {
-    goBack: () => void;
-  };
+  route: RecceReviewScreenRouteProp;
+  navigation: RecceReviewScreenNavigationProp;
 }
 
 export default function RecceReviewScreen({ route, navigation }: RecceReviewProps) {

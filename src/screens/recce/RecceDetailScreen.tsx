@@ -2,25 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal, TextInput } from 'react-native';
 import { ArrowLeft, MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle, XCircle, Clock, Edit3, Save, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RouteProp } from '@react-navigation/native';
+import { RecceStackParamList } from '../../navigation/types';
+
+type RecceDetailScreenNavigationProp = StackNavigationProp<RecceStackParamList, 'RecceDetail'>;
+type RecceDetailScreenRouteProp = RouteProp<RecceStackParamList, 'RecceDetail'>;
 
 interface RecceDetailProps {
-  route: {
-    params: {
-      storeId: string;
-    };
-  };
-  navigation: {
-    goBack: () => void;
-    navigate: (screen: string, params?: any) => void;
-  };
+  route: RecceDetailScreenRouteProp;
+  navigation: RecceDetailScreenNavigationProp;
 }
 
 export default function RecceDetailScreen({ route, navigation }: RecceDetailProps) {
   const { theme } = useTheme();
+  const { canViewCommercialInfo, isAdmin } = useAuth();
   const insets = useSafeAreaInsets();
   const { storeId } = route.params;
   const [store, setStore] = useState<any>(null);
@@ -192,7 +193,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {/* Board Specs Card */}
             <View style={{ 
-              flex: 1, 
+              flex: canViewCommercialInfo() ? 1 : 2, 
               backgroundColor: theme.colors.surface, 
               borderRadius: 12, 
               padding: 12,
@@ -217,32 +218,34 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
               </Text>
             </View>
 
-            {/* Commercial Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <IndianRupee size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Commercial</Text>
+            {/* Commercial Card - Only show to admins */}
+            {canViewCommercialInfo() && (
+              <View style={{ 
+                flex: 1, 
+                backgroundColor: theme.colors.surface, 
+                borderRadius: 12, 
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <IndianRupee size={16} color="#F59E0B" />
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Commercial</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  PO: {store.commercials?.poNumber || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  Month: {store.commercials?.poMonth || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  Invoice: {store.commercials?.invoiceNumber || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#10B981', fontWeight: 'bold' }}>
+                  Total: ₹{store.commercials?.totalCost?.toLocaleString() || 0}
+                </Text>
               </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                PO: {store.commercials?.poNumber || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Month: {store.commercials?.poMonth || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Invoice: {store.commercials?.invoiceNumber || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#10B981', fontWeight: 'bold' }}>
-                Total: ₹{store.commercials?.totalCost?.toLocaleString() || 0}
-              </Text>
-            </View>
+            )}
           </View>
         </View>
 
@@ -317,16 +320,18 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {getStatusBadge(reccePhoto.approvalStatus)}
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedPhotoIndex(index);
-                        setNewStatus('APPROVED');
-                        setShowStatusModal(true);
-                      }}
-                      style={{ padding: 4 }}
-                    >
-                      <Edit3 size={16} color={theme.colors.primary} />
-                    </TouchableOpacity>
+                    {isAdmin() && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setSelectedPhotoIndex(index);
+                          setNewStatus('APPROVED');
+                          setShowStatusModal(true);
+                        }}
+                        style={{ padding: 4 }}
+                      >
+                        <Edit3 size={16} color={theme.colors.primary} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -407,26 +412,6 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
               {store.recce.notes}
             </Text>
           </View>
-        )}
-
-        {/* Action Buttons */}
-        {store.currentStatus === 'RECCE_ASSIGNED' && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('RecceForm', { storeId: store._id })}
-            style={{
-              backgroundColor: theme.colors.primary,
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center'
-            }}
-          >
-            <Camera size={20} color="#FFFFFF" />
-            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
-              Start Recce
-            </Text>
-          </TouchableOpacity>
         )}
       </ScrollView>
 

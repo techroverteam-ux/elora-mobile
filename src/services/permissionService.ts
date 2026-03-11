@@ -25,20 +25,81 @@ export const permissionService = {
     return true;
   },
 
-  // Check if camera permission is granted
-  checkCameraPermission: async (): Promise<boolean> => {
+  // Request storage permission
+  requestStoragePermission: async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
-        const result = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
+        const androidVersion = Platform.Version;
+        
+        // For Android 11+ (API 30+), we don't need WRITE_EXTERNAL_STORAGE
+        // Files are saved to app-specific directories or Downloads folder
+        if (androidVersion >= 30) {
+          console.log('Android 11+ detected - using scoped storage');
+          return true;
+        }
+        
+        // For older Android versions, request storage permission
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+          {
+            title: 'Storage Permission Required',
+            message: 'This app needs storage access to save downloaded files like RFQ documents and reports.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Deny',
+            buttonPositive: 'Allow',
+          },
         );
-        return result;
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.warn('Camera permission check error:', err);
+        console.warn('Storage permission error:', err);
         return false;
       }
     }
     return true;
+  },
+
+  // Check storage permission
+  checkStoragePermission: async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const androidVersion = Platform.Version;
+        
+        // For Android 11+, no permission needed for app-specific storage
+        if (androidVersion >= 30) {
+          return true;
+        }
+        
+        const result = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        );
+        return result;
+      } catch (err) {
+        console.warn('Storage permission check error:', err);
+        return false;
+      }
+    }
+    return true;
+  },
+
+  // Show storage permission denied alert
+  showStoragePermissionDeniedAlert: () => {
+    Alert.alert(
+      'Storage Permission Required',
+      'Storage access is required to save downloaded files. Please enable storage permission in your device settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Open Settings', 
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          }
+        }
+      ]
+    );
   },
 
   // Show permission denied alert with settings option
@@ -68,48 +129,60 @@ export const permissionService = {
     
     if (Platform.OS === 'android') {
       try {
-        // First check if permissions are already granted
+        // Check camera permission
         const cameraCheck = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.CAMERA);
         
-        if (cameraCheck) {
-          console.log('Camera permission already granted');
+        // Check storage permission (for older Android versions)
+        const storageCheck = await this.checkStoragePermission();
+        
+        if (cameraCheck && storageCheck) {
+          console.log('All permissions already granted');
           return true;
         }
 
-        // Request camera permission with clear explanation
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.CAMERA,
-          {
-            title: 'Camera Access Required',
-            message: 'This app requires camera access to:\n\n• Take photos during store inspections\n• Capture measurement references\n• Document installation progress\n\nPlease allow camera access to continue.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Deny',
-            buttonPositive: 'Allow Camera',
-          },
-        );
-        
-        const cameraGranted = granted === PermissionsAndroid.RESULTS.GRANTED;
-        
-        if (!cameraGranted) {
-          this.showPermissionDeniedAlert();
-          return false;
+        // Request camera permission
+        if (!cameraCheck) {
+          const cameraGranted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.CAMERA,
+            {
+              title: 'Camera Access Required',
+              message: 'This app requires camera access to:\n\n• Take photos during store inspections\n• Capture measurement references\n• Document installation progress\n\nPlease allow camera access to continue.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Deny',
+              buttonPositive: 'Allow Camera',
+            },
+          );
+          
+          if (cameraGranted !== PermissionsAndroid.RESULTS.GRANTED) {
+            this.showPermissionDeniedAlert();
+            return false;
+          }
         }
         
-        console.log('Camera permission granted successfully');
+        // Request storage permission for older Android versions
+        if (!storageCheck) {
+          const storageGranted = await this.requestStoragePermission();
+          if (!storageGranted) {
+            this.showStoragePermissionDeniedAlert();
+            return false;
+          }
+        }
+        
+        console.log('All permissions granted successfully');
         return true;
       } catch (err) {
         console.warn('Initial permissions error:', err);
         Alert.alert(
           'Permission Error',
-          'Failed to request camera permission. Please enable camera access manually in device settings.',
+          'Failed to request permissions. Please enable camera and storage access manually in device settings.',
           [{ text: 'OK' }]
         );
         return false;
       }
     }
     
-    // iOS - permissions handled by image picker, but show info
-    console.log('iOS detected - camera permissions handled by system');
+    // iOS - permissions handled by system
+    console.log('iOS detected - permissions handled by system');
     return true;
   },
 };

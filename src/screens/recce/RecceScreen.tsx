@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
 import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 import { testRecceAPI, debugStorage } from '../../utils/testRecceAPI';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RecceStackParamList } from '../../navigation/types';
+
+type RecceScreenNavigationProp = StackNavigationProp<RecceStackParamList, 'RecceList'>;
 
 interface RecceAssignment {
   _id: string;
@@ -35,10 +40,9 @@ interface RecceAssignment {
   remarks?: string;
 }
 
-export default function RecceScreen({ navigation }: { navigation?: any }) {
-  console.log('RecceScreen: Component initialized');
-  
+export default function RecceScreen({ navigation }: { navigation: RecceScreenNavigationProp }) {
   const { theme } = useTheme();
+  const { isAdmin, canViewCommercialInfo } = useAuth();
   const [assignments, setAssignments] = useState<RecceAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +60,9 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
   const [totalPages, setTotalPages] = useState(1);
   const [totalStores, setTotalStores] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Get admin status from auth context
+  const isAdminUser = isAdmin();
   
   // Debounce search
   useEffect(() => {
@@ -66,21 +72,12 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
     }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
-  
-  // Check admin status
-  useEffect(() => {
-    // This would come from auth context in real app
-    // For now, assume admin if needed
-    setIsAdmin(true);
-  }, []);
 
   useEffect(() => {
     fetchAssignments();
   }, [debouncedSearch, filterStatus, page, limit]);
 
   const fetchAssignments = async () => {
-    console.log('RecceScreen: fetchAssignments called');
-    
     try {
       setLoading(true);
       const params = {
@@ -90,12 +87,9 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         status: filterStatus,
       };
       
-      console.log('RecceScreen: API params:', params);
       const response = await recceService.getAssignments(params);
-      console.log('RecceScreen: API response:', response);
       
       if (!response || !response.stores) {
-        console.log('RecceScreen: No stores in response');
         setAssignments([]);
         return;
       }
@@ -128,10 +122,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         setTotalStores(response.pagination.total);
       }
       
-      console.log('RecceScreen: Assignments loaded successfully', { count: filteredAssignments.length });
-      
     } catch (error) {
-      console.error('RecceScreen: Error fetching assignments', error);
       Toast.show({ type: 'error', text1: 'Failed to load recce assignments' });
       setAssignments([]);
     } finally {
@@ -187,7 +178,6 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
   };
 
   const handleDebugAPI = async () => {
-    console.log('Debug button pressed');
     await debugStorage();
     const result = await testRecceAPI();
     
@@ -282,10 +272,10 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
           <View>
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {isAdmin ? 'Assigned To' : 'Assigned By'}
+              {isAdminUser ? 'Assigned To' : 'Assigned By'}
             </Text>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {isAdmin ? item.assignedTo.name : (item.assignedBy?.name || 'Unknown')}
+              {isAdminUser ? item.assignedTo.name : (item.assignedBy?.name || 'Unknown')}
             </Text>
           </View>
           <View>
@@ -342,7 +332,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             </TouchableOpacity>
           )}
           
-          {isAdmin && item.status === 'RECCE_SUBMITTED' && (
+          {isAdminUser && item.status === 'RECCE_SUBMITTED' && (
             <TouchableOpacity 
               onPress={() => navigation.navigate('RecceReview', { storeId: item.store._id })} 
               style={{ backgroundColor: '#8B5CF620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
@@ -352,7 +342,7 @@ export default function RecceScreen({ navigation }: { navigation?: any }) {
             </TouchableOpacity>
           )}
           
-          {(item.status === 'RECCE_APPROVED' || (item.status === 'RECCE_SUBMITTED' && !isAdmin)) && (
+          {(item.status === 'RECCE_APPROVED' || (item.status === 'RECCE_SUBMITTED' && !isAdminUser)) && (
             <TouchableOpacity 
               style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
             >

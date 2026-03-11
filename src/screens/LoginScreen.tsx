@@ -11,6 +11,8 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import {Mail, Lock, Eye, EyeOff, RefreshCw, AlertCircle} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -75,13 +77,18 @@ const LoginScreen = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      if (!result.success) {
+        setError(result.message || 'Login failed. Please try again.');
+        generateCaptcha();
+      }
+      // Don't set loading to false here if login is successful
+      // Let the auth context handle the state transition
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || 'Something went wrong. Please check your connection.';
       setError(errorMessage);
-      console.error('Login error:', err);
+      // Removed console.error to prevent memory issues
       generateCaptcha();
-    } finally {
       setIsLoading(false);
     }
   };
@@ -99,15 +106,23 @@ const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, {backgroundColor: colors.bg, paddingTop: insets.top}]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <StatusBar 
-        backgroundColor={colors.bg} 
-        barStyle={darkMode ? 'light-content' : 'dark-content'} 
-        translucent={true} 
-      />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} bounces={false}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={[styles.container, {backgroundColor: colors.bg, paddingTop: insets.top}]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <StatusBar 
+          backgroundColor={colors.bg} 
+          barStyle={darkMode ? 'light-content' : 'dark-content'} 
+          translucent={true} 
+        />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false} 
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
         {/* Logo */}
         <View style={styles.logoContainer}>
           <FastImage
@@ -133,7 +148,9 @@ const LoginScreen = () => {
               <AlertCircle size={20} color={darkMode ? '#F87171' : '#DC2626'} />
               <Text style={[styles.errorText, {color: darkMode ? '#F87171' : '#991B1B'}]}>{error}</Text>
             </View>
-          ) : null}
+          ) : (
+            <View style={{ height: 0 }} />
+          )}
 
           {/* Email */}
           <View style={styles.inputGroup}>
@@ -165,7 +182,11 @@ const LoginScreen = () => {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity 
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
                 {showPassword ? (
                   <EyeOff size={20} color="#9CA3AF" />
                 ) : (
@@ -181,7 +202,7 @@ const LoginScreen = () => {
             <View style={styles.captchaRow}>
               <View style={[styles.captchaDisplay, {backgroundColor: colors.captchaBg, borderColor: colors.border}]}>
                 <Text style={[styles.captchaText, {color: colors.text}]}>{captchaCode}</Text>
-                <TouchableOpacity onPress={generateCaptcha} style={styles.refreshButton}>
+                <TouchableOpacity onPress={generateCaptcha} style={styles.refreshButton} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <RefreshCw size={16} color="#9CA3AF" />
                 </TouchableOpacity>
               </View>
@@ -204,7 +225,10 @@ const LoginScreen = () => {
             disabled={isLoading}
             activeOpacity={0.8}>
             {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={[styles.buttonText, { marginLeft: 8 }]}>Signing In...</Text>
+              </View>
             ) : (
               <Text style={styles.buttonText}>Sign In to Dashboard</Text>
             )}
@@ -215,19 +239,22 @@ const LoginScreen = () => {
           </Text>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F9FAFB',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
     paddingTop: 40,
+    minHeight: '100%',
   },
   logoContainer: {
     alignItems: 'center',
@@ -258,6 +285,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
     borderWidth: 1,
+    minHeight: 400,
   },
   title: {
     fontSize: 30,
@@ -297,6 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
+    minHeight: 56,
     height: 56,
   },
   icon: {
@@ -318,6 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
+    minHeight: 56,
     height: 56,
   },
   captchaText: {
@@ -337,6 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
+    minHeight: 56,
     height: 56,
     fontSize: 16,
     fontWeight: 'bold',
@@ -346,6 +377,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#EAB308',
     borderRadius: 12,
+    minHeight: 56,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
