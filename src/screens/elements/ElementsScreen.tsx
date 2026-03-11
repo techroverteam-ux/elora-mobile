@@ -8,11 +8,14 @@ import PageSkeleton from '../../components/PageSkeleton';
 
 interface Element {
   _id: string;
-  elementId: string;
-  elementName: string;
-  baseRate: number;
-  category: string;
+  elementId?: string;
+  elementName?: string;
+  name?: string; // Web API field
+  baseRate?: number;
+  standardRate?: number; // Web API field
+  category?: string;
   description?: string;
+  createdAt?: string;
 }
 
 export default function ElementsScreen() {
@@ -32,10 +35,56 @@ export default function ElementsScreen() {
   const fetchElements = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await elementService.getAll({ search: searchTerm });
-      setElements(data.elements || []);
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to load elements' });
+      console.log('Fetching elements with search term:', searchTerm);
+      
+      const response = await elementService.getAll({ search: searchTerm });
+      console.log('Elements API response:', response);
+      
+      // Handle different response structures - match web implementation
+      let elementsData = [];
+      if (response.elements) {
+        elementsData = response.elements;
+      } else if (response.data && response.data.elements) {
+        elementsData = response.data.elements;
+      } else if (response.data && Array.isArray(response.data)) {
+        elementsData = response.data;
+      } else if (Array.isArray(response)) {
+        elementsData = response;
+      } else {
+        console.warn('Unexpected response structure:', response);
+        elementsData = [];
+      }
+      
+      // Map web field names to mobile field names
+      const mappedElements = elementsData.map((element: any) => ({
+        _id: element._id,
+        elementId: element._id, // Use _id as elementId
+        elementName: element.name || element.elementName, // Web uses 'name', mobile expects 'elementName'
+        baseRate: element.standardRate || element.baseRate, // Web uses 'standardRate', mobile expects 'baseRate'
+        category: element.category || 'General', // Default category if not provided
+        description: element.description || '',
+        createdAt: element.createdAt
+      }));
+      
+      console.log('Setting mapped elements data:', mappedElements);
+      setElements(mappedElements);
+      
+      if (mappedElements.length === 0) {
+        Toast.show({ 
+          type: 'info', 
+          text1: 'No elements found', 
+          text2: searchTerm ? 'Try adjusting your search' : 'Add your first element' 
+        });
+      }
+    } catch (error: any) {
+      console.error('Elements fetch error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to load elements';
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Failed to load elements',
+        text2: errorMessage
+      });
+      setElements([]);
     } finally {
       setLoading(false);
     }
@@ -52,12 +101,15 @@ export default function ElementsScreen() {
     }
 
     try {
+      // Map mobile field names to web API field names
       const payload = {
-        elementName: formData.elementName,
-        baseRate: Number(formData.baseRate),
-        category: formData.category,
-        description: formData.description
+        name: formData.elementName, // Web API expects 'name'
+        standardRate: Number(formData.baseRate), // Web API expects 'standardRate'
+        category: formData.category || 'General',
+        description: formData.description || ''
       };
+
+      console.log('Submitting element payload:', payload);
 
       if (editingElement) {
         await elementService.update(editingElement._id, payload);
@@ -71,6 +123,7 @@ export default function ElementsScreen() {
       resetForm();
       fetchElements();
     } catch (error: any) {
+      console.error('Element submit error:', error);
       Toast.show({ type: 'error', text1: error.response?.data?.message || 'Operation failed' });
     }
   };
@@ -103,9 +156,9 @@ export default function ElementsScreen() {
     if (element) {
       setEditingElement(element);
       setFormData({
-        elementName: element.elementName,
-        baseRate: element.baseRate.toString(),
-        category: element.category,
+        elementName: element.elementName || element.name || '', // Handle both field names
+        baseRate: (element.baseRate || element.standardRate || 0).toString(), // Handle both field names
+        category: element.category || 'General',
         description: element.description || ''
       });
     } else {
@@ -145,7 +198,7 @@ export default function ElementsScreen() {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={{ color: theme.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
-            ₹{item.baseRate}
+            ₹{item.baseRate || 0}
           </Text>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>
             per sq.ft
@@ -216,12 +269,63 @@ export default function ElementsScreen() {
 
       {loading ? (
         <PageSkeleton type="list" />
+      ) : elements.length === 0 ? (
+        <View style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          paddingHorizontal: 32 
+        }}>
+          <Package size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 18, 
+            fontWeight: '600', 
+            marginTop: 16, 
+            textAlign: 'center' 
+          }}>
+            {searchTerm ? 'No elements found' : 'No elements yet'}
+          </Text>
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 14, 
+            marginTop: 8, 
+            textAlign: 'center',
+            opacity: 0.8
+          }}>
+            {searchTerm 
+              ? 'Try adjusting your search terms' 
+              : 'Add your first element to get started'
+            }
+          </Text>
+          {!searchTerm && (
+            <TouchableOpacity 
+              onPress={() => openModal()}
+              style={{ 
+                backgroundColor: theme.colors.primary, 
+                paddingHorizontal: 24, 
+                paddingVertical: 12, 
+                borderRadius: 8, 
+                marginTop: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              <Plus size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>
+                Add Element
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       ) : (
         <FlatList
           data={elements}
           renderItem={renderElement}
           keyExtractor={item => item._id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
 

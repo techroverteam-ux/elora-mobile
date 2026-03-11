@@ -45,7 +45,10 @@ const RootNavigation: React.FC<Props> = ({ theme }) => {
         }
       }}
     >
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator 
+        id="RootStack"
+        screenOptions={{ headerShown: false }}
+      >
         <RootStack.Screen name="App" component={AppNavigator} />
         <RootStack.Screen
           name="ImageViewer"

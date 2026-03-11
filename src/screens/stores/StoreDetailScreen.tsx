@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
-import { MapPin, Calendar, User, IndianRupee, Ruler, Phone, Mail, CheckCircle, Clock, AlertCircle, Building2, Package, FileSpreadsheet } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle, XCircle, Clock, X, User, Calendar, Wrench } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
-import PageSkeleton from '../../components/PageSkeleton';
-import StoreDetailsEditor from '../../components/StoreDetailsEditor';
-import ImageGallery from '../../components/ImageGallery';
-import PhotoApproval from '../../components/PhotoApproval';
 import imageService from '../../services/imageService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface StoreDetailProps {
   route: {
@@ -21,121 +19,63 @@ interface StoreDetailProps {
   };
 }
 
-interface StoreDetail {
-  _id: string;
-  storeId?: string;
-  dealerCode: string;
-  storeName: string;
-  vendorCode?: string;
-  location: {
-    city: string;
-    state?: string;
-    district?: string;
-    zone?: string;
-    address?: string;
-    pincode?: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  contact?: {
-    personName?: string;
-    mobile?: string;
-    email?: string;
-  };
-  currentStatus: string;
-  specs?: {
-    type?: string;
-    qty?: number;
-    width: number;
-    height: number;
-    area?: number;
-    boardSize?: string;
-  };
-  commercials?: {
-    totalCost: number;
-    poNumber?: string;
-    poMonth?: string;
-    invoiceNumber?: string;
-    invoiceRemarks?: string;
-  };
-  costDetails?: {
-    boardRate?: number;
-    totalBoardCost?: number;
-    angleCharges?: number;
-    scaffoldingCharges?: number;
-    transportation?: number;
-  };
-  workflow: {
-    recceAssignedTo?: { _id: string; name: string; email?: string; phone?: string };
-    installationAssignedTo?: { _id: string; name: string; email?: string; phone?: string };
-    recceSubmittedAt?: string;
-    installationSubmittedAt?: string;
-  };
-  recce?: {
-    sizes?: {
-      width: number;
-      height: number;
-      unit?: string;
-    };
-    notes?: string;
-    submittedDate?: string;
-    photos?: {
-      front?: string;
-      side?: string;
-      closeUp?: string;
-    };
-  };
-  installation?: {
-    photos?: {
-      after1?: string;
-      after2?: string;
-    };
-    submittedDate?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
 export default function StoreDetailScreen({ route, navigation }: StoreDetailProps) {
   const { theme } = useTheme();
+  const { canViewCommercialInfo } = useAuth();
+  const insets = useSafeAreaInsets();
   const { storeId } = route.params;
-  const [store, setStore] = useState<StoreDetail | null>(null);
+  const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStoreDetail();
-  }, [storeId]);
+    fetchStoreDetails();
+  }, []);
 
-  const fetchStoreDetail = async () => {
+  const fetchStoreDetails = async () => {
     try {
       setLoading(true);
-      const { data } = await storeService.getById(storeId);
-      setStore(data.store);
+      const response = await storeService.getById(storeId);
+      setStore(response.store || response);
     } catch (error) {
-      console.error('Error fetching store detail:', error);
-      Toast.show({ type: 'error', text1: 'Failed to load store details' });
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load store details'
+      });
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'UPLOADED': return '#6B7280';
-      case 'RECCE_ASSIGNED': return '#3B82F6';
-      case 'RECCE_SUBMITTED': return '#F59E0B';
-      case 'RECCE_APPROVED': return '#8B5CF6';
-      case 'INSTALLATION_ASSIGNED': return '#6366F1';
-      case 'INSTALLATION_SUBMITTED': return '#14B8A6';
-      case 'COMPLETED': return '#10B981';
-      default: return '#6B7280';
+  const getStatusBadge = (status?: string) => {
+    if (status === 'APPROVED') {
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#10B98120', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+          <CheckCircle size={12} color="#10B981" />
+          <Text style={{ color: '#10B981', fontSize: 10, fontWeight: 'bold', marginLeft: 4 }}>APPROVED</Text>
+        </View>
+      );
     }
+    if (status === 'REJECTED') {
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EF444420', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+          <XCircle size={12} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: 'bold', marginLeft: 4 }}>REJECTED</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F59E0B20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+        <Clock size={12} color="#F59E0B" />
+        <Text style={{ color: '#F59E0B', fontSize: 10, fontWeight: 'bold', marginLeft: 4 }}>PENDING</Text>
+      </View>
+    );
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-GB', {
       day: '2-digit',
       month: 'short',
@@ -143,526 +83,730 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
     }).replace(/ /g, '-');
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircle size={20} color="#10B981" />;
-      case 'RECCE_SUBMITTED':
-      case 'INSTALLATION_SUBMITTED': return <Clock size={20} color="#F59E0B" />;
-      default: return <AlertCircle size={20} color="#6B7280" />;
-    }
-  };
-
-  const openMaps = () => {
-    if (!store) return;
-    
-    const lat = store.location.coordinates?.lat;
-    const lng = store.location.coordinates?.lng;
-    const address = store.location.address;
-    
-    let url = '';
-    if (lat && lng) {
-      url = `https://www.google.com/maps?q=${lat},${lng}`;
-    } else if (address) {
-      url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-    }
-    
-    if (url) {
-      console.log('Open maps:', url);
-    }
-  };
-
   if (loading) {
-    return <PageSkeleton type="dashboard" />;
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: theme.colors.textSecondary }}>Loading...</Text>
+      </View>
+    );
   }
 
   if (!store) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.textSecondary, fontSize: 16 }}>Store not found</Text>
+        <Text style={{ color: theme.colors.text }}>Store not found</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.background }} contentContainerStyle={{ padding: 16 }}>
-        {/* Status Card */}
-        <View style={{ 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 12, 
-          padding: 16, 
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border
-        }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {getStatusIcon(store.currentStatus)}
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                Current Status
-              </Text>
-            </View>
-            <View style={{ 
-              backgroundColor: getStatusColor(store.currentStatus) + '20', 
-              paddingHorizontal: 12, 
-              paddingVertical: 6, 
-              borderRadius: 16 
-            }}>
-              <Text style={{ 
-                color: getStatusColor(store.currentStatus), 
-                fontSize: 12, 
-                fontWeight: '600' 
-              }}>
-                {store.currentStatus.replace(/_/g, ' ')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Store Information Grid */}
-        <View style={{ marginBottom: 16 }}>
-          {/* Location Card */}
-          <View style={{ 
-            backgroundColor: theme.colors.surface, 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MapPin size={20} color={theme.colors.primary} />
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                  Location
-                </Text>
-              </View>
-              {((store.location.coordinates?.lat && store.location.coordinates?.lng) || store.location.address) && (
-                <TouchableOpacity 
-                  onPress={openMaps}
-                  style={{ 
-                    backgroundColor: theme.colors.primary, 
-                    paddingHorizontal: 8, 
-                    paddingVertical: 4, 
-                    borderRadius: 6 
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '600' }}>
-                    Open in Map
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            <View style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>Zone:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.location.zone || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>State:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.location.state || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>District:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.location.district || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>City:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.location.city || '-'}</Text>
-              </View>
-              {store.location.address && (
-                <View style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Address:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 12, marginTop: 4 }}>{store.location.address}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Dealer Info Card */}
-          <View style={{ 
-            backgroundColor: theme.colors.surface, 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Building2 size={20} color={theme.colors.primary} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                Dealer Info
-              </Text>
-              <View style={{ flex: 1 }} />
-              <StoreDetailsEditor 
-                storeId={storeId}
-                initialData={store}
-                onUpdate={(updatedData) => {
-                  setStore({ ...store, ...updatedData });
-                  Toast.show({ type: 'success', text1: 'Store updated successfully' });
-                }}
-              />
-            </View>
-            
-            <View style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>Code:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.dealerCode}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>Vendor:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.vendorCode || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>Contact:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.contact?.personName || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 60 }}>Mobile:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.contact?.mobile || '-'}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Commercial Details Card */}
-          <View style={{ 
-            backgroundColor: theme.colors.surface, 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <FileSpreadsheet size={20} color={theme.colors.primary} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                Commercial
-              </Text>
-            </View>
-            
-            <View style={{ gap: 8 }}>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 80 }}>PO Number:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.commercials?.poNumber || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 80 }}>PO Month:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.commercials?.poMonth || '-'}</Text>
-              </View>
-              <View style={{ flexDirection: 'row' }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, width: 80 }}>Invoice:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}>{store.commercials?.invoiceNumber || '-'}</Text>
-              </View>
-              {store.commercials?.invoiceRemarks && (
-                <View style={{ paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Remarks:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 10, marginTop: 4 }}>{store.commercials.invoiceRemarks}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Board Specifications & Cost Details */}
-        <View style={{ marginBottom: 16 }}>
-          {/* Board Specifications */}
-          {store.specs && (
-            <View style={{ 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 16, 
-              marginBottom: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <Package size={20} color={theme.colors.primary} />
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                  Board Specifications
-                </Text>
-              </View>
-              
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
-                <View style={{ minWidth: '45%' }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Type:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.type || '-'}</Text>
-                </View>
-                <View style={{ minWidth: '45%' }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Qty:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.qty || 1}</Text>
-                </View>
-                <View style={{ minWidth: '45%' }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Width:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.width}</Text>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> ft</Text>
-                </View>
-                <View style={{ minWidth: '45%' }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Height:</Text>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.height}</Text>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> ft</Text>
-                </View>
-                <View style={{ width: '100%' }}>
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Board Size:</Text>
-                  <View style={{ flexDirection: 'row' }}>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{store.specs.boardSize || '-'}</Text>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}> sq.ft</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Cost Breakdown */}
-          {(store.commercials || store.costDetails) && (
-            <View style={{ 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 16, 
-              marginBottom: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <IndianRupee size={20} color="#10B981" />
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                  Cost Details
-                </Text>
-              </View>
-              
-              <View style={{ gap: 8 }}>
-                {store.costDetails?.boardRate && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Board Rate:</Text>
-                    <View style={{ flexDirection: 'row' }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.boardRate}</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>/sq.ft</Text>
-                    </View>
-                  </View>
-                )}
-                {store.costDetails?.totalBoardCost && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Board Cost:</Text>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.totalBoardCost.toLocaleString()}</Text>
-                  </View>
-                )}
-                {store.costDetails?.angleCharges && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Angle:</Text>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.angleCharges}</Text>
-                  </View>
-                )}
-                {store.costDetails?.scaffoldingCharges && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Scaffolding:</Text>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.scaffoldingCharges}</Text>
-                  </View>
-                )}
-                {store.costDetails?.transportation && (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Transport:</Text>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>₹{store.costDetails.transportation}</Text>
-                  </View>
-                )}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-                  <Text style={{ color: '#10B981', fontSize: 14, fontWeight: 'bold' }}>Total Cost:</Text>
-                  <Text style={{ color: '#10B981', fontSize: 14, fontWeight: 'bold' }}>₹{store.commercials?.totalCost?.toLocaleString() || '0'}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Workflow Information */}
-        <View style={{ 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 12, 
-          padding: 16, 
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border
-        }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-            Workflow Status
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 12 }}>
+        {/* Store Info */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
+            {store.storeName}
           </Text>
-          
-          <View style={{ gap: 16 }}>
-            {/* Recce Information */}
-            {store.workflow.recceAssignedTo && (
-              <View>
-                <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Recce Assigned To
+          <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+            {store.storeId || store.dealerCode} • {store.currentStatus?.replace(/_/g, ' ')}
+          </Text>
+        </View>
+
+        {/* Store Details Grid */}
+        <View style={{ marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            {/* Location Card */}
+            <View style={{ 
+              flex: 1, 
+              backgroundColor: theme.colors.surface, 
+              borderRadius: 12, 
+              padding: 12,
+              borderWidth: 1,
+              borderColor: theme.colors.border
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <MapPin size={16} color="#F59E0B" />
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Location</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Zone: {store.location?.zone || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                State: {store.location?.state || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                District: {store.location?.district || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                City: {store.location?.city || '-'}
+              </Text>
+              {store.location?.address && (
+                <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 4 }}>
+                  {store.location.address}
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ 
-                    width: 40, 
-                    height: 40, 
-                    borderRadius: 20, 
-                    backgroundColor: theme.colors.primary + '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12
+              )}
+            </View>
+
+            {/* Dealer Info Card */}
+            <View style={{ 
+              flex: 1, 
+              backgroundColor: theme.colors.surface, 
+              borderRadius: 12, 
+              padding: 12,
+              borderWidth: 1,
+              borderColor: theme.colors.border
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <Building2 size={16} color="#F59E0B" />
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Dealer</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Code: {store.dealerCode}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Vendor: {store.vendorCode || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Contact: {store.contact?.personName || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                Mobile: {store.contact?.mobile || '-'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Board Specs Card */}
+            <View style={{ 
+              flex: canViewCommercialInfo() ? 1 : 2, 
+              backgroundColor: theme.colors.surface, 
+              borderRadius: 12, 
+              padding: 12,
+              borderWidth: 1,
+              borderColor: theme.colors.border
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                <Package size={16} color="#F59E0B" />
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Board Specs</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Type: {store.specs?.type || '-'}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Qty: {store.specs?.qty || 1}
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                Size: {store.specs?.width || 0} × {store.specs?.height || 0} ft
+              </Text>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                Area: {store.specs?.boardSize || '-'} sq.ft
+              </Text>
+            </View>
+
+            {/* Commercial Card - Only show to admins */}
+            {canViewCommercialInfo() && (
+              <View style={{ 
+                flex: 1, 
+                backgroundColor: theme.colors.surface, 
+                borderRadius: 12, 
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <IndianRupee size={16} color="#F59E0B" />
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Commercial</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  PO: {store.commercials?.poNumber || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  Month: {store.commercials?.poMonth || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+                  Invoice: {store.commercials?.invoiceNumber || '-'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#10B981', fontWeight: 'bold' }}>
+                  Total: ₹{store.commercials?.totalCost?.toLocaleString() || 0}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Initial Photos */}
+        {store.recce?.initialPhotos && store.recce.initialPhotos.length > 0 && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Camera size={20} color="#3B82F6" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Initial Store Photos ({store.recce.initialPhotos.length})
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {store.recce.initialPhotos
+                .filter((photo: string) => photo && typeof photo === 'string')
+                .map((photo: string, index: number) => {
+                  const imageUrl = imageService.getFullImageUrl(photo);
+                  if (!imageUrl) return null;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => setSelectedImage(imageUrl)}
+                      style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden' }}
+                    >
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                        onError={() => console.log('Image load error:', imageUrl)}
+                      />
+                    </TouchableOpacity>
+                  );
+                })
+                .filter(Boolean)
+              }
+            </View>
+          </View>
+        )}
+
+        {/* Recce Photos */}
+        {store.recce?.reccePhotos && store.recce.reccePhotos.length > 0 && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <Ruler size={20} color="#10B981" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Recce Photos ({store.recce.reccePhotos.length})
+              </Text>
+            </View>
+            
+            {store.recce.reccePhotos
+              .filter((reccePhoto: any) => reccePhoto?.photo && typeof reccePhoto.photo === 'string')
+              .map((reccePhoto: any, index: number) => {
+                const imageUrl = imageService.getFullImageUrl(reccePhoto.photo);
+                if (!imageUrl) return null;
+                
+                return (
+                  <View key={index} style={{ 
+                    backgroundColor: theme.colors.background, 
+                    borderRadius: 12, 
+                    padding: 16, 
+                    marginBottom: 12,
+                    borderWidth: 1,
+                    borderColor: theme.colors.border
                   }}>
-                    <User size={20} color={theme.colors.primary} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
+                        Board {index + 1}
+                      </Text>
+                      {getStatusBadge(reccePhoto.approvalStatus)}
+                    </View>
+
+                    {reccePhoto.rejectionReason && (
+                      <View style={{ 
+                        backgroundColor: '#EF444420', 
+                        borderRadius: 8, 
+                        padding: 12, 
+                        marginBottom: 12,
+                        borderWidth: 1,
+                        borderColor: '#EF4444'
+                      }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#EF4444', marginBottom: 4 }}>
+                          Rejection Reason:
+                        </Text>
+                        <Text style={{ fontSize: 14, color: '#EF4444' }}>
+                          {reccePhoto.rejectionReason}
+                        </Text>
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      onPress={() => setSelectedImage(imageUrl)}
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{ width: '100%', height: 200, borderRadius: 8 }}
+                        resizeMode="cover"
+                        onError={() => console.log('Recce image load error:', imageUrl)}
+                      />
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+                        Dimensions: {reccePhoto.measurements?.width || 0} × {reccePhoto.measurements?.height || 0} {reccePhoto.measurements?.unit || 'ft'}
+                      </Text>
+                      {reccePhoto.measurements?.unit === 'in' && (
+                        <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                          ({(reccePhoto.measurements.width / 12).toFixed(2)} × {(reccePhoto.measurements.height / 12).toFixed(2)} ft)
+                        </Text>
+                      )}
+                    </View>
+
+                    {reccePhoto.elements && reccePhoto.elements.length > 0 && (
+                      <View style={{ 
+                        backgroundColor: theme.colors.primary + '10', 
+                        borderRadius: 8, 
+                        padding: 8 
+                      }}>
+                        <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
+                          Element: {reccePhoto.elements[0].elementName}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
+                );
+              })
+              .filter(Boolean)
+            }
+          </View>
+        )}
+
+        {/* Installation Photos */}
+        {store.installation?.photos && store.installation.photos.length > 0 && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Camera size={20} color="#10B981" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Installation Photos ({store.installation.photos.length})
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {store.installation.photos
+                .filter((photoObj: any) => {
+                  // Handle both string and object formats
+                  const photoUrl = typeof photoObj === 'string' ? photoObj : photoObj?.installationPhoto;
+                  return photoUrl && typeof photoUrl === 'string';
+                })
+                .map((photoObj: any, index: number) => {
+                  // Handle both string and object formats
+                  const photoUrl = typeof photoObj === 'string' ? photoObj : photoObj.installationPhoto;
+                  const imageUrl = imageService.getFullImageUrl(photoUrl);
+                  if (!imageUrl) return null;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={photoObj._id || index}
+                      onPress={() => setSelectedImage(imageUrl)}
+                      style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden' }}
+                    >
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                        onError={() => console.log('Installation image load error:', imageUrl)}
+                      />
+                    </TouchableOpacity>
+                  );
+                })
+                .filter(Boolean)
+              }
+            </View>
+            
+            {/* Installation Details */}
+            {store.installation.submittedBy && (
+              <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <User size={14} color={theme.colors.textSecondary} />
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Submitted By:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600', marginLeft: 4 }}>
+                    {store.installation.submittedBy}
+                  </Text>
+                </View>
+                {store.installation.submittedDate && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Calendar size={14} color={theme.colors.textSecondary} />
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Submitted:</Text>
+                    <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                      {formatDate(store.installation.submittedDate)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Workflow Assignment Details */}
+        {(store.workflow?.recceAssignedTo || store.workflow?.installationAssignedTo) && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <User size={20} color="#8B5CF6" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Workflow Assignments
+              </Text>
+            </View>
+
+            {/* Recce Assignment */}
+            {store.workflow.recceAssignedTo && (
+              <View style={{ 
+                backgroundColor: theme.colors.background, 
+                borderRadius: 8, 
+                padding: 12, 
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#3B82F6', marginBottom: 8 }}>
+                  Recce Assignment
+                </Text>
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <User size={14} color={theme.colors.textSecondary} />
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Assigned To:</Text>
+                    <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600', marginLeft: 4 }}>
                       {store.workflow.recceAssignedTo.name}
                     </Text>
-                    {store.workflow.recceAssignedTo.email && (
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                        {store.workflow.recceAssignedTo.email}
-                      </Text>
-                    )}
                   </View>
+                  {store.recce?.assignedDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Calendar size={14} color={theme.colors.textSecondary} />
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Assigned:</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                        {formatDate(store.recce.assignedDate)}
+                      </Text>
+                    </View>
+                  )}
+                  {store.recce?.submittedDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <CheckCircle size={14} color="#10B981" />
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Submitted:</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                        {formatDate(store.recce.submittedDate)}
+                      </Text>
+                    </View>
+                  )}
+                  {store.recce?.submittedBy && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <User size={14} color={theme.colors.textSecondary} />
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Submitted By:</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                        {store.recce.submittedBy}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                {store.workflow.recceSubmittedAt && (
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 8 }}>
-                    Submitted: {formatDate(store.workflow.recceSubmittedAt)}
-                  </Text>
-                )}
               </View>
             )}
 
-            {/* Installation Information */}
+            {/* Installation Assignment */}
             {store.workflow.installationAssignedTo && (
-              <View>
-                <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Installation Assigned To
+              <View style={{ 
+                backgroundColor: theme.colors.background, 
+                borderRadius: 8, 
+                padding: 12,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#10B981', marginBottom: 8 }}>
+                  Installation Assignment
                 </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={{ 
-                    width: 40, 
-                    height: 40, 
-                    borderRadius: 20, 
-                    backgroundColor: theme.colors.primary + '20',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12
-                  }}>
-                    <User size={20} color={theme.colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
+                <View style={{ gap: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <User size={14} color={theme.colors.textSecondary} />
+                    <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Assigned To:</Text>
+                    <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600', marginLeft: 4 }}>
                       {store.workflow.installationAssignedTo.name}
                     </Text>
-                    {store.workflow.installationAssignedTo.email && (
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                        {store.workflow.installationAssignedTo.email}
-                      </Text>
-                    )}
                   </View>
+                  {store.installation?.assignedDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Calendar size={14} color={theme.colors.textSecondary} />
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Assigned:</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                        {formatDate(store.installation.assignedDate)}
+                      </Text>
+                    </View>
+                  )}
+                  {store.installation?.submittedDate && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <CheckCircle size={14} color="#10B981" />
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 6 }}>Submitted:</Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.text, marginLeft: 4 }}>
+                        {formatDate(store.installation.submittedDate)}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-                {store.workflow.installationSubmittedAt && (
-                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 8 }}>
-                    Submitted: {formatDate(store.workflow.installationSubmittedAt)}
-                  </Text>
-                )}
               </View>
             )}
-          </View>
-        </View>
 
-        {/* Recce Details with Images */}
-        {store.recce && (
-          <View style={{
-            backgroundColor: theme.colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-              Recce Details
-            </Text>
-            
-            {store.recce.submittedDate && (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Submitted:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                  {formatDate(store.recce.submittedDate)}
+            {/* Priority */}
+            {store.workflow.priority && (
+              <View style={{ 
+                backgroundColor: store.workflow.priority === 'HIGH' ? '#EF444420' : store.workflow.priority === 'MEDIUM' ? '#F59E0B20' : '#10B98120',
+                borderRadius: 8,
+                padding: 8,
+                marginTop: 8,
+                alignItems: 'center'
+              }}>
+                <Text style={{ 
+                  fontSize: 12, 
+                  fontWeight: 'bold',
+                  color: store.workflow.priority === 'HIGH' ? '#EF4444' : store.workflow.priority === 'MEDIUM' ? '#F59E0B' : '#10B981'
+                }}>
+                  Priority: {store.workflow.priority}
                 </Text>
-              </View>
-            )}
-            
-            {store.recce.notes && (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Notes:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 14, marginTop: 4 }}>
-                  {store.recce.notes}
-                </Text>
-              </View>
-            )}
-            
-            {/* Initial Photos */}
-            {store.recce.photos && (
-              <View style={{ marginBottom: 16 }}>
-                <ImageGallery 
-                  images={[store.recce.photos.front, store.recce.photos.side, store.recce.photos.closeUp].filter(Boolean)}
-                  title="Initial Photos"
-                  columns={3}
-                />
               </View>
             )}
           </View>
         )}
-        
-        {/* Installation Details with Images */}
-        {store.installation && (
-          <View style={{
-            backgroundColor: theme.colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 16,
+
+        {/* Cost Details Breakdown */}
+        {canViewCommercialInfo() && (store.costDetails || store.recce?.costDetails) && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
             borderWidth: 1,
             borderColor: theme.colors.border
           }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-              Installation Details
-            </Text>
-            
-            {store.installation.submittedDate && (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Completed:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                  {formatDate(store.installation.submittedDate)}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <IndianRupee size={20} color="#10B981" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Cost Breakdown
+              </Text>
+            </View>
+
+            <View style={{ gap: 8 }}>
+              {(store.costDetails?.boardRate || store.recce?.costDetails?.boardRate) && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Board Rate:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{(store.costDetails?.boardRate || store.recce?.costDetails?.boardRate)}/sq.ft
+                  </Text>
+                </View>
+              )}
+              {(store.costDetails?.totalBoardCost || store.recce?.costDetails?.totalBoardCost) && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Total Board Cost:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{(store.costDetails?.totalBoardCost || store.recce?.costDetails?.totalBoardCost)?.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.angleCharges > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Angle Charges:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.angleCharges.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.scaffoldingCharges > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Scaffolding:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.scaffoldingCharges.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.transportation > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Transportation:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.transportation.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.flanges > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Flanges:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.flanges.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.lollipop > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Lollipop:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.lollipop.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.oneWayVision > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>One Way Vision:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.oneWayVision.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              {store.costDetails?.sunboard > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Sunboard:</Text>
+                  <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>
+                    ₹{store.costDetails.sunboard.toLocaleString()}
+                  </Text>
+                </View>
+              )}
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                paddingTop: 12, 
+                marginTop: 8,
+                borderTopWidth: 1, 
+                borderTopColor: theme.colors.border 
+              }}>
+                <Text style={{ fontSize: 14, color: '#10B981', fontWeight: 'bold' }}>Grand Total:</Text>
+                <Text style={{ fontSize: 14, color: '#10B981', fontWeight: 'bold' }}>
+                  ₹{(store.recce?.commercials?.totalCost || store.commercials?.totalCost || 0).toLocaleString()}
                 </Text>
               </View>
-            )}
-            
-            {store.installation.photos && (
-              <ImageGallery 
-                images={[store.installation.photos.after1, store.installation.photos.after2].filter(Boolean)}
-                title="Installation Photos"
-                columns={2}
-              />
-            )}
+            </View>
           </View>
         )}
+
+        {/* Photo Approval Summary */}
+        {store.recce && (store.recce.approvedPhotosCount > 0 || store.recce.rejectedPhotosCount > 0 || store.recce.pendingPhotosCount > 0) && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Camera size={20} color="#8B5CF6" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Photo Approval Summary
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1, backgroundColor: '#10B98120', borderRadius: 8, padding: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#10B981' }}>
+                  {store.recce.approvedPhotosCount || 0}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#10B981' }}>Approved</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#EF444420', borderRadius: 8, padding: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#EF4444' }}>
+                  {store.recce.rejectedPhotosCount || 0}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#EF4444' }}>Rejected</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: '#F59E0B20', borderRadius: 8, padding: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#F59E0B' }}>
+                  {store.recce.pendingPhotosCount || 0}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#F59E0B' }}>Pending</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Remarks */}
+        {store.recce?.notes && (
+          <View style={{ 
+            backgroundColor: theme.colors.surface, 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <FileText size={20} color="#F59E0B" />
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                Remarks
+              </Text>
+            </View>
+            <Text style={{ fontSize: 14, color: theme.colors.text, lineHeight: 20 }}>
+              {store.recce.notes}
+            </Text>
+          </View>
+        )}
+
+        {/* Store Metadata */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 
           padding: 16, 
-          marginBottom: 16,
+          marginBottom: 12,
           borderWidth: 1,
           borderColor: theme.colors.border
         }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-            Store Information
-          </Text>
-          
-          <View style={{ gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Calendar size={20} color={theme.colors.primary} />
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Created</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                  {formatDate(store.createdAt)}
-                </Text>
-              </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <FileText size={20} color="#6B7280" />
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+              Store Information
+            </Text>
+          </View>
+          <View style={{ gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Project ID:</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>{store.projectID || '-'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Client Code:</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>{store.clientCode || '-'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Store Code:</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>{store.storeCode || '-'}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Created:</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>{formatDate(store.createdAt)}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>Last Updated:</Text>
+              <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '600' }}>{formatDate(store.updatedAt)}</Text>
             </View>
           </View>
         </View>
       </ScrollView>
-    );
+
+      {/* Image Viewer Modal */}
+      <Modal visible={!!selectedImage} transparent={true} onRequestClose={() => setSelectedImage(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => setSelectedImage(null)}
+            style={{ position: 'absolute', top: insets.top + 20, right: 20, zIndex: 1 }}
+          >
+            <X size={30} color="#FFFFFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={{ width: '90%', height: '80%' }}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
+    </View>
+  );
 }

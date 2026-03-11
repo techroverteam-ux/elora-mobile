@@ -273,6 +273,56 @@ export default function UsersScreen() {
 
       {loading ? (
         <PageSkeleton type="list" />
+      ) : users.length === 0 ? (
+        <View style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          paddingHorizontal: 32 
+        }}>
+          <UsersIcon size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 18, 
+            fontWeight: '600', 
+            marginTop: 16, 
+            textAlign: 'center' 
+          }}>
+            {searchTerm ? 'No users found' : 'No users yet'}
+          </Text>
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 14, 
+            marginTop: 8, 
+            textAlign: 'center',
+            opacity: 0.8
+          }}>
+            {searchTerm 
+              ? 'Try adjusting your search terms' 
+              : 'Add your first user to get started'
+            }
+          </Text>
+          {!searchTerm && (
+            <TouchableOpacity 
+              onPress={handleCreate}
+              style={{ 
+                backgroundColor: theme.colors.primary, 
+                paddingHorizontal: 24, 
+                paddingVertical: 12, 
+                borderRadius: 8, 
+                marginTop: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8
+              }}
+            >
+              <Plus size={20} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>
+                Add User
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       ) : (
         <FlatList
           data={users}
@@ -280,6 +330,7 @@ export default function UsersScreen() {
           keyExtractor={item => item._id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 0 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchUsers(); }} colors={[theme.colors.primary]} />}
+          showsVerticalScrollIndicator={false}
         />
       )}
 

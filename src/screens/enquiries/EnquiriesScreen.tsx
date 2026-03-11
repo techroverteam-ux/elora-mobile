@@ -183,6 +183,33 @@ export default function EnquiriesScreen() {
 
       {loading ? (
         <PageSkeleton type="list" />
+      ) : enquiries.length === 0 ? (
+        <View style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          paddingHorizontal: 32 
+        }}>
+          <MessageSquare size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 18, 
+            fontWeight: '600', 
+            marginTop: 16, 
+            textAlign: 'center' 
+          }}>
+            No enquiries found
+          </Text>
+          <Text style={{ 
+            color: theme.colors.textSecondary, 
+            fontSize: 14, 
+            marginTop: 8, 
+            textAlign: 'center',
+            opacity: 0.8
+          }}>
+            Customer enquiries will appear here when submitted
+          </Text>
+        </View>
       ) : (
         <FlatList
           data={enquiries}
@@ -190,6 +217,7 @@ export default function EnquiriesScreen() {
           keyExtractor={item => item._id}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchEnquiries(); }} colors={[theme.colors.primary]} />}
+          showsVerticalScrollIndicator={false}
         />
       )}
 

@@ -7,8 +7,25 @@ export const storeService = {
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/stores/${id}`);
-    return response.data;
+    try {
+      console.log('Fetching store by ID:', id);
+      const response = await api.get(`/stores/${id}`);
+      console.log('Store API response:', response.data);
+      
+      // Handle different response structures
+      if (response.data.store) {
+        return response.data; // Return full response if it has store property
+      } else if (response.data._id) {
+        return { store: response.data }; // Wrap single store object
+      } else {
+        console.warn('Unexpected store response structure:', response.data);
+        return { store: response.data };
+      }
+    } catch (error: any) {
+      console.error('Store service getById error:', error);
+      console.error('Error response:', error.response?.data);
+      throw error;
+    }
   },
 
   create: async (storeData: any) => {
@@ -201,10 +218,42 @@ export const storeService = {
     return data;
   },
 
-  // Client Elements
+  // Client Elements with better error handling
   getClientElements: async (clientId: string) => {
-    const { data } = await api.get(`/clients/${clientId}`);
-    return data;
+    try {
+      console.log('Fetching client elements for client:', clientId);
+      const response = await api.get(`/clients/${clientId}`);
+      console.log('Client elements API response:', response.data);
+      
+      // Handle different response structures
+      let clientData = response.data;
+      if (response.data.client) {
+        clientData = response.data.client;
+      }
+      
+      // Ensure elements array exists
+      if (!clientData.elements) {
+        clientData.elements = [];
+      }
+      
+      // Map element data to ensure consistent structure
+      clientData.elements = clientData.elements.map((element: any) => ({
+        _id: element._id || element.elementId,
+        elementId: element.elementId || element._id,
+        elementName: element.elementName || element.name,
+        name: element.name || element.elementName,
+        customRate: element.customRate || element.rate || element.standardRate || 0,
+        standardRate: element.standardRate || element.customRate || element.rate || 0,
+        baseRate: element.baseRate || element.customRate || element.standardRate || 0
+      }));
+      
+      console.log('Processed client elements:', clientData.elements);
+      return { client: clientData };
+    } catch (error: any) {
+      console.error('Client elements service error:', error);
+      console.error('Error response:', error.response?.data);
+      throw error;
+    }
   },
 
   // File Download Helper

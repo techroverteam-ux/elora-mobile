@@ -25,9 +25,9 @@ const imageService = {
     }
   },
 
-  getFullImageUrl: (imageUrl: string) => {
+  getFullImageUrl: (imageUrl: string | undefined | null) => {
     // Handle null/undefined imageUrl
-    if (!imageUrl) {
+    if (!imageUrl || typeof imageUrl !== 'string') {
       return '';
     }
     

@@ -236,7 +236,7 @@ function AppContent() {
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
-            <RFQScreen />
+            <RFQScreen navigation={{ navigate: navigateToScreen }} />
           </ScreenLayout>
         );
       case 'Enquiries':

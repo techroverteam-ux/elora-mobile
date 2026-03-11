@@ -14,6 +14,7 @@ export type RootStackParamList = {
   ReportIssue: undefined;
   FeatureRequest: undefined;
   GalleryList: { initialIndex?: number };
+  StoreDetail: { storeId: string };
 };
 
 export type RecceStackParamList = {
@@ -99,4 +100,9 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   HomeMain: { user: UserType };
+};
+
+export type StoreStackParamList = {
+  StoresList: undefined;
+  StoreDetail: { storeId: string };
 };

@@ -416,7 +416,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       {/* Before Photo */}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6, textAlign: 'center' }}>
                           Before Installation *
                         </Text>
                         <TouchableOpacity
@@ -450,7 +450,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                       
                       {/* After Photo */}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#10B981', marginBottom: 6, textAlign: 'center' }}>
                           After Installation *
                         </Text>
                         <TouchableOpacity
@@ -484,7 +484,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                       
                       {/* Close-up Photo (Optional) */}
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280', marginBottom: 6 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280', marginBottom: 6, textAlign: 'center' }}>
                           Close-up (Optional)
                         </Text>
                         <TouchableOpacity

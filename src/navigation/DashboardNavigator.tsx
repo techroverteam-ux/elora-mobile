@@ -40,6 +40,7 @@ import UsersScreen from '../screens/users/UsersScreen';
 import RolesScreen from '../screens/roles/RolesScreen';
 import ClientsScreen from '../screens/clients/ClientsScreen';
 import StoresScreen from '../screens/stores/StoresScreen';
+import StoreDetailScreen from '../screens/stores/StoreDetailScreen';
 import InstallationScreen from '../screens/installation/InstallationScreen';
 import EnquiriesScreen from '../screens/enquiries/EnquiriesScreen';
 import RFQScreen from '../screens/rfq/RFQScreen';
@@ -290,6 +291,7 @@ const DashboardNavigator = () => {
       
       <Drawer.Screen name="BookmarksScreen" component={BookmarksScreen} />
       <Drawer.Screen name="RecentlyPlayedScreen" component={RecentlyPlayedScreen} />
+      <Drawer.Screen name="StoreDetail" component={StoreDetailScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="About" component={AboutScreen} />
       <Drawer.Screen name="HelpSupport" component={HelpSupportScreen} />

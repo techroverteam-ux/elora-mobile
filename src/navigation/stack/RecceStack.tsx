@@ -1,1 +1,70 @@
-import React from 'react';\nimport { createStackNavigator } from '@react-navigation/stack';\nimport { RecceStackParamList } from '../types';\n\n// Import Recce screens\nimport RecceScreen from '../../screens/recce/RecceScreen';\nimport RecceDetailScreen from '../../screens/recce/RecceDetailScreen';\nimport RecceFormScreen from '../../screens/recce/RecceFormScreen';\nimport RecceReviewScreen from '../../screens/recce/RecceReviewScreen';\n\nconst Stack = createStackNavigator<RecceStackParamList>();\n\nconst RecceStack = () => {\n  return (\n    <Stack.Navigator\n      screenOptions={{\n        headerShown: false,\n        cardStyle: { backgroundColor: 'transparent' },\n        cardStyleInterpolator: ({ current, layouts }) => {\n          return {\n            cardStyle: {\n              transform: [\n                {\n                  translateX: current.progress.interpolate({\n                    inputRange: [0, 1],\n                    outputRange: [layouts.screen.width, 0],\n                  }),\n                },\n              ],\n            },\n          };\n        },\n      }}\n    >\n      <Stack.Screen \n        name=\"RecceList\" \n        component={RecceScreen}\n        options={{\n          title: 'Recce Inspection'\n        }}\n      />\n      <Stack.Screen \n        name=\"RecceDetail\" \n        component={RecceDetailScreen}\n        options={{\n          title: 'Store Details'\n        }}\n      />\n      <Stack.Screen \n        name=\"RecceForm\" \n        component={RecceFormScreen}\n        options={{\n          title: 'Recce Form'\n        }}\n      />\n      <Stack.Screen \n        name=\"RecceReview\" \n        component={RecceReviewScreen}\n        options={{\n          title: 'Review Recce'\n        }}\n      />\n    </Stack.Navigator>\n  );\n};\n\nexport default RecceStack;
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
+import { RecceStackParamList } from '../types';
+
+// Import Recce screens
+import RecceScreen from '../../screens/recce/RecceScreen';
+import RecceDetailScreen from '../../screens/recce/RecceDetailScreen';
+import RecceFormScreen from '../../screens/recce/RecceFormScreen';
+import RecceReviewScreen from '../../screens/recce/RecceReviewScreen';
+
+const Stack = createStackNavigator<RecceStackParamList>();
+
+const RecceStack = () => {
+  console.log('RecceStack: Initializing stack navigator');
+  
+  return (
+    <Stack.Navigator
+      initialRouteName="RecceList"
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: 'transparent' },
+        cardStyleInterpolator: ({ current, layouts }) => {
+          return {
+            cardStyle: {
+              transform: [
+                {
+                  translateX: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [layouts.screen.width, 0],
+                  }),
+                },
+              ],
+            },
+          };
+        },
+      }}
+    >
+      <Stack.Screen 
+        name="RecceList" 
+        component={RecceScreen}
+        options={{
+          title: 'Recce Inspection'
+        }}
+      />
+      <Stack.Screen 
+        name="RecceDetail" 
+        component={RecceDetailScreen}
+        options={{
+          title: 'Store Details'
+        }}
+      />
+      <Stack.Screen 
+        name="RecceForm" 
+        component={RecceFormScreen}
+        options={{
+          title: 'Recce Form'
+        }}
+      />
+      <Stack.Screen 
+        name="RecceReview" 
+        component={RecceReviewScreen}
+        options={{
+          title: 'Review Recce'
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+export default RecceStack;

@@ -106,141 +106,135 @@ const LoginScreen = () => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={[styles.container, {backgroundColor: colors.bg, paddingTop: insets.top}]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-        <StatusBar 
-          backgroundColor={colors.bg} 
-          barStyle={darkMode ? 'light-content' : 'dark-content'} 
-          translucent={true} 
-        />
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false} 
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-        {/* Logo */}
-        <View style={styles.logoContainer}>
-          <FastImage
-            source={require('../assets/images/logo.png')}
-            style={styles.logoImage}
-            resizeMode={FastImage.resizeMode.contain}
-          />
-        </View>
-
-        {/* Card */}
-        <View style={[styles.card, {backgroundColor: colors.cardBg, borderColor: darkMode ? '#374151CC' : 'transparent'}]}>
-          <Text style={[styles.title, {color: colors.text}]}>Welcome Back</Text>
-          <Text style={[styles.subtitle, {color: colors.textSecondary}]}>
-            Sign in to your admin dashboard
-          </Text>
-
-          {/* Error */}
-          {error ? (
-            <View style={[styles.errorContainer, {
-              borderColor: darkMode ? '#7F1D1DCC' : '#FCA5A5',
-              backgroundColor: darkMode ? '#450A0ACC' : '#FEF2F2',
-            }]}>
-              <AlertCircle size={20} color={darkMode ? '#F87171' : '#DC2626'} />
-              <Text style={[styles.errorText, {color: darkMode ? '#F87171' : '#991B1B'}]}>{error}</Text>
-            </View>
-          ) : (
-            <View style={{ height: 0 }} />
-          )}
-
-          {/* Email */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, {color: colors.label}]}>Email Address</Text>
-            <View style={[styles.inputContainer, {backgroundColor: colors.inputBg, borderColor: colors.border}]}>
-              <Mail size={20} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                style={[styles.input, {color: colors.text}]}
-                placeholder="Enter your email"
-                placeholderTextColor={colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
+    <View style={[styles.container, {backgroundColor: colors.bg}]}>
+      <StatusBar 
+        backgroundColor={colors.bg} 
+        barStyle={darkMode ? 'light-content' : 'dark-content'} 
+        translucent={false} 
+      />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.keyboardContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}>
+          <View style={styles.contentContainer}>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <FastImage
+                source={require('../assets/images/logo.png')}
+                style={styles.logoImage}
+                resizeMode={FastImage.resizeMode.contain}
               />
             </View>
-          </View>
 
-          {/* Password */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, {color: colors.label}]}>Password</Text>
-            <View style={[styles.inputContainer, {backgroundColor: colors.inputBg, borderColor: colors.border}]}>
-              <Lock size={20} color="#9CA3AF" style={styles.icon} />
-              <TextInput
-                style={[styles.input, {color: colors.text}]}
-                placeholder="Enter your password"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                {showPassword ? (
-                  <EyeOff size={20} color="#9CA3AF" />
+            {/* Card */}
+            <View style={[styles.card, {backgroundColor: colors.cardBg, borderColor: darkMode ? '#374151CC' : 'transparent'}]}>
+              <Text style={[styles.title, {color: colors.text}]}>Welcome Back</Text>
+              <Text style={[styles.subtitle, {color: colors.textSecondary}]}>
+                Sign in to your admin dashboard
+              </Text>
+
+              {/* Error */}
+              {error ? (
+                <View style={[styles.errorContainer, {
+                  borderColor: darkMode ? '#7F1D1DCC' : '#FCA5A5',
+                  backgroundColor: darkMode ? '#450A0ACC' : '#FEF2F2',
+                }]}>
+                  <AlertCircle size={20} color={darkMode ? '#F87171' : '#DC2626'} />
+                  <Text style={[styles.errorText, {color: darkMode ? '#F87171' : '#991B1B'}]}>{error}</Text>
+                </View>
+              ) : null}
+
+              {/* Email */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, {color: colors.label}]}>Email Address</Text>
+                <View style={[styles.inputContainer, {backgroundColor: colors.inputBg, borderColor: colors.border}]}>
+                  <Mail size={20} color="#9CA3AF" style={styles.icon} />
+                  <TextInput
+                    style={[styles.input, {color: colors.text}]}
+                    placeholder="Enter your email"
+                    placeholderTextColor={colors.textSecondary}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              {/* Password */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, {color: colors.label}]}>Password</Text>
+                <View style={[styles.inputContainer, {backgroundColor: colors.inputBg, borderColor: colors.border}]}>
+                  <Lock size={20} color="#9CA3AF" style={styles.icon} />
+                  <TextInput
+                    style={[styles.input, {color: colors.text}]}
+                    placeholder="Enter your password"
+                    placeholderTextColor={colors.textSecondary}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity 
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#9CA3AF" />
+                    ) : (
+                      <Eye size={20} color="#9CA3AF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Captcha */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, {color: colors.label}]}>Security Check</Text>
+                <View style={styles.captchaRow}>
+                  <View style={[styles.captchaDisplay, {backgroundColor: colors.captchaBg, borderColor: colors.border}]}>
+                    <Text style={[styles.captchaText, {color: colors.text}]}>{captchaCode}</Text>
+                    <TouchableOpacity onPress={generateCaptcha} style={styles.refreshButton} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <RefreshCw size={16} color="#9CA3AF" />
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={[styles.captchaInput, {backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text}]}
+                    placeholder="ENTER CODE"
+                    placeholderTextColor={colors.textSecondary}
+                    value={userCaptcha}
+                    onChangeText={(text) => setUserCaptcha(text.toUpperCase())}
+                    maxLength={6}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              {/* Submit */}
+              <TouchableOpacity
+                style={[styles.button, isLoading && styles.buttonDisabled]}
+                onPress={handleSubmit}
+                disabled={isLoading}
+                activeOpacity={0.8}>
+                {isLoading ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <Text style={[styles.buttonText, { marginLeft: 8 }]}>Signing In...</Text>
+                  </View>
                 ) : (
-                  <Eye size={20} color="#9CA3AF" />
+                  <Text style={styles.buttonText}>Sign In to Dashboard</Text>
                 )}
               </TouchableOpacity>
+
+              <Text style={[styles.footer, {color: colors.textSecondary}]}>
+                Secure admin access • Protected by encryption
+              </Text>
             </View>
           </View>
-
-          {/* Captcha */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, {color: colors.label}]}>Security Check</Text>
-            <View style={styles.captchaRow}>
-              <View style={[styles.captchaDisplay, {backgroundColor: colors.captchaBg, borderColor: colors.border}]}>
-                <Text style={[styles.captchaText, {color: colors.text}]}>{captchaCode}</Text>
-                <TouchableOpacity onPress={generateCaptcha} style={styles.refreshButton} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <RefreshCw size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={[styles.captchaInput, {backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text}]}
-                placeholder="ENTER CODE"
-                placeholderTextColor={colors.textSecondary}
-                value={userCaptcha}
-                onChangeText={(text) => setUserCaptcha(text.toUpperCase())}
-                maxLength={6}
-                autoCapitalize="characters"
-              />
-            </View>
-          </View>
-
-          {/* Submit */}
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            disabled={isLoading}
-            activeOpacity={0.8}>
-            {isLoading ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator color="#FFFFFF" size="small" />
-                <Text style={[styles.buttonText, { marginLeft: 8 }]}>Signing In...</Text>
-              </View>
-            ) : (
-              <Text style={styles.buttonText}>Sign In to Dashboard</Text>
-            )}
-          </TouchableOpacity>
-
-          <Text style={[styles.footer, {color: colors.textSecondary}]}>
-            Secure admin access • Protected by encryption
-          </Text>
-        </View>
-      </ScrollView>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </View>
   );
 };
 
@@ -249,12 +243,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  scrollContent: {
-    flexGrow: 1,
+  keyboardContainer: {
+    flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
     justifyContent: 'center',
     padding: 20,
     paddingTop: 40,
-    minHeight: '100%',
   },
   logoContainer: {
     alignItems: 'center',
@@ -285,7 +281,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
     borderWidth: 1,
-    minHeight: 400,
   },
   title: {
     fontSize: 30,
@@ -325,7 +320,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
-    minHeight: 56,
     height: 56,
   },
   icon: {
@@ -347,7 +341,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
-    minHeight: 56,
     height: 56,
   },
   captchaText: {
@@ -367,7 +360,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     paddingHorizontal: 16,
-    minHeight: 56,
     height: 56,
     fontSize: 16,
     fontWeight: 'bold',
@@ -377,7 +369,6 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#EAB308',
     borderRadius: 12,
-    minHeight: 56,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
