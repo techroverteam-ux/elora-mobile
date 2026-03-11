@@ -14,7 +14,7 @@ import { LinearGradient } from 'react-native-linear-gradient';
 import { Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { EloraLogo } from '../../components/EloraLogo';
+import EloraLogo from '../../components/EloraLogo';
 
 export default function LoginScreen() {
   const { login } = useAuth();
