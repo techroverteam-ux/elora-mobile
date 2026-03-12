@@ -1,11 +1,12 @@
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Toast from 'react-native-toast-message';
 import { permissionService } from './permissionService';
+import { themedAlertService } from './themedAlertService';
 
 export const fileService = {
-  // Enhanced download with actual file saving
+  // Enhanced download with proper system storage
   downloadFile: async (blob: Blob, filename: string) => {
     try {
       // Validate inputs
@@ -13,17 +14,26 @@ export const fileService = {
         throw new Error('Invalid blob or filename provided');
       }
 
-      // Check and request storage permission
+      // Request storage permission first
       const hasStoragePermission = await permissionService.checkStoragePermission();
       if (!hasStoragePermission) {
         const granted = await permissionService.requestStoragePermission();
         if (!granted) {
-          Toast.show({ 
-            type: 'error', 
-            text1: 'Permission Required', 
-            text2: 'Storage permission is needed to download files' 
-          });
-          throw new Error('Storage permission denied');
+          // Show permission denied alert and fallback to share
+          themedAlertService.show(
+            'Permission Required',
+            'Storage permission is needed to save files. Would you like to share the file instead?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: 'Share File', 
+                onPress: () => {
+                  fileService.directShare(blob, filename);
+                }
+              }
+            ]
+          );
+          return;
         }
       }
 
@@ -42,7 +52,7 @@ export const fileService = {
               throw new Error('Failed to extract base64 data');
             }
             
-            // Determine download path based on Android version
+            // Determine download path based on Android version and permissions
             let downloadPath: string;
             const androidVersion = Platform.OS === 'android' ? Platform.Version : 0;
             
@@ -51,45 +61,87 @@ export const fileService = {
               const eloraFolder = `${RNFS.DocumentDirectoryPath}/Elora`;
               await RNFS.mkdir(eloraFolder);
               downloadPath = `${eloraFolder}/${filename}`;
-            } else if (androidVersion >= 30) {
-              // Android 11+: Use app-specific external files directory
-              const eloraFolder = `${RNFS.ExternalDirectoryPath}/Downloads`;
-              await RNFS.mkdir(eloraFolder);
-              downloadPath = `${eloraFolder}/${filename}`;
             } else {
-              // Older Android: Use Downloads folder
-              const eloraFolder = `${RNFS.DownloadDirectoryPath}/Elora`;
-              await RNFS.mkdir(eloraFolder);
-              downloadPath = `${eloraFolder}/${filename}`;
+              // Android: Try different paths based on version and permissions
+              try {
+                if (androidVersion >= 30) {
+                  // Android 11+: Try Downloads folder first, fallback to app directory
+                  try {
+                    const publicDownloads = `${RNFS.DownloadDirectoryPath}/${filename}`;
+                    await RNFS.writeFile(publicDownloads, base64Data, 'base64');
+                    downloadPath = publicDownloads;
+                  } catch (publicError) {
+                    // Fallback to app-specific external directory
+                    const eloraFolder = `${RNFS.ExternalDirectoryPath}/Downloads`;
+                    await RNFS.mkdir(eloraFolder);
+                    downloadPath = `${eloraFolder}/${filename}`;
+                    await RNFS.writeFile(downloadPath, base64Data, 'base64');
+                  }
+                } else {
+                  // Older Android: Use Downloads/Elora folder
+                  const eloraFolder = `${RNFS.DownloadDirectoryPath}/Elora`;
+                  await RNFS.mkdir(eloraFolder);
+                  downloadPath = `${eloraFolder}/${filename}`;
+                  await RNFS.writeFile(downloadPath, base64Data, 'base64');
+                }
+              } catch (androidError) {
+                // Final fallback: app-specific directory
+                const eloraFolder = `${RNFS.ExternalDirectoryPath}/Downloads`;
+                await RNFS.mkdir(eloraFolder);
+                downloadPath = `${eloraFolder}/${filename}`;
+                await RNFS.writeFile(downloadPath, base64Data, 'base64');
+              }
             }
 
-            // Write file to device storage
-            await RNFS.writeFile(downloadPath, base64Data, 'base64');
-            
-            // Show success message with appropriate path
-            let successMessage = 'File downloaded successfully';
-            if (Platform.OS === 'ios') {
-              successMessage = 'Saved to Files/Elora';
-            } else if (androidVersion >= 30) {
-              successMessage = 'Saved to app files';
-            } else {
-              successMessage = 'Saved to Downloads/Elora';
+            // If we haven't written the file yet, write it now
+            if (!await RNFS.exists(downloadPath)) {
+              await RNFS.writeFile(downloadPath, base64Data, 'base64');
             }
             
-            Toast.show({ 
-              type: 'success', 
-              text1: 'File Downloaded', 
-              text2: successMessage
-            });
+            // Show success with options
+            let locationMessage = '';
+            if (Platform.OS === 'ios') {
+              locationMessage = 'Files app → Elora folder';
+            } else if (androidVersion >= 30) {
+              locationMessage = downloadPath.includes('Download') ? 'Downloads folder' : 'App files';
+            } else {
+              locationMessage = 'Downloads → Elora folder';
+            }
+            
+            themedAlertService.showDownloadSuccessAlert(
+              filename,
+              locationMessage,
+              () => {
+                Share.open({
+                  url: `file://${downloadPath}`,
+                  title: `Share ${filename}`,
+                }).catch(() => {});
+              },
+              () => {
+                Share.open({
+                  url: `file://${downloadPath.substring(0, downloadPath.lastIndexOf('/'))}`,
+                  title: 'Open Folder',
+                }).catch(() => {
+                  Toast.show({
+                    type: 'info',
+                    text1: 'File Location',
+                    text2: downloadPath
+                  });
+                });
+              }
+            );
             
             resolve(downloadPath);
           } catch (error) {
-            console.error('File write error:', error);
-            Toast.show({ 
-              type: 'error', 
-              text1: 'Download Failed', 
-              text2: 'Unable to save file to device' 
-            });
+            console.error('File processing error:', error);
+            
+            // Fallback to share method
+            themedAlertService.showDownloadFailedAlert(
+              filename,
+              () => {
+                fileService.directShare(blob, filename);
+              }
+            );
             reject(error);
           }
         };

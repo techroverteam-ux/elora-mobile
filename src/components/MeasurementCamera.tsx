@@ -357,37 +357,37 @@ export default function MeasurementCamera({
         if (response.assets && response.assets[0]) {
           const photoUri = response.assets[0].uri;
           if (photoUri) {
-            // If we have valid measurements, add measurement outline to the photo
-            if (hasValidMeasurements) {
+            // Set the captured photo first
+            setCapturedPhoto(photoUri);
+            setShowMeasurement(false);
+            
+            // Wait for UI to update and render all overlays, then capture combined view
+            setTimeout(async () => {
               try {
-                // Create a temporary view with the photo and measurement overlay
-                setCapturedPhoto(photoUri);
-                setShowMeasurement(false);
+                // Additional delay to ensure all overlays (measurement + map + address) are fully rendered
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Wait a moment for the UI to update
-                setTimeout(async () => {
-                  try {
-                    // Capture the view with measurement overlay
-                    const combinedImageUri = await viewShotRef.current?.capture?.();
-                    if (combinedImageUri) {
-                      setCapturedPhoto(combinedImageUri);
-                    } else {
-                      setCapturedPhoto(photoUri);
-                    }
-                  } catch (error) {
-                    console.error('Error adding measurement overlay:', error);
-                    setCapturedPhoto(photoUri);
-                  }
-                }, 100);
+                // Capture the combined view with all overlays using explicit options
+                const combinedImageUri = await viewShotRef.current?.capture?.({
+                  format: 'jpg',
+                  quality: 1.0,
+                  result: 'tmpfile',
+                  width: cameraWidth,
+                  height: cameraHeight
+                });
+                
+                if (combinedImageUri) {
+                  // Update with the combined image that includes photo + overlays
+                  setCapturedPhoto(combinedImageUri);
+                } else {
+                  // Keep original photo if ViewShot capture fails
+                  setCapturedPhoto(photoUri);
+                }
               } catch (error) {
-                console.error('Error processing photo with measurements:', error);
+                // Keep original photo on error
                 setCapturedPhoto(photoUri);
-                setShowMeasurement(false);
               }
-            } else {
-              setCapturedPhoto(photoUri);
-              setShowMeasurement(false);
-            }
+            }, 200);
           } else {
             // Re-show measurement guide on failure
             if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
@@ -423,32 +423,45 @@ export default function MeasurementCamera({
           hasValidMeasurements;
           
         if (shouldCaptureView) {
-          const combinedImageUri = await viewShotRef.current?.capture?.();
-          if (combinedImageUri) {
-            finalImageUri = combinedImageUri;
+          try {
+            // Force a final capture to ensure all overlays are included
+            const combinedImageUri = await viewShotRef.current?.capture?.({
+              format: 'jpg',
+              quality: 1.0,
+              result: 'tmpfile',
+              width: cameraWidth,
+              height: cameraHeight
+            });
             
-            // Check if user has drawn on the image
-            if (isDrawingMode && (drawingPaths.length > 0 || currentPath || drawingLines.length > 0)) {
-              hasDrawings = true;
+            if (combinedImageUri) {
+              finalImageUri = combinedImageUri;
               
-              // Include measurement data if available from outline drawing
-              if (measuredDimensions) {
+              // Check if user has drawn on the image
+              if (isDrawingMode && (drawingPaths.length > 0 || currentPath || drawingLines.length > 0)) {
+                hasDrawings = true;
+                
+                // Include measurement data if available from outline drawing
+                if (measuredDimensions) {
+                  measurements = {
+                    width: measuredDimensions.width,
+                    height: measuredDimensions.height,
+                    unit: 'feet'
+                  };
+                }
+              }
+              
+              // Include original measurements if available
+              if (hasValidMeasurements && !measurements) {
                 measurements = {
-                  width: measuredDimensions.width,
-                  height: measuredDimensions.height,
-                  unit: 'feet'
+                  width: measurementWidthInches,
+                  height: measurementHeightInches,
+                  unit: 'inches'
                 };
               }
             }
-            
-            // Include original measurements if available
-            if (hasValidMeasurements && !measurements) {
-              measurements = {
-                width: measurementWidthInches,
-                height: measurementHeightInches,
-                unit: 'inches'
-              };
-            }
+          } catch (captureError) {
+            // Use the already captured photo if final capture fails
+            finalImageUri = capturedPhoto;
           }
         }
         
@@ -488,7 +501,6 @@ export default function MeasurementCamera({
         setMapImageUri('');
         onClose();
       } catch (error) {
-        console.error('Error capturing combined image:', error);
         // Fallback to original photo
         onCapture(capturedPhoto, {
           photoType,

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
+import { permissionService } from '../../services/permissionService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 import { testRecceAPI, debugStorage } from '../../utils/testRecceAPI';
@@ -152,11 +153,33 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
   };
 
   const handleExport = async () => {
-    Toast.show({ 
-      type: 'info', 
-      text1: 'Export Feature', 
-      text2: 'Please use web portal for downloads' 
-    });
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    setIsExporting(true);
+    try {
+      Toast.show({ type: 'info', text1: 'Preparing Excel...', text2: 'Please wait' });
+      
+      const blob = await recceService.exportRecce();
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
+      await fileService.downloadFile(blob, `Recce_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to export data';
+      Toast.show({ type: 'error', text1: 'Export Failed', text2: errorMessage });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleBulkPPTDownload = async () => {
@@ -164,14 +187,34 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
       Toast.show({ type: 'error', text1: 'Please select assignments' });
       return;
     }
+    
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    const selectedStoreIds = Array.from(selectedAssignments);
+    
     setIsDownloadingPPT(true);
     try {
-      const blob = await recceService.bulkPpt(Array.from(selectedAssignments));
+      Toast.show({ type: 'info', text1: 'Preparing PPT...', text2: 'Please wait' });
+      
+      const blob = await recceService.bulkPpt(selectedStoreIds);
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
       await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pptx`);
-      Toast.show({ type: 'success', text1: `Downloaded PPT with ${selectedAssignments.size} stores` });
       setSelectedAssignments(new Set());
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to download PPTs' });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to download PPTs';
+      Toast.show({ type: 'error', text1: 'Download Failed', text2: errorMessage });
     } finally {
       setIsDownloadingPPT(false);
     }
@@ -201,14 +244,34 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
       Toast.show({ type: 'error', text1: 'Please select assignments' });
       return;
     }
+    
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    const selectedStoreIds = Array.from(selectedAssignments);
+    
     setIsDownloadingPDF(true);
     try {
-      const blob = await recceService.bulkPdf(Array.from(selectedAssignments));
+      Toast.show({ type: 'info', text1: 'Preparing PDF...', text2: 'Please wait' });
+      
+      const blob = await recceService.bulkPdf(selectedStoreIds);
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
       await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pdf`);
-      Toast.show({ type: 'success', text1: `Downloaded PDF with ${selectedAssignments.size} stores` });
       setSelectedAssignments(new Set());
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to download PDFs' });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to download PDFs';
+      Toast.show({ type: 'error', text1: 'Download Failed', text2: errorMessage });
     } finally {
       setIsDownloadingPDF(false);
     }
@@ -224,7 +287,8 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
 
   const renderAssignment = ({ item }: { item: RecceAssignment }) => {
     const isSelected = selectedAssignments.has(item._id);
-    const canSelect = item.status === 'RECCE_SUBMITTED' || item.status === 'RECCE_APPROVED';
+    // Allow selection for all stores that have completed recce (same as web portal)
+    const canSelect = ['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'].includes(item.status);
     
     return (
       <View style={{ 
@@ -322,6 +386,42 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
             <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View Details</Text>
           </TouchableOpacity>
           
+          {/* Individual Download Buttons for completed recce */}
+          {canSelect && (
+            <>
+              <TouchableOpacity 
+                onPress={async () => {
+                  try {
+                    const blob = await recceService.downloadPdf(item._id);
+                    await fileService.downloadFile(blob, `Recce_${item.store.dealerCode}.pdf`);
+                    Toast.show({ type: 'success', text1: 'PDF Downloaded' });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+                  }
+                }}
+                style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+              >
+                <FileText size={16} color="#EF4444" />
+                <Text style={{ color: '#EF4444', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>PDF</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={async () => {
+                  try {
+                    const blob = await recceService.downloadPpt(item._id);
+                    await fileService.downloadFile(blob, `Recce_${item.store.dealerCode}.pptx`);
+                    Toast.show({ type: 'success', text1: 'PPT Downloaded' });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+                  }
+                }}
+                style={{ backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+              >
+                <FileText size={16} color="#F59E0B" />
+                <Text style={{ color: '#F59E0B', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>PPT</Text>
+              </TouchableOpacity>
+            </>
+          )}
+          
           {item.status === 'RECCE_ASSIGNED' && (
             <TouchableOpacity 
               onPress={() => navigation.navigate('RecceForm', { storeId: item.store._id })} 
@@ -368,7 +468,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Download size={16} color="#FFF" />
+                <FileSpreadsheet size={16} color="#FFF" />
               )}
             </TouchableOpacity>
           </View>

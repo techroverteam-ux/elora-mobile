@@ -41,6 +41,24 @@ export const recceService = {
     return response.data;
   },
 
+  // Individual PPT download (using bulk endpoint with single store)
+  downloadPpt: async (storeId: string, type: 'recce' | 'installation' = 'recce') => {
+    const response = await api.post('/stores/ppt/bulk', {
+      storeIds: [storeId],
+      type
+    }, { responseType: 'blob' });
+    return response.data;
+  },
+
+  // Individual PDF download (using bulk endpoint with single store)
+  downloadPdf: async (storeId: string, type: 'recce' | 'installation' = 'recce') => {
+    const response = await api.post('/stores/pdf/bulk', {
+      storeIds: [storeId],
+      type
+    }, { responseType: 'blob' });
+    return response.data;
+  },
+
   // Export recce data
   exportRecce: async () => {
     const response = await api.get('/stores/export/recce', { responseType: 'blob' });

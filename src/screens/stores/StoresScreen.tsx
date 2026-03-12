@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
+import { permissionService } from '../../services/permissionService';
 import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
@@ -45,13 +46,10 @@ enum StoreStatus {
 }
 
 export default function StoresScreen({ navigation: navigationProp }: { navigation?: any }) {
-  console.log('StoresScreen: Component initialized - REAL STORES SCREEN LOADED', Date.now());
   
   const navigation = useNavigation();
   const nav = navigationProp || navigation;
   const { theme } = useTheme();
-  
-  console.log('StoresScreen: State initialization');
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -88,10 +86,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   });
 
   // Add Store Modal - using ref to prevent re-render issues
-  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(() => {
-    console.log('Modal state initialized to false');
-    return false;
-  });
+  const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
 
@@ -131,6 +126,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   // Export and Bulk Operations
   const [isExporting, setIsExporting] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
+  const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -138,17 +135,10 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [totalStores, setTotalStores] = useState(0);
 
   useEffect(() => {
-    console.log('Modal state changed to:', isAddStoreModalOpen);
-  }, [isAddStoreModalOpen]);
-
-  useEffect(() => {
-    console.log('useEffect triggered, searchTerm:', searchTerm, 'filterStatus:', filterStatus);
     fetchStores();
   }, [searchTerm, filterStatus]);
 
   const fetchStores = async () => {
-    console.log('StoresScreen: fetchStores called');
-    
     try {
       setLoading(true);
       const params = {
@@ -167,10 +157,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         setTotalPages(data.pagination.pages);
         setTotalStores(data.pagination.total);
       }
-      console.log('StoresScreen: Stores loaded successfully', { count: data.stores?.length || 0 });
       
     } catch (error) {
-      console.error('StoresScreen: Error fetching stores', error);
       Toast.show({ type: 'error', text1: 'Failed to load stores' });
       setStores([]);
     } finally {
@@ -220,11 +208,119 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   // Export Functions
   const handleExportStores = async () => {
-    Toast.show({ 
-      type: 'info', 
-      text1: 'Export Feature', 
-      text2: 'Please use web portal for downloads' 
-    });
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    setIsExporting(true);
+    try {
+      Toast.show({ type: 'info', text1: 'Preparing Excel...', text2: 'Please wait' });
+      
+      const params = {
+        status: filterStatus !== 'ALL' ? filterStatus : undefined,
+        search: searchTerm || undefined,
+        city: filterCity || undefined,
+        clientCode: filterClientCode || undefined,
+        clientName: filterClientName || undefined,
+      };
+      
+      const blob = await storeService.exportStores(params);
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
+      await fileService.downloadFile(blob, `Stores_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to export stores';
+      Toast.show({ type: 'error', text1: 'Export Failed', text2: errorMessage });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleBulkPPTDownload = async () => {
+    if (selectedStoreIds.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select stores' });
+      return;
+    }
+    
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    const selectedIds = Array.from(selectedStoreIds);
+    
+    setIsDownloadingPPT(true);
+    try {
+      Toast.show({ type: 'info', text1: 'Preparing PPT...', text2: 'Please wait' });
+      
+      const reportType = 'recce';
+      const blob = await storeService.bulkPpt(selectedIds, reportType);
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
+      await fileService.downloadFile(blob, `Store_Report_${selectedStoreIds.size}_Stores.pptx`);
+      setSelectedStoreIds(new Set());
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to download PPTs';
+      Toast.show({ type: 'error', text1: 'Download Failed', text2: errorMessage });
+    } finally {
+      setIsDownloadingPPT(false);
+    }
+  };
+
+  const handleBulkPDFDownload = async () => {
+    if (selectedStoreIds.size === 0) {
+      Toast.show({ type: 'error', text1: 'Please select stores' });
+      return;
+    }
+    
+    // Request storage permission first
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+    
+    const selectedIds = Array.from(selectedStoreIds);
+    
+    setIsDownloadingPDF(true);
+    try {
+      Toast.show({ type: 'info', text1: 'Preparing PDF...', text2: 'Please wait' });
+      
+      const reportType = 'recce';
+      const blob = await storeService.bulkPdf(selectedIds, reportType);
+      
+      if (!blob || blob.size === 0) {
+        throw new Error('Empty file received from server');
+      }
+      
+      await fileService.downloadFile(blob, `Store_Report_${selectedStoreIds.size}_Stores.pdf`);
+      setSelectedStoreIds(new Set());
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to download PDFs';
+      Toast.show({ type: 'error', text1: 'Download Failed', text2: errorMessage });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -361,8 +457,6 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   };
 
   const openAssignModal = async (stage: 'RECCE' | 'INSTALLATION', specificStore?: Store) => {
-    console.log('Opening assign modal', { stage, specificStore: !!specificStore });
-    
     if (specificStore) {
       setSingleAssignTarget(specificStore);
     } else {
@@ -382,9 +476,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       setAvailableUsers(data.users || []);
       setFilteredUsers(data.users || []);
       setIsAssignModalOpen(true);
-      console.log('Assign modal opened successfully');
     } catch (error) {
-      console.error('Error opening assign modal:', error);
       Toast.show({ type: 'error', text1: `Failed to fetch ${stage} users` });
       setAvailableUsers([]);
       setFilteredUsers([]);
@@ -492,6 +584,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   const renderStore = ({ item }: { item: Store }) => {
     const isSelected = selectedStoreIds.has(item._id);
+    // Allow selection for stores with completed recce data (same as web portal)
+    const canSelect = [StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED].includes(item.currentStatus as StoreStatus);
     
     return (
       <View style={{ 
@@ -503,12 +597,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         borderColor: isSelected ? theme.colors.primary : theme.colors.border 
       }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <TouchableOpacity onPress={() => toggleStoreSelection(item._id)} style={{ marginRight: 12 }}>
-            {isSelected ? 
-              <CheckSquare size={20} color={theme.colors.primary} /> : 
-              <Square size={20} color={theme.colors.textSecondary} />
-            }
-          </TouchableOpacity>
+          {canSelect && (
+            <TouchableOpacity onPress={() => toggleStoreSelection(item._id)} style={{ marginRight: 12 }}>
+              {isSelected ? 
+                <CheckSquare size={20} color={theme.colors.primary} /> : 
+                <Square size={20} color={theme.colors.textSecondary} />
+              }
+            </TouchableOpacity>
+          )}
           
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
@@ -638,15 +734,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               {isExporting ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Download size={16} color="#FFF" />
+                <FileSpreadsheet size={16} color="#FFF" />
               )}
             </TouchableOpacity>
             <TouchableOpacity 
-              onPress={() => {
-                console.log('Plus clicked, setting modal to true');
-                setIsAddStoreModalOpen(true);
-                setTimeout(() => console.log('Modal state after click:', isAddStoreModalOpen), 100);
-              }} 
+              onPress={() => setIsAddStoreModalOpen(true)} 
               style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
             >
               <Plus size={16} color="#FFF" />
@@ -655,7 +747,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         </View>
 
         {/* Simple Search */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 12 }}>
           <Search size={20} color={theme.colors.textSecondary} />
           <TextInput
             style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
@@ -665,6 +757,40 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             onChangeText={setSearchTerm}
           />
         </View>
+        
+        {/* Bulk Download Buttons */}
+        {selectedStoreIds.size > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <TouchableOpacity 
+              onPress={handleBulkPPTDownload}
+              disabled={isDownloadingPPT}
+              style={{ flex: 1, backgroundColor: '#F59E0B', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPPT ? 0.6 : 1 }}
+            >
+              {isDownloadingPPT ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <FileText size={16} color="#FFF" />
+              )}
+              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+                PPT ({selectedStoreIds.size})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleBulkPDFDownload}
+              disabled={isDownloadingPDF}
+              style={{ flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPDF ? 0.6 : 1 }}
+            >
+              {isDownloadingPDF ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <FileText size={16} color="#FFF" />
+              )}
+              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
+                PDF ({selectedStoreIds.size})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {loading ? (

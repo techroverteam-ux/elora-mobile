@@ -3,7 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { ThemedAlertProvider } from './src/context/ThemedAlertProvider';
 import { permissionService } from './src/services/permissionService';
+import { setupCrashHandler } from './src/utils/crashHandler';
+import { initializeApp } from './src/utils/appInitializer';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
@@ -13,6 +16,9 @@ import CustomDrawer from './src/components/CustomDrawer';
 import Toast from 'react-native-toast-message';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import Logger from './src/utils/logger';
+
+// Setup crash handler immediately
+setupCrashHandler();
 
 // Limit console logs to prevent LogBox overflow
 if (!__DEV__) {
@@ -67,18 +73,22 @@ function AppContent() {
   const [navigationParams, setNavigationParams] = useState<any>(null);
   const [permissionsRequested, setPermissionsRequested] = useState(false);
 
-  // Request permissions when app starts
+  // Initialize app safely when authenticated
   useEffect(() => {
-    const requestPermissions = async () => {
-      if (!permissionsRequested) {
-        await permissionService.requestInitialPermissions();
-        setPermissionsRequested(true);
+    const initApp = async () => {
+      if (!showSplash && isAuthenticated && !permissionsRequested) {
+        try {
+          console.log('Starting safe app initialization...');
+          await initializeApp();
+          setPermissionsRequested(true);
+        } catch (error) {
+          console.warn('App initialization failed safely:', error);
+          setPermissionsRequested(true); // Set to true anyway to prevent loops
+        }
       }
     };
     
-    if (!showSplash && isAuthenticated) {
-      requestPermissions();
-    }
+    initApp();
   }, [showSplash, isAuthenticated, permissionsRequested]);
 
   const openDrawer = () => {
@@ -358,11 +368,12 @@ const App = () => {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <NavigationContainer>
-            <AppContent />
-          </NavigationContainer>
-          <Toast 
+        <ThemedAlertProvider>
+          <AuthProvider>
+            <NavigationContainer>
+              <AppContent />
+            </NavigationContainer>
+            <Toast 
             position='bottom'
             bottomOffset={60}
             visibilityTime={3000}
@@ -443,7 +454,8 @@ const App = () => {
               ),
             }}
           />
-        </AuthProvider>
+          </AuthProvider>
+        </ThemedAlertProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
