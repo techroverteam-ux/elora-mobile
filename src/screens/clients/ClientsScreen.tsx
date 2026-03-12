@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, Building2, MapPin, CreditCard, Download, ChevronDown } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, Switch } from 'react-native';
+import { Search, Plus, Edit2, Trash2, X, Building2, MapPin, CreditCard, Download, ChevronDown, Settings } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { clientService } from '../../services/clientService';
 import { elementService } from '../../services/elementService';
@@ -14,6 +14,15 @@ interface Client {
   branchName: string;
   gstNumber: string;
   elements: any[];
+  enableLocationMapping?: boolean;
+  locationConfig?: {
+    enableLocationOverlay: boolean;
+    showAddress?: boolean;
+    showCoordinates?: boolean;
+    showTimestamp?: boolean;
+    mapSize?: number;
+    position?: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+  };
   createdAt: string;
 }
 
@@ -45,6 +54,7 @@ export default function ClientsScreen() {
     clientName: '',
     branchName: '',
     gstNumber: '',
+    enableLocationMapping: false,
   });
   
   // Element management state
@@ -84,7 +94,7 @@ export default function ClientsScreen() {
 
   const handleCreate = () => {
     setEditingClient(null);
-    setFormData({ clientName: '', branchName: '', gstNumber: '' });
+    setFormData({ clientName: '', branchName: '', gstNumber: '', enableLocationMapping: false });
     setClientElements([]);
     setSelectedElementId('');
     setCustomRate('');
@@ -97,6 +107,7 @@ export default function ClientsScreen() {
       clientName: client.clientName,
       branchName: client.branchName,
       gstNumber: client.gstNumber,
+      enableLocationMapping: client.enableLocationMapping || false,
     });
     setClientElements(client.elements || []);
     setSelectedElementId('');
@@ -116,6 +127,7 @@ export default function ClientsScreen() {
         branchName: formData.branchName,
         gstNumber: formData.gstNumber,
         elements: clientElements,
+        enableLocationMapping: formData.enableLocationMapping,
       };
 
       if (editingClient) {
@@ -178,6 +190,20 @@ export default function ClientsScreen() {
         <View>
           <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Elements</Text>
           <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.elements.length}</Text>
+        </View>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>GPS Photos</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <MapPin size={12} color={item.enableLocationMapping ? '#10B981' : theme.colors.textSecondary} />
+            <Text style={{ 
+              color: item.enableLocationMapping ? '#10B981' : theme.colors.textSecondary, 
+              fontSize: 12, 
+              fontWeight: '600',
+              marginLeft: 2
+            }}>
+              {item.enableLocationMapping ? 'ON' : 'OFF'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -340,6 +366,39 @@ export default function ClientsScreen() {
                 autoCapitalize="characters"
                 maxLength={15}
               />
+
+              {/* Location Overlay Configuration */}
+              <View style={{
+                backgroundColor: theme.colors.background,
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: theme.colors.border
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <MapPin size={16} color={theme.colors.primary} />
+                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
+                    GPS Location in Photos
+                  </Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={{ color: theme.colors.text, fontSize: 14, flex: 1 }}>
+                    Enable location overlay on photos
+                  </Text>
+                  <Switch
+                    value={formData.enableLocationMapping}
+                    onValueChange={(value) => setFormData({ ...formData, enableLocationMapping: value })}
+                    trackColor={{ false: theme.colors.border, true: theme.colors.primary + '40' }}
+                    thumbColor={formData.enableLocationMapping ? theme.colors.primary : theme.colors.textSecondary}
+                  />
+                </View>
+                
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 11, lineHeight: 16 }}>
+                  When enabled, all recce and installation photos will automatically include GPS location with map overlay
+                </Text>
+              </View>
 
               {/* Element Rates Section */}
               <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>ELEMENT RATES</Text>

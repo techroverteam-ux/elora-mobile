@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
-import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
+import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw, Eye } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeAPI } from '../../lib/api';
 import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
+import MeasurementPreview from '../../components/MeasurementPreview';
 import { locationService } from '../../services/locationService';
 
 interface RecceFormProps {
@@ -25,6 +26,8 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<{uri: string, type: string, measurements?: any} | null>(null);
   const [currentPhotoType, setCurrentPhotoType] = useState<'front' | 'side' | 'closeUp'>('front');
   const [currentLocation, setCurrentLocation] = useState<any>(null);
   const [storeImage, setStoreImage] = useState<string | null>(null);
@@ -172,7 +175,16 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     setCameraVisible(true);
   };
 
-  const handlePhotoCapture = (photoUri: string) => {
+  const handlePhotoCapture = (photoUri: string, metadata?: {
+    hasDrawings?: boolean;
+    measurements?: {
+      width: number;
+      height: number;
+      unit: string;
+    };
+    photoType?: string;
+    capturedAt?: string;
+  }) => {
     setFormData(prev => ({
       ...prev,
       photos: {
@@ -181,10 +193,52 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       }
     }));
     setCameraVisible(false);
+    
+    // If measurements were drawn, update the form measurements
+    if (metadata?.hasDrawings && metadata?.measurements) {
+      setFormData(prev => ({
+        ...prev,
+        width: metadata.measurements!.width.toString(),
+        height: metadata.measurements!.height.toString()
+      }));
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Photo Captured with Drawn Measurements',
+        text2: `Updated to ${metadata.measurements.width} × ${metadata.measurements.height} ${metadata.measurements.unit}`
+      });
+    } else {
+      Toast.show({
+        type: 'success',
+        text1: 'Photo Captured',
+        text2: `${currentPhotoType.charAt(0).toUpperCase() + currentPhotoType.slice(1)} photo saved with measurements`
+      });
+    }
+  };
+
+  const previewPhoto = (type: 'front' | 'side' | 'closeUp') => {
+    const photoUri = formData.photos[type];
+    if (photoUri) {
+      setPreviewPhoto({
+        uri: photoUri,
+        type,
+        measurements: {
+          width: parseFloat(formData.width) || 0,
+          height: parseFloat(formData.height) || 0,
+          unit: 'ft'
+        }
+      });
+      setPreviewVisible(true);
+    }
   };
 
   const handleCameraClose = () => {
     setCameraVisible(false);
+  };
+
+  const handlePreviewClose = () => {
+    setPreviewVisible(false);
+    setPreviewPhoto(null);
   };
 
   return (
@@ -460,9 +514,17 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                       <Text style={{ color: theme.colors.primary, fontSize: 11, marginTop: 2, opacity: 0.8 }}>
                         With {formData.width} × {formData.height} ft measurements
                       </Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginTop: 4 }}>
-                        Tap to retake
-                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>
+                          Tap to retake
+                        </Text>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>•</Text>
+                        <TouchableOpacity onPress={() => previewPhoto(type)}>
+                          <Text style={{ color: theme.colors.primary, fontSize: 10, fontWeight: '600' }}>
+                            Preview
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   ) : (
                     <View style={{ alignItems: 'center' }}>
@@ -531,7 +593,20 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         width={formData.width}
         height={formData.height}
         photoType={currentPhotoType}
+        enableLocationOverlay={true}
       />
+      
+      {previewPhoto && (
+        <MeasurementPreview
+          visible={previewVisible}
+          onClose={handlePreviewClose}
+          imageUri={previewPhoto.uri}
+          measurements={previewPhoto.measurements}
+          photoType={previewPhoto.type}
+          capturedAt={new Date().toISOString()}
+          hasDrawings={true}
+        />
+      )}
     </ScrollView>
   );
 }

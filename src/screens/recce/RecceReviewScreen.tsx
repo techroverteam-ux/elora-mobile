@@ -38,12 +38,33 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
     try {
       setLoading(true);
       const response = await storeService.getById(storeId);
-      setStore(response.store);
-    } catch (error) {
+      
+      if (!response || !response.store) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Store data not found'
+        });
+        navigation.goBack();
+        return;
+      }
+      
+      const store = response.store;
+      
+      if (!store.recce || !store.recce.reccePhotos || store.recce.reccePhotos.length === 0) {
+        Toast.show({
+          type: 'warning',
+          text1: 'No Recce Data',
+          text2: 'This store has no recce photos to review'
+        });
+      }
+      
+      setStore(store);
+    } catch (error: any) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Failed to load store details'
+        text2: error.response?.data?.message || 'Failed to load store details'
       });
       navigation.goBack();
     } finally {
@@ -136,11 +157,28 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
     );
   }
 
-  if (!store || !store.recce?.reccePhotos) {
+  if (!store || !store.recce) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
         <AlertCircle size={48} color={theme.colors.textSecondary} />
-        <Text style={{ color: theme.colors.text, marginTop: 16 }}>No recce data found</Text>
+        <Text style={{ color: theme.colors.text, marginTop: 16, fontSize: 18, fontWeight: 'bold', textAlign: 'center' }}>
+          No Recce Data Found
+        </Text>
+        <Text style={{ color: theme.colors.textSecondary, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+          This store doesn't have any recce data to review. The recce might not have been submitted yet.
+        </Text>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          style={{ 
+            backgroundColor: theme.colors.primary, 
+            paddingHorizontal: 20, 
+            paddingVertical: 12, 
+            borderRadius: 8, 
+            marginTop: 20 
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -221,15 +259,16 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
         )}
 
         {/* Recce Photos */}
-        {store.recce.reccePhotos.map((photo: any, index: number) => (
-          <View key={index} style={{
-            backgroundColor: theme.colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
+        {store.recce?.reccePhotos && store.recce.reccePhotos.length > 0 ? (
+          store.recce.reccePhotos.map((photo: any, index: number) => (
+            <View key={index} style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: theme.colors.border
+            }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
                 Photo {index + 1}
@@ -342,7 +381,26 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
               </View>
             )}
           </View>
-        ))}
+          ))
+        ) : (
+          <View style={{
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 20,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
+            alignItems: 'center'
+          }}>
+            <AlertCircle size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: 'bold', marginTop: 12, textAlign: 'center' }}>
+              No Recce Photos to Review
+            </Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 14, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+              This store doesn't have any recce photos submitted for review yet.
+            </Text>
+          </View>
+        )}}
       </ScrollView>
 
       {/* Image Viewer Modal */}

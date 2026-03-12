@@ -1,5 +1,14 @@
 import api from '../lib/api';
 
+export interface ClientLocationConfig {
+  enableLocationOverlay: boolean;
+  mapSize?: number;
+  showAddress?: boolean;
+  showCoordinates?: boolean;
+  showTimestamp?: boolean;
+  position?: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
+}
+
 export const clientService = {
   getAll: async (params?: { page?: number; limit?: number; search?: string }) => {
     const queryParams = new URLSearchParams();
@@ -32,6 +41,38 @@ export const clientService = {
 
   getById: async (id: string) => {
     const { data } = await api.get(`/clients/${id}`);
+    return data;
+  },
+
+  getLocationConfig: async (id: string): Promise<ClientLocationConfig> => {
+    try {
+      const { data } = await api.get(`/clients/${id}`);
+      const client = data.client || data;
+      return {
+        enableLocationOverlay: client.enableLocationMapping || false,
+        mapSize: client.locationConfig?.mapSize,
+        showAddress: client.locationConfig?.showAddress,
+        showCoordinates: client.locationConfig?.showCoordinates,
+        showTimestamp: client.locationConfig?.showTimestamp,
+        position: client.locationConfig?.position,
+      };
+    } catch (error) {
+      console.error('Error fetching client location config:', error);
+      return { enableLocationOverlay: false };
+    }
+  },
+
+  updateLocationConfig: async (id: string, config: ClientLocationConfig) => {
+    const { data } = await api.put(`/clients/${id}`, { 
+      enableLocationMapping: config.enableLocationOverlay,
+      locationConfig: {
+        mapSize: config.mapSize,
+        showAddress: config.showAddress,
+        showCoordinates: config.showCoordinates,
+        showTimestamp: config.showTimestamp,
+        position: config.position,
+      }
+    });
     return data;
   },
 };

@@ -8,9 +8,7 @@ export const storeService = {
 
   getById: async (id: string) => {
     try {
-      console.log('Fetching store by ID:', id);
       const response = await api.get(`/stores/${id}`);
-      console.log('Store API response:', response.data);
       
       // Handle different response structures
       if (response.data.store) {
@@ -18,12 +16,9 @@ export const storeService = {
       } else if (response.data._id) {
         return { store: response.data }; // Wrap single store object
       } else {
-        console.warn('Unexpected store response structure:', response.data);
         return { store: response.data };
       }
     } catch (error: any) {
-      console.error('Store service getById error:', error);
-      console.error('Error response:', error.response?.data);
       throw error;
     }
   },
@@ -221,9 +216,7 @@ export const storeService = {
   // Client Elements with better error handling
   getClientElements: async (clientId: string) => {
     try {
-      console.log('Fetching client elements for client:', clientId);
       const response = await api.get(`/clients/${clientId}`);
-      console.log('Client elements API response:', response.data);
       
       // Handle different response structures
       let clientData = response.data;
@@ -247,11 +240,8 @@ export const storeService = {
         baseRate: element.baseRate || element.customRate || element.standardRate || 0
       }));
       
-      console.log('Processed client elements:', clientData.elements);
       return { client: clientData };
     } catch (error: any) {
-      console.error('Client elements service error:', error);
-      console.error('Error response:', error.response?.data);
       throw error;
     }
   },

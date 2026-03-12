@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 interface ElementDropdownProps {
   elements: any[];
@@ -20,6 +21,8 @@ export default function ElementDropdown({
   onToggle
 }: ElementDropdownProps) {
   const { theme } = useTheme();
+  const { canViewElementRates } = useAuth();
+  const showRates = canViewElementRates();
 
   return (
     <View>
@@ -44,7 +47,7 @@ export default function ElementDropdown({
           }}>
             {selectedElementName || 'Select an element'}
           </Text>
-          {selectedElementId && (
+          {selectedElementId && showRates && (
             <Text style={{ 
               color: theme.colors.textSecondary, 
               fontSize: 12,
@@ -97,15 +100,17 @@ export default function ElementDropdown({
                   }}>
                     {element.elementName || element.name || `Element ${element.elementId || element._id}`}
                   </Text>
-                  <Text style={{ 
-                    color: selectedElementId === (element.elementId || element._id)?.toString() 
-                      ? theme.colors.primary 
-                      : theme.colors.textSecondary, 
-                    fontSize: 12,
-                    fontWeight: '500'
-                  }}>
-                    ₹{element.customRate || element.rate || 0}
-                  </Text>
+                  {showRates && (
+                    <Text style={{ 
+                      color: selectedElementId === (element.elementId || element._id)?.toString() 
+                        ? theme.colors.primary 
+                        : theme.colors.textSecondary, 
+                      fontSize: 12,
+                      fontWeight: '500'
+                    }}>
+                      ₹{element.customRate || element.rate || 0}
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             ))}

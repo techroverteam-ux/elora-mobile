@@ -179,7 +179,16 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     setCameraVisible(true);
   };
 
-  const handlePhotoCapture = (photoUri: string) => {
+  const handlePhotoCapture = (photoUri: string, metadata?: {
+    hasDrawings?: boolean;
+    measurements?: {
+      width: number;
+      height: number;
+      unit: string;
+    };
+    photoType?: string;
+    capturedAt?: string;
+  }) => {
     setInstallationPhotos(prev => ({
       ...prev,
       [currentPhotoIndex]: {
@@ -578,9 +587,10 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         visible={cameraVisible}
         onClose={handleCameraClose}
         onCapture={handlePhotoCapture}
-        width={reccePhotos[currentPhotoIndex]?.measurements?.width?.toString() || '0'}
-        height={reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0'}
+        width={currentPhotoType === 'before' ? (reccePhotos[currentPhotoIndex]?.measurements?.width?.toString() || '0') : '0'}
+        height={currentPhotoType === 'before' ? (reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0') : '0'}
         photoType={currentPhotoType === 'before' ? 'front' : currentPhotoType === 'after' ? 'side' : 'closeUp'}
+        clientId={currentPhotoType === 'before' ? storeData?.clientId : undefined}
       />
       
       {/* Image Preview Modal */}

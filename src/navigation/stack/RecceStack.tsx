@@ -11,8 +11,6 @@ import RecceReviewScreen from '../../screens/recce/RecceReviewScreen';
 const Stack = createStackNavigator<RecceStackParamList>();
 
 const RecceStack = () => {
-  console.log('RecceStack: Initializing stack navigator');
-  
   return (
     <Stack.Navigator
       initialRouteName="RecceList"

@@ -21,6 +21,7 @@ interface AuthContextType {
   isAdmin: () => boolean;
   isFieldWorker: () => boolean;
   canViewCommercialInfo: () => boolean;
+  canViewElementRates: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -206,9 +207,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const canViewCommercialInfo = (): boolean => {
-    // Only admins and managers can view commercial information
-    // Field workers (recce, installation) cannot see pricing/costs
-    return isAdmin() && !isFieldWorker();
+    // Super admins and admins can always view commercial information
+    if (!user || !user.roles) return false;
+    
+    const hasAdminRole = user.roles.some(role => 
+      role.name === 'ADMIN' || 
+      role.name === 'SUPER_ADMIN' || 
+      role.name === 'MANAGER'
+    );
+    
+    const hasRecceRole = user.roles.some(role => role.name === 'RECCE');
+    
+    // Super admins, admins, managers, and recce users can view commercial info
+    // Only installation users cannot see pricing
+    return hasAdminRole || hasRecceRole;
+  };
+
+  const canViewElementRates = (): boolean => {
+    // Super admins, admins, managers, and recce users can view element rates
+    // Installation users cannot see rates
+    if (!user || !user.roles) return false;
+    
+    const hasAdminRole = user.roles.some(role => 
+      role.name === 'ADMIN' || 
+      role.name === 'SUPER_ADMIN' || 
+      role.name === 'MANAGER'
+    );
+    
+    const hasRecceRole = user.roles.some(role => role.name === 'RECCE');
+    const hasInstallationRole = user.roles.some(role => role.name === 'INSTALLATION');
+    
+    // If user has installation role only, hide rates
+    if (hasInstallationRole && !hasAdminRole && !hasRecceRole) {
+      return false;
+    }
+    
+    return hasAdminRole || hasRecceRole;
   };
 
   return (
@@ -224,6 +258,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isAdmin,
         isFieldWorker,
         canViewCommercialInfo,
+        canViewElementRates,
       }}
     >
       {children}

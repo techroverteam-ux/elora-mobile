@@ -146,7 +146,70 @@ export const permissionService = {
     return true;
   },
 
-  // Show permission denied alert with better design
+  // Request location permission
+  requestLocationPermission: async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: '📍 Location Access Required',
+            message: 'We need location access to:\n\n• Add GPS coordinates to photos\n• Show location on maps\n• Track project locations\n• Provide accurate documentation\n\nYour location is only used for work purposes and stored securely.',
+            buttonNeutral: 'Ask Later',
+            buttonNegative: 'Not Now',
+            buttonPositive: 'Allow Location',
+          },
+        );
+        
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          return true;
+        } else {
+          // Try coarse location as fallback
+          const coarseGranted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+            {
+              title: '📍 Approximate Location Access',
+              message: 'We can use approximate location for:\n\n• Basic GPS information in photos\n• General area mapping\n• Project location tracking\n\nThis provides less precise but still useful location data.',
+              buttonNeutral: 'Ask Later',
+              buttonNegative: 'Not Now',
+              buttonPositive: 'Allow Approximate',
+            },
+          );
+          return coarseGranted === PermissionsAndroid.RESULTS.GRANTED;
+        }
+      } catch (err) {
+        console.error('Location permission error:', err);
+        return false;
+      }
+    }
+    return true;
+  },
+
+  // Check location permission
+  checkLocationPermission: async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const fineLocationGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        
+        if (fineLocationGranted) {
+          return true;
+        }
+        
+        // Check coarse location as fallback
+        const coarseLocationGranted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
+        );
+        
+        return coarseLocationGranted;
+      } catch (err) {
+        console.error('Location permission check error:', err);
+        return false;
+      }
+    }
+    return true;
+  },
   showPermissionDeniedAlert: () => {
     Alert.alert(
       '📸 Camera Access Needed',
@@ -167,7 +230,26 @@ export const permissionService = {
     );
   },
 
-  // Show storage permission denied alert with better design
+  // Show location permission denied alert
+  showLocationPermissionDeniedAlert: () => {
+    Alert.alert(
+      '📍 Location Access Needed',
+      'Location access is required to:\n\n• Add GPS coordinates to photos\n• Show accurate project locations\n• Create location-based reports\n• Track work progress by location\n\nTo enable location access:\n1. Go to Settings\n2. Find this app\n3. Enable Location permission\n\nThis helps provide accurate documentation for your projects.',
+      [
+        { text: 'Maybe Later', style: 'cancel' },
+        { 
+          text: 'Open Settings', 
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          }
+        }
+      ]
+    );
+  },
   showStoragePermissionDeniedAlert: () => {
     Alert.alert(
       '📁 Storage Access Needed',
@@ -206,12 +288,16 @@ export const permissionService = {
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
           ];
         } else if (androidVersion >= 30) {
           // Android 11-12 permissions
           permissionsToRequest = [
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
           ];
         } else {
           // Android < 11 permissions
@@ -219,6 +305,8 @@ export const permissionService = {
             PermissionsAndroid.PERMISSIONS.CAMERA,
             PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
             PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
           ];
         }
         
