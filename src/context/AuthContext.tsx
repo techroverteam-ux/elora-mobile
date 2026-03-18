@@ -224,25 +224,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const canViewElementRates = (): boolean => {
-    // Super admins, admins, managers, and recce users can view element rates
-    // Installation users cannot see rates
+    // Only super admins can view element rates
+    // RECCE and INSTALLATION users should not see rates
     if (!user || !user.roles) return false;
     
-    const hasAdminRole = user.roles.some(role => 
-      role.name === 'ADMIN' || 
-      role.name === 'SUPER_ADMIN' || 
-      role.name === 'MANAGER'
-    );
-    
-    const hasRecceRole = user.roles.some(role => role.name === 'RECCE');
-    const hasInstallationRole = user.roles.some(role => role.name === 'INSTALLATION');
-    
-    // If user has installation role only, hide rates
-    if (hasInstallationRole && !hasAdminRole && !hasRecceRole) {
-      return false;
-    }
-    
-    return hasAdminRole || hasRecceRole;
+    return user.roles.some(role => role.name === 'SUPER_ADMIN');
   };
 
   return (

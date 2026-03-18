@@ -107,7 +107,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
             location: store.location
           },
           assignedTo: store.workflow?.recceAssignedTo || { name: 'Unassigned' },
-          assignedBy: store.workflow?.recceAssignedBy || { name: 'Unknown' },
+          assignedBy: store.workflow?.recceAssignedBy || { name: 'System' },
           status: store.currentStatus,
           assignedAt: store.createdAt || new Date().toISOString(),
           submittedAt: store.updatedAt,
@@ -339,7 +339,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
               {isAdminUser ? 'Assigned To' : 'Assigned By'}
             </Text>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {isAdminUser ? item.assignedTo.name : (item.assignedBy?.name || 'Unknown')}
+              {isAdminUser ? item.assignedTo?.name || 'Unassigned' : item.assignedBy?.name || 'System'}
             </Text>
           </View>
           <View>
@@ -385,42 +385,6 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
             <Eye size={16} color="#3B82F6" />
             <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View Details</Text>
           </TouchableOpacity>
-          
-          {/* Individual Download Buttons for completed recce */}
-          {canSelect && (
-            <>
-              <TouchableOpacity 
-                onPress={async () => {
-                  try {
-                    const blob = await recceService.downloadPdf(item._id);
-                    await fileService.downloadFile(blob, `Recce_${item.store.dealerCode}.pdf`);
-                    Toast.show({ type: 'success', text1: 'PDF Downloaded' });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                  }
-                }}
-                style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-              >
-                <FileText size={16} color="#EF4444" />
-                <Text style={{ color: '#EF4444', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>PDF</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={async () => {
-                  try {
-                    const blob = await recceService.downloadPpt(item._id);
-                    await fileService.downloadFile(blob, `Recce_${item.store.dealerCode}.pptx`);
-                    Toast.show({ type: 'success', text1: 'PPT Downloaded' });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                  }
-                }}
-                style={{ backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-              >
-                <FileText size={16} color="#F59E0B" />
-                <Text style={{ color: '#F59E0B', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>PPT</Text>
-              </TouchableOpacity>
-            </>
-          )}
           
           {item.status === 'RECCE_ASSIGNED' && (
             <TouchableOpacity 

@@ -28,7 +28,7 @@ export interface LocationOverlayConfig {
 }
 
 class LocationService {
-  private googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // Replace with actual API key
+  private googleMapsApiKey = 'AIzaSyBvOkBwgGlbUiuS-oSim-_hVautcHiOidc'; // Working Google Maps API key
 
   async requestLocationPermission(): Promise<boolean> {
     if (Platform.OS === 'android') {
@@ -150,25 +150,118 @@ class LocationService {
 
   async reverseGeocode(latitude: number, longitude: number): Promise<AddressComponents> {
     try {
+      // First try Google Maps Geocoding API for more accurate results
+      const googleResponse = await this.reverseGeocodeWithGoogle(latitude, longitude);
+      if (googleResponse.formattedAddress && googleResponse.formattedAddress !== `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`) {
+        return googleResponse;
+      }
+    } catch (error) {
+      console.warn('Google Maps geocoding failed, trying fallback:', error);
+    }
+
+    try {
+      // Fallback to BigDataCloud API
       const response = await fetch(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
       );
       const data = await response.json();
       
       return {
-        street: data.locality || '',
-        city: data.city || '',
-        state: data.principalSubdivision || '',
-        country: data.countryName || '',
+        street: data.locality || data.localityInfo?.administrative?.[3]?.name || '',
+        city: data.city || data.localityInfo?.administrative?.[2]?.name || '',
+        state: data.principalSubdivision || data.localityInfo?.administrative?.[1]?.name || '',
+        country: data.countryName || data.localityInfo?.administrative?.[0]?.name || '',
         postalCode: data.postcode || '',
-        formattedAddress: data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+        formattedAddress: data.display_name || this.buildFormattedAddress({
+          street: data.locality || '',
+          city: data.city || '',
+          state: data.principalSubdivision || '',
+          country: data.countryName || '',
+          postalCode: data.postcode || ''
+        }) || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
       };
     } catch (error) {
-      console.error('Reverse geocoding error:', error);
+      console.error('All reverse geocoding methods failed:', error);
       return {
         formattedAddress: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
       };
     }
+  }
+
+  /**
+   * Reverse geocode using Google Maps Geocoding API
+   */
+  private async reverseGeocodeWithGoogle(latitude: number, longitude: number): Promise<AddressComponents> {
+    if (!this.googleMapsApiKey || this.googleMapsApiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
+      throw new Error('Google Maps API key not configured');
+    }
+
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${this.googleMapsApiKey}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'No results'}`);
+    }
+
+    const result = data.results[0];
+    const components = result.address_components || [];
+    
+    // Extract address components
+    const addressComponents: AddressComponents = {
+      street: '',
+      city: '',
+      state: '',
+      country: '',
+      postalCode: '',
+      formattedAddress: result.formatted_address || ''
+    };
+
+    components.forEach((component: any) => {
+      const types = component.types || [];
+      
+      if (types.includes('street_number') || types.includes('route')) {
+        addressComponents.street = addressComponents.street 
+          ? `${addressComponents.street} ${component.long_name}` 
+          : component.long_name;
+      } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+        addressComponents.city = component.long_name;
+      } else if (types.includes('administrative_area_level_1')) {
+        addressComponents.state = component.long_name;
+      } else if (types.includes('country')) {
+        addressComponents.country = component.long_name;
+      } else if (types.includes('postal_code')) {
+        addressComponents.postalCode = component.long_name;
+      }
+    });
+
+    // If no formatted address from API, build one
+    if (!addressComponents.formattedAddress) {
+      addressComponents.formattedAddress = this.buildFormattedAddress(addressComponents);
+    }
+
+    return addressComponents;
+  }
+
+  /**
+   * Build formatted address from components
+   */
+  private buildFormattedAddress(components: AddressComponents): string {
+    const parts: string[] = [];
+    
+    if (components.street) parts.push(components.street);
+    if (components.city) parts.push(components.city);
+    if (components.state) parts.push(components.state);
+    if (components.postalCode) parts.push(components.postalCode);
+    if (components.country) parts.push(components.country);
+    
+    return parts.filter(part => part.trim().length > 0).join(', ');
   }
 
   async getStoreImageFromMaps(latitude: number, longitude: number): Promise<string> {

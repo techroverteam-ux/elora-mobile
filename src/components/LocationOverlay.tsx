@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { LocationOverlayData, LocationOverlayConfig } from '../services/imageLocationOverlay';
+import { addressVerificationService, AddressVerification } from '../services/addressVerificationService';
 
 interface LocationOverlayProps {
   locationData: LocationOverlayData;
@@ -18,7 +19,21 @@ export default function LocationOverlay({
   mapImageUri,
 }: LocationOverlayProps) {
   const { mapSize, position, showAddress, showCoordinates, showTimestamp } = config;
+  const [addressVerification, setAddressVerification] = useState<AddressVerification | null>(null);
   const margin = 10;
+
+  // Verify address on component mount
+  useEffect(() => {
+    if (showAddress && locationData.location.latitude && locationData.location.longitude) {
+      addressVerificationService
+        .verifyAddress(locationData.location.latitude, locationData.location.longitude)
+        .then(setAddressVerification)
+        .catch(error => {
+          console.warn('Address verification failed:', error);
+          setAddressVerification(null);
+        });
+    }
+  }, [locationData.location.latitude, locationData.location.longitude, showAddress]);
 
   // Calculate position with proper alignment
   const getPosition = () => {
@@ -38,26 +53,82 @@ export default function LocationOverlay({
 
   const overlayPosition = getPosition();
 
-  // Prepare text content
+  // Prepare text content with enhanced address verification
   const textLines: string[] = [];
+  
+  // Always show coordinates first for technical reference
   if (showCoordinates) {
-    textLines.push(locationData.coordinates);
+    textLines.push(`📍 ${locationData.coordinates}`);
   }
-  if (showAddress && locationData.address.formattedAddress) {
-    const address = locationData.address.formattedAddress;
-    if (address.length > 25) {
-      // Split long addresses
-      const parts = address.split(',');
-      parts.forEach(part => {
-        const trimmed = part.trim();
-        if (trimmed.length > 0) {
-          textLines.push(trimmed.length > 25 ? trimmed.substring(0, 22) + '...' : trimmed);
-        }
-      });
-    } else {
-      textLines.push(address);
+  
+  // Show verified address as proof of location
+  if (showAddress) {
+    if (addressVerification) {
+      const addressDisplay = addressVerificationService.formatAddressForDisplay(addressVerification);
+      
+      // Add verification status header
+      const statusIcon = addressVerification.isVerified ? '✅' : '⚠️';
+      const confidencePercent = Math.round(addressVerification.confidence * 100);
+      textLines.push(`${statusIcon} ${addressDisplay.verificationStatus} (${confidencePercent}%)`);
+      
+      // Add primary address
+      const address = addressDisplay.primaryLine;
+      if (address.length > 30) {
+        const parts = address.split(',');
+        parts.forEach(part => {
+          const trimmed = part.trim();
+          if (trimmed.length > 0) {
+            if (trimmed.length > 28) {
+              const words = trimmed.split(' ');
+              let currentLine = '';
+              words.forEach(word => {
+                if ((currentLine + word).length > 28) {
+                  if (currentLine) textLines.push(currentLine.trim());
+                  currentLine = word + ' ';
+                } else {
+                  currentLine += word + ' ';
+                }
+              });
+              if (currentLine) textLines.push(currentLine.trim());
+            } else {
+              textLines.push(trimmed);
+            }
+          }
+        });
+      } else {
+        textLines.push(address);
+      }
+      
+      // Add verification sources
+      if (addressVerification.sources.length > 0) {
+        textLines.push(`📊 Sources: ${addressVerification.sources.join(', ')}`);
+      }
+      
+      // Add nearby landmarks for additional proof
+      if (addressVerification.nearbyLandmarks && addressVerification.nearbyLandmarks.length > 0) {
+        textLines.push(`🏢 Near: ${addressVerification.nearbyLandmarks.slice(0, 2).join(', ')}`);
+      }
+      
+    } else if (locationData.address.formattedAddress) {
+      // Fallback to basic address if verification is not available
+      textLines.push('📍 ADDRESS:');
+      const address = locationData.address.formattedAddress;
+      
+      if (address.length > 30) {
+        const parts = address.split(',');
+        parts.forEach(part => {
+          const trimmed = part.trim();
+          if (trimmed.length > 0) {
+            textLines.push(trimmed.length > 25 ? trimmed.substring(0, 22) + '...' : trimmed);
+          }
+        });
+      } else {
+        textLines.push(address);
+      }
     }
   }
+  
+  // Show timestamp for verification
   if (showTimestamp) {
     const shortTimestamp = new Date(locationData.location.timestamp || Date.now())
       .toLocaleString('en-US', {
@@ -65,8 +136,9 @@ export default function LocationOverlay({
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        hour12: true
       });
-    textLines.push(shortTimestamp);
+    textLines.push(`🕒 ${shortTimestamp}`);
   }
 
   return (
@@ -130,20 +202,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   textContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Reduce opacity
+    backgroundColor: 'rgba(0, 0, 0, 0.85)', // Darker background for better readability
     borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minWidth: 160,
-    maxWidth: 200,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minWidth: 180,
+    maxWidth: 220, // Increased width for longer addresses
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   textLine: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 10, // Slightly smaller to fit more text
     fontWeight: '500',
-    marginBottom: 2,
+    marginBottom: 1,
     fontFamily: 'System',
+    lineHeight: 12,
   },
 });

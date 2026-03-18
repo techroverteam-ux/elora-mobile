@@ -53,14 +53,16 @@ class ImageLocationOverlay {
   }
 
   async shouldEnableLocationOverlay(clientId?: string): Promise<boolean> {
-    if (!clientId) return false;
+    // For recce photos, always enable location overlay
+    if (!clientId) return true;
     
     try {
       const { clientService } = await import('./clientService');
       const config = await clientService.getLocationConfig(clientId);
       return config.enableLocationOverlay;
     } catch (error) {
-      return false;
+      // Default to enabled for recce photos
+      return true;
     }
   }
 
