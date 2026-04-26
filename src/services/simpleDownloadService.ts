@@ -150,7 +150,7 @@ class SimpleDownloadService {
               ReactNativeBlobUtil.android.addCompleteDownload({
                 title: filename,
                 description: 'Downloaded file',
-                mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                mime: this.getMimeType(filename),
                 path: downloadPath,
                 showNotification: true
               });
@@ -195,7 +195,7 @@ class SimpleDownloadService {
         ReactNativeBlobUtil.android.addCompleteDownload({
           title: filename,
           description: 'Downloaded file',
-          mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mime: this.getMimeType(filename),
           path: downloadPath,
           showNotification: true
         });
@@ -208,8 +208,30 @@ class SimpleDownloadService {
   }
 
   /**
-   * Check storage permissions
+   * Get MIME type based on file extension
    */
+  private getMimeType(filename: string): string {
+    const extension = filename.toLowerCase().split('.').pop();
+    
+    switch (extension) {
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'pdf':
+        return 'application/pdf';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'doc':
+        return 'application/msword';
+      default:
+        return 'application/octet-stream';
+    }
+  }
   private async checkStoragePermission(): Promise<boolean> {
     if (Platform.OS !== 'android') return true;
 
@@ -320,9 +342,10 @@ class SimpleDownloadService {
    */
   private async openFile(filePath: string) {
     try {
+      const filename = filePath.split('/').pop() || '';
       await ReactNativeBlobUtil.android.actionViewIntent(
         filePath, 
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        this.getMimeType(filename)
       );
     } catch (error) {
       Toast.show({
@@ -339,9 +362,10 @@ class SimpleDownloadService {
    */
   private async shareFile(filePath: string) {
     try {
+      const filename = filePath.split('/').pop() || '';
       await ReactNativeBlobUtil.android.shareIntent(
         filePath, 
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        this.getMimeType(filename)
       );
     } catch (error) {
       Toast.show({

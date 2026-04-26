@@ -15,7 +15,7 @@ class ModernDownloadService {
   async downloadExcel(request: DownloadRequest): Promise<string> {
     const { filename, title, description } = request;
     
-    // Ensure .xlsx extension
+    // Only ensure .xlsx extension for Excel files
     const excelFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
     
     return simpleDownloadService.downloadFile({
@@ -25,15 +25,24 @@ class ModernDownloadService {
   }
 
   /**
+   * Download any file type (preserves original extension)
+   */
+  async downloadFile(request: DownloadRequest): Promise<string> {
+    // Use the filename as-is without modifying the extension
+    return simpleDownloadService.downloadFile(request);
+  }
+
+  /**
    * Download from API endpoint (for existing API calls)
    */
   async downloadFromApi(apiCall: () => Promise<Blob>, filename: string, title?: string): Promise<string> {
     try {
       const blob = await apiCall();
       
-      return this.downloadExcel({
+      // Use downloadFile to preserve the original extension
+      return this.downloadFile({
         blob,
-        filename,
+        filename, // Keep original filename with extension
       });
     } catch (error) {
       console.error('API download error:', error);
@@ -45,9 +54,10 @@ class ModernDownloadService {
    * Download from URL (for direct file URLs)
    */
   async downloadFromUrl(url: string, filename: string, title?: string): Promise<string> {
-    return this.downloadExcel({
+    // Use downloadFile to preserve the original extension
+    return this.downloadFile({
       url,
-      filename,
+      filename, // Keep original filename with extension
     });
   }
 

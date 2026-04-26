@@ -85,8 +85,10 @@ const CustomDrawer = (props: any) => {
     { name: 'RFQ Generation', href: 'RFQ', icon: FileText, module: 'stores' },
     { name: 'Enquiries', href: 'Enquiries', icon: HelpCircle, module: 'enquiries' },
     { name: 'Reports', href: 'Reports', icon: BarChart3, module: 'reports', alwaysShow: true },
-    { name: 'Analytics', href: 'Analytics', icon: TrendingUp, module: 'reports' },
-    { name: 'Notifications', href: 'Notifications', icon: Bell, module: 'dashboard' },
+    // TODO: Analytics - Will be developed in future
+    // { name: 'Analytics', href: 'Analytics', icon: TrendingUp, module: 'reports' },
+    // TODO: Notifications - Will be developed in future  
+    // { name: 'Notifications', href: 'Notifications', icon: Bell, module: 'dashboard' },
   ];
 
   const handleLogout = () => {

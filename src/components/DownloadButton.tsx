@@ -40,7 +40,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
       const downloadData = await onDownload();
       
       // Start native download
-      await modernDownloadService.downloadExcel({
+      await modernDownloadService.downloadFile({
         ...downloadData,
         onProgress: (progressValue) => {
           setProgress(progressValue);

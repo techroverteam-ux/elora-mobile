@@ -156,6 +156,11 @@ export const storeService = {
     return data;
   },
 
+  approveAllReccePhotos: async (storeId: string) => {
+    const { data } = await api.post(`/stores/${storeId}/recce/approve-all`);
+    return data;
+  },
+
   // Approval Operations
   approveRecce: async (storeId: string) => {
     const { data } = await api.post(`/stores/${storeId}/recce/review`, { status: 'APPROVED' });
