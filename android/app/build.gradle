@@ -82,8 +82,8 @@ android {
         applicationId "com.eloramob"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion 34  // Keep target at 34 for compatibility
-        versionCode 5  // Increment version for fixed build
-        versionName "1.4-fixed"
+        versionCode 6  // Increment version for role access fixes
+        versionName "1.5-role-fixes"
         
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
