@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import { rfqService } from '../../services/rfqService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import Toast from 'react-native-toast-message';
 
 interface RFQScreenProps {
@@ -340,28 +342,20 @@ export default function RFQScreen({ navigation }: RFQScreenProps = {}) {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Create Request for Quotation</Text>
           </View>
           {selectedStoreIds.size > 0 && (
-            <TouchableOpacity 
-              onPress={handleGenerateRFQ}
-              disabled={isGenerating}
-              style={{ 
-                backgroundColor: theme.colors.primary, 
-                paddingHorizontal: 16, 
-                paddingVertical: 10, 
-                borderRadius: 8,
-                opacity: isGenerating ? 0.6 : 1,
-                flexDirection: 'row',
-                alignItems: 'center'
+            <DownloadButton
+              onDownload={async () => {
+                const blob = await rfqService.generate(Array.from(selectedStoreIds));
+                return {
+                  blob,
+                  filename: `RFQ_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
               }}
-            >
-              {isGenerating ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileSpreadsheet size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', marginLeft: 8, fontWeight: '600', fontSize: 12 }}>
-                Generate RFQ ({selectedStoreIds.size})
-              </Text>
-            </TouchableOpacity>
+              title={`Generate RFQ (${selectedStoreIds.size} stores)`}
+              description="Generating Request for Quotation..."
+              size="medium"
+              variant="primary"
+              disabled={isGenerating}
+            />
           )}
         </View>
 

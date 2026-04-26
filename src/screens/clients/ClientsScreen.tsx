@@ -4,6 +4,10 @@ import { Search, Plus, Edit2, Trash2, X, Building2, MapPin, CreditCard, Download
 import { useTheme } from '../../context/ThemeContext';
 import { clientService } from '../../services/clientService';
 import { elementService } from '../../services/elementService';
+import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
+import { permissionService } from '../../services/permissionService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 
@@ -229,18 +233,19 @@ export default function ClientsScreen() {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your clients</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={() => {
-                Toast.show({ 
-                  type: 'info', 
-                  text1: 'Export Feature', 
-                  text2: 'Please use web portal for downloads' 
-                });
+            <DownloadButton
+              onDownload={async () => {
+                const blob = await clientService.exportClients({ search: searchTerm });
+                return {
+                  blob,
+                  filename: `Clients_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
               }}
-              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
-            >
-              <Download size={16} color="#FFF" />
-            </TouchableOpacity>
+              title="Export Clients"
+              description="Downloading clients data..."
+              size="medium"
+              variant="success"
+            />
             <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
               <Plus size={16} color="#FFF" />
             </TouchableOpacity>

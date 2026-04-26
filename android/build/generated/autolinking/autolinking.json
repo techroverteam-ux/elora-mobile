@@ -129,31 +129,6 @@
         }
       }
     },
-    "react-native-audio-api": {
-      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-audio-api",
-      "name": "react-native-audio-api",
-      "platforms": {
-        "ios": {
-          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-audio-api/RNAudioAPI.podspec",
-          "version": "0.6.5",
-          "configurations": [],
-          "scriptPhases": []
-        },
-        "android": {
-          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-audio-api/android",
-          "packageImportPath": "import com.swmansion.audioapi.AudioAPIPackage;",
-          "packageInstance": "new AudioAPIPackage()",
-          "buildTypes": [],
-          "libraryName": "rnaudioapi",
-          "componentDescriptors": [],
-          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-audio-api/android/build/generated/source/codegen/jni/CMakeLists.txt",
-          "cxxModuleCMakeListsModuleName": null,
-          "cxxModuleCMakeListsPath": null,
-          "cxxModuleHeaderName": null,
-          "isPureCxxDependency": false
-        }
-      }
-    },
     "react-native-blob-util": {
       "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-blob-util",
       "name": "react-native-blob-util",
@@ -382,24 +357,18 @@
         }
       }
     },
-    "react-native-reanimated": {
-      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-reanimated",
-      "name": "react-native-reanimated",
+    "react-native-push-notification": {
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification",
+      "name": "react-native-push-notification",
       "platforms": {
-        "ios": {
-          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-reanimated/RNReanimated.podspec",
-          "version": "3.19.5",
-          "configurations": [],
-          "scriptPhases": []
-        },
+        "ios": null,
         "android": {
-          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-reanimated/android",
-          "packageImportPath": "import com.swmansion.reanimated.ReanimatedPackage;",
-          "packageInstance": "new ReanimatedPackage()",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification/android",
+          "packageImportPath": "import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage;",
+          "packageInstance": "new ReactNativePushNotificationPackage()",
           "buildTypes": [],
-          "libraryName": "rnreanimated",
           "componentDescriptors": [],
-          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-reanimated/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -516,30 +485,6 @@
           "buildTypes": [],
           "componentDescriptors": [],
           "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-svg/android/build/generated/source/codegen/jni/CMakeLists.txt",
-          "cxxModuleCMakeListsModuleName": null,
-          "cxxModuleCMakeListsPath": null,
-          "cxxModuleHeaderName": null,
-          "isPureCxxDependency": false
-        }
-      }
-    },
-    "react-native-video": {
-      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-video",
-      "name": "react-native-video",
-      "platforms": {
-        "ios": {
-          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-video/react-native-video.podspec",
-          "version": "6.19.0",
-          "configurations": [],
-          "scriptPhases": []
-        },
-        "android": {
-          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-video/android",
-          "packageImportPath": "import com.brentvatne.react.ReactVideoPackage;",
-          "packageInstance": "new ReactVideoPackage()",
-          "buildTypes": [],
-          "componentDescriptors": [],
-          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-video/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,

@@ -7,6 +7,8 @@ import { clientService } from '../../services/clientService';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import Toast from 'react-native-toast-message';
 
 export default function ExportScreen() {
@@ -18,18 +20,12 @@ export default function ExportScreen() {
     
     try {
       const blob = await service();
-      await fileService.downloadFile(blob, filename);
-      Toast.show({ 
-        type: 'success', 
-        text1: 'Export completed!', 
-        text2: filename 
+      await modernDownloadService.downloadExcel({
+        blob,
+        filename
       });
     } catch (error) {
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Export failed',
-        text2: 'Please try again'
-      });
+      // Error handling is done by the modern download service
     } finally {
       setLoading(prev => ({ ...prev, [type]: false }));
     }

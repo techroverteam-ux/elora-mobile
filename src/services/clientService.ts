@@ -39,6 +39,13 @@ export const clientService = {
     return data;
   },
 
+  exportClients: async (params?: { search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    const { data } = await api.get(`/clients/export?${queryParams.toString()}`, { responseType: 'blob' });
+    return data;
+  },
+
   getById: async (id: string) => {
     const { data } = await api.get(`/clients/${id}`);
     return data;
@@ -58,7 +65,15 @@ export const clientService = {
       };
     } catch (error) {
       console.error('Error fetching client location config:', error);
-      return { enableLocationOverlay: false };
+      // Return safe default config instead of throwing
+      return { 
+        enableLocationOverlay: false,
+        mapSize: 150,
+        showAddress: false,
+        showCoordinates: false,
+        showTimestamp: true,
+        position: 'bottom-right'
+      };
     }
   },
 

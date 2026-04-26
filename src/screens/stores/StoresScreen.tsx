@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X } from 'lucide-react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import { permissionService } from '../../services/permissionService';
 import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
@@ -364,7 +366,6 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     try {
       const blob = await storeService.getTemplate();
       await fileService.downloadFile(blob, 'Store_Upload_Template.xlsx');
-      Toast.show({ type: 'success', text1: 'Template downloaded!' });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to download template' });
     }
@@ -450,7 +451,6 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       }
       
       await fileService.downloadFile(blob, filename);
-      Toast.show({ type: 'success', text1: `${format.toUpperCase()} Downloaded!` });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Download failed' });
     }
@@ -646,6 +646,70 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           </View>
         </View>
 
+        {/* Show Recce Assignment Info */}
+        {item.workflow?.recceAssignedTo && (
+          <View style={{ 
+            backgroundColor: '#3B82F610', 
+            borderRadius: 8, 
+            padding: 8, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: '#3B82F620'
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <User size={14} color="#3B82F6" />
+                <Text style={{ color: '#3B82F6', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Recce By:</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                  {item.workflow.recceAssignedTo.name}
+                </Text>
+              </View>
+              {item.currentStatus === 'RECCE_SUBMITTED' && (
+                <View style={{ backgroundColor: '#F59E0B20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                  <Text style={{ color: '#F59E0B', fontSize: 10, fontWeight: '600' }}>SUBMITTED</Text>
+                </View>
+              )}
+              {item.currentStatus === 'RECCE_APPROVED' && (
+                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                  <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>APPROVED</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Show Installation Assignment Info */}
+        {item.workflow?.installationAssignedTo && (
+          <View style={{ 
+            backgroundColor: '#10B98110', 
+            borderRadius: 8, 
+            padding: 8, 
+            marginBottom: 12,
+            borderWidth: 1,
+            borderColor: '#10B98120'
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Wrench size={14} color="#10B981" />
+                <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Installation By:</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                  {item.workflow.installationAssignedTo.name}
+                </Text>
+              </View>
+              {item.currentStatus === 'INSTALLATION_SUBMITTED' && (
+                <View style={{ backgroundColor: '#14B8A620', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                  <Text style={{ color: '#14B8A6', fontSize: 10, fontWeight: '600' }}>SUBMITTED</Text>
+                </View>
+              )}
+              {item.currentStatus === 'COMPLETED' && (
+                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
+                  <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>COMPLETED</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <TouchableOpacity 
             onPress={() => nav?.navigate('StoreDetail', { storeId: item._id })} 
@@ -700,15 +764,41 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           </TouchableOpacity>
           
           {[StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED].includes(item.currentStatus as StoreStatus) && (
-            <TouchableOpacity 
-              onPress={() => {
-                const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
-                handleDownload(item._id, item.dealerCode, reportType, 'pdf');
-              }}
-              style={{ backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8 }}
-            >
-              <Download size={16} color="#F59E0B" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              {/* PDF Download */}
+              <DownloadButton
+                onDownload={async () => {
+                  const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
+                  const blob = await storeService.getPdf(item._id, reportType);
+                  return {
+                    blob,
+                    filename: `${reportType}_${item.dealerCode}.pdf`
+                  };
+                }}
+                title={`PDF Report - ${item.dealerCode}`}
+                description="Generating PDF report..."
+                size="small"
+                variant="secondary"
+                style={{ backgroundColor: '#EF4444', minWidth: 60, justifyContent: 'center' }}
+              />
+              
+              {/* PPT Download */}
+              <DownloadButton
+                onDownload={async () => {
+                  const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
+                  const blob = await storeService.getPpt(item._id, reportType);
+                  return {
+                    blob,
+                    filename: `${reportType}_${item.dealerCode}.pptx`
+                  };
+                }}
+                title={`PPT Report - ${item.dealerCode}`}
+                description="Generating PowerPoint report..."
+                size="small"
+                variant="secondary"
+                style={{ backgroundColor: '#F59E0B', minWidth: 60, justifyContent: 'center' }}
+              />
+            </View>
           )}
         </View>
       </View>
@@ -725,18 +815,29 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage store activities</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <BulkUpload onUploadComplete={fetchStores} />
-            <TouchableOpacity 
-              onPress={handleExportStores} 
+            {/* Hide BulkUpload component in mobile - users should use web portal */}
+            {/* <BulkUpload onUploadComplete={fetchStores} /> */}
+            <DownloadButton
+              onDownload={async () => {
+                const params = {
+                  status: filterStatus !== 'ALL' ? filterStatus : undefined,
+                  search: searchTerm || undefined,
+                  city: filterCity || undefined,
+                  clientCode: filterClientCode || undefined,
+                  clientName: filterClientName || undefined,
+                };
+                const blob = await storeService.exportStores(params);
+                return {
+                  blob,
+                  filename: `Stores_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
+              }}
+              title="Export Stores"
+              description="Downloading stores data..."
+              size="medium"
+              variant="success"
               disabled={isExporting}
-              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
-            >
-              {isExporting ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileSpreadsheet size={16} color="#FFF" />
-              )}
-            </TouchableOpacity>
+            />
             <TouchableOpacity 
               onPress={() => setIsAddStoreModalOpen(true)} 
               style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
@@ -761,34 +862,40 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         {/* Bulk Download Buttons */}
         {selectedStoreIds.size > 0 && (
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-            <TouchableOpacity 
-              onPress={handleBulkPPTDownload}
+            <DownloadButton
+              onDownload={async () => {
+                const selectedIds = Array.from(selectedStoreIds);
+                const reportType = 'recce';
+                const blob = await storeService.bulkPpt(selectedIds, reportType);
+                return {
+                  blob,
+                  filename: `Store_Report_${selectedStoreIds.size}_Stores.pptx`
+                };
+              }}
+              title={`PPT Report (${selectedStoreIds.size} stores)`}
+              description="Generating PowerPoint report..."
+              size="medium"
+              variant="secondary"
               disabled={isDownloadingPPT}
-              style={{ flex: 1, backgroundColor: '#F59E0B', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPPT ? 0.6 : 1 }}
-            >
-              {isDownloadingPPT ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileText size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                PPT ({selectedStoreIds.size})
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={handleBulkPDFDownload}
+              style={{ flex: 1, backgroundColor: '#F59E0B' }}
+            />
+            <DownloadButton
+              onDownload={async () => {
+                const selectedIds = Array.from(selectedStoreIds);
+                const reportType = 'recce';
+                const blob = await storeService.bulkPdf(selectedIds, reportType);
+                return {
+                  blob,
+                  filename: `Store_Report_${selectedStoreIds.size}_Stores.pdf`
+                };
+              }}
+              title={`PDF Report (${selectedStoreIds.size} stores)`}
+              description="Generating PDF report..."
+              size="medium"
+              variant="secondary"
               disabled={isDownloadingPDF}
-              style={{ flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPDF ? 0.6 : 1 }}
-            >
-              {isDownloadingPDF ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileText size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                PDF ({selectedStoreIds.size})
-              </Text>
-            </TouchableOpacity>
+              style={{ flex: 1, backgroundColor: '#EF4444' }}
+            />
           </View>
         )}
       </View>

@@ -4,11 +4,28 @@ import Share from 'react-native-share';
 import Toast from 'react-native-toast-message';
 import { permissionService } from './permissionService';
 import { themedAlertService } from './themedAlertService';
+import { pushNotificationService } from './pushNotificationService';
+
+// Simple notification helper
+const showDownloadNotification = (message: string) => {
+  console.log('FileService v2.1 - Notification:', message);
+  Toast.show({
+    type: 'info',
+    text1: 'Download Progress',
+    text2: message,
+    visibilityTime: 4000,
+  });
+};
 
 export const fileService = {
   // Enhanced download with proper system storage
   downloadFile: async (blob: Blob, filename: string) => {
+    console.log('FileService v2.1 - Starting download:', filename);
     try {
+      // Show download starting notification (both in-app and system)
+      showDownloadNotification(`Starting download: ${filename}`);
+      pushNotificationService.showDownloadStartNotification(filename);
+      
       // Validate inputs
       if (!blob || !filename) {
         throw new Error('Invalid blob or filename provided');
@@ -37,6 +54,10 @@ export const fileService = {
         }
       }
 
+      // Show processing notification
+      showDownloadNotification(`Processing: ${filename}`);
+      pushNotificationService.showDownloadProgressNotification(filename, 'Processing file...');
+
       // Convert blob to base64
       const reader = new FileReader();
       return new Promise((resolve, reject) => {
@@ -51,6 +72,10 @@ export const fileService = {
             if (!base64Data) {
               throw new Error('Failed to extract base64 data');
             }
+            
+            // Show saving notification
+            showDownloadNotification(`Saving: ${filename}`);
+            pushNotificationService.showDownloadProgressNotification(filename, 'Saving to device...');
             
             // Determine download path based on Android version and permissions
             let downloadPath: string;
@@ -98,6 +123,16 @@ export const fileService = {
               await RNFS.writeFile(downloadPath, base64Data, 'base64');
             }
             
+            // Show completion notification (both in-app and system)
+            Toast.show({
+              type: 'success',
+              text1: 'Download Complete!',
+              text2: `${filename} saved successfully`,
+              visibilityTime: 6000,
+            });
+            
+            pushNotificationService.showDownloadCompleteNotification(filename, locationMessage);
+            
             // Show success with options
             let locationMessage = '';
             if (Platform.OS === 'ios') {
@@ -134,6 +169,9 @@ export const fileService = {
             resolve(downloadPath);
           } catch (error) {
             console.error('File processing error:', error);
+            
+            // Show error notifications (both in-app and system)
+            pushNotificationService.showDownloadFailedNotification(filename, 'Processing failed');
             
             // Fallback to share method
             themedAlertService.showDownloadFailedAlert(

@@ -4,6 +4,8 @@ import { Search, Plus, Edit2, Trash2, X, Shield, ChevronLeft, ChevronRight, Down
 import { useTheme } from '../../context/ThemeContext';
 import { roleService } from '../../services/roleService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import { Role, PermissionSet } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
@@ -182,13 +184,21 @@ export default function RolesScreen() {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage permissions</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={handleExport} 
+            <DownloadButton
+              onDownload={async () => {
+                const params = { search: searchTerm };
+                const blob = await roleService.export(params);
+                return {
+                  blob,
+                  filename: `Roles_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
+              }}
+              title="Export Roles"
+              description="Downloading roles data..."
+              size="medium"
+              variant="success"
               disabled={isExporting}
-              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
-            >
-              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={16} color="#FFF" />}
-            </TouchableOpacity>
+            />
             <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
               <Plus size={20} color="#FFF" />
               <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>

@@ -81,6 +81,7 @@ const LoginScreen = () => {
       if (!result.success) {
         setError(result.message || 'Login failed. Please try again.');
         generateCaptcha();
+        setIsLoading(false); // Stop loading on error
       }
       // Don't set loading to false here if login is successful
       // Let the auth context handle the state transition
@@ -89,7 +90,7 @@ const LoginScreen = () => {
       setError(errorMessage);
       // Removed console.error to prevent memory issues
       generateCaptcha();
-      setIsLoading(false);
+      setIsLoading(false); // Always stop loading on error
     }
   };
 

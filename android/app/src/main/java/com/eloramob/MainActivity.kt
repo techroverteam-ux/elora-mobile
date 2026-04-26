@@ -1,8 +1,7 @@
 package com.eloramob
 
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
-import androidx.core.view.WindowCompat
+import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -24,11 +23,16 @@ class MainActivity : ReactActivity() {
           DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    // Set splash theme before super.onCreate
-    setTheme(R.style.AppTheme)
-    
-    // Enable edge-to-edge for Android 15+ compatibility
-    enableEdgeToEdge()
-    super.onCreate(null)
+    try {
+      // Set splash theme before super.onCreate
+      setTheme(R.style.AppTheme)
+      
+      super.onCreate(savedInstanceState)
+      Log.d("MainActivity", "MainActivity created successfully")
+    } catch (e: Exception) {
+      Log.e("MainActivity", "Error in onCreate", e)
+      // Try to continue with basic setup
+      super.onCreate(savedInstanceState)
+    }
   }
 }

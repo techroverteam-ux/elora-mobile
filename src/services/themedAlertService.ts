@@ -15,6 +15,7 @@ class ThemedAlertService {
   }
 
   show(title: string, message: string, buttons: AlertButton[] = [{ text: 'OK' }]) {
+    console.log('ThemedAlertService v2.1 - Showing alert:', title);
     if (this.alertHandler) {
       this.alertHandler(title, message, buttons);
     }
@@ -39,18 +40,21 @@ class ThemedAlertService {
 
   showStoragePermissionDeniedAlert() {
     this.show(
-      '📁 Storage Access Needed',
-      'Storage permission is required to save downloaded files.\n\nTo enable storage access:\n1. Go to Settings\n2. Find this app\n3. Enable Storage/Files permission\n\nThis allows you to save reports and documents to your device.',
+      'Storage Permission Required',
+      'This app needs storage access to save your files.',
       [
-        { text: 'Later', style: 'cancel', icon: 'x' },
+        { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Settings', 
-          icon: 'settings',
+          text: 'Allow', 
           onPress: () => {
             if (Platform.OS === 'ios') {
               Linking.openURL('app-settings:');
             } else {
-              Linking.openSettings();
+              Linking.sendIntent('android.settings.APPLICATION_DETAILS_SETTINGS', [
+                { key: 'package', value: 'com.geetabalsanskar' }
+              ]).catch(() => {
+                Linking.openSettings();
+              });
             }
           }
         }

@@ -27,7 +27,7 @@ export const userService = {
   },
 
   toggleStatus: async (id: string, isActive: boolean) => {
-    const { data } = await api.patch(`/users/${id}/status`, { isActive });
+    const { data } = await api.put(`/users/${id}`, { isActive });
     return data;
   },
 

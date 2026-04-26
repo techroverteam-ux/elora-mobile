@@ -2,8 +2,8 @@ buildscript {
     ext {
         buildToolsVersion = "35.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 35
-        targetSdkVersion = 35
+        compileSdkVersion = 36  // FINAL: Dependencies require SDK 36
+        targetSdkVersion = 34   // Keep target at 34 for compatibility
         ndkVersion = "27.0.12077973"
         kotlinVersion = "2.1.20"
     }

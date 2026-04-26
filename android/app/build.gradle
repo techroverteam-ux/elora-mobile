@@ -75,15 +75,15 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk 36
+    compileSdk 36  // FINAL: Dependencies require SDK 36
 
     namespace "com.eloramob"
     defaultConfig {
         applicationId "com.eloramob"
         minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion 34
-        versionCode 4
-        versionName "1.3"
+        targetSdkVersion 34  // Keep target at 34 for compatibility
+        versionCode 5  // Increment version for fixed build
+        versionName "1.4-fixed"
         
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
@@ -136,4 +136,19 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+}
+
+// Force resolution of conflicting dependencies
+configurations.all {
+    resolutionStrategy {
+        force 'androidx.core:core:1.17.0'
+        eachDependency { details ->
+            if (details.requested.group == 'com.android.support') {
+                details.useTarget group: 'androidx.core', name: 'core', version: '1.17.0'
+            }
+        }
+    }
+    exclude group: 'com.android.support', module: 'support-compat'
+    exclude group: 'com.android.support', module: 'support-v4'
+    exclude group: 'com.android.support', module: 'support-annotations'
 }

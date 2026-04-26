@@ -7,24 +7,40 @@ export const permissionService = {
   handleNeverAskAgainState: (permissionType: 'camera' | 'storage' | 'location') => {
     console.log(`Permission ${permissionType} is set to 'never_ask_again' - directing user to settings`);
     
-    // Use clean banking-style alert
-    permissionService.showCleanPermissionAlert(permissionType);
+    // Try themed alert first, fallback to native alert
+    try {
+      switch (permissionType) {
+        case 'camera':
+          themedAlertService.showCameraPermissionDeniedAlert();
+          break;
+        case 'storage':
+          themedAlertService.showStoragePermissionDeniedAlert();
+          break;
+        case 'location':
+          themedAlertService.showLocationPermissionDeniedAlert();
+          break;
+      }
+    } catch (error) {
+      console.warn('ThemedAlert failed, using native Alert:', error);
+      // Fallback to native Alert
+      permissionService.showNativePermissionAlert(permissionType);
+    }
   },
 
-  // Clean banking-style permission alert
-  showCleanPermissionAlert: (permissionType: 'camera' | 'storage' | 'location') => {
+  // Fallback native alert for permission issues
+  showNativePermissionAlert: (permissionType: 'camera' | 'storage' | 'location') => {
     const messages = {
       storage: {
-        title: 'Storage Permission Required',
-        message: 'This app needs storage access to save your files.'
+        title: '📁 Storage Access Needed',
+        message: 'Storage permission is required to save downloaded files.\n\nTo enable:\n1. Go to Settings\n2. Find this app\n3. Enable Storage permission'
       },
       camera: {
-        title: 'Camera Permission Required', 
-        message: 'This app needs camera access to take photos.'
+        title: '📸 Camera Access Needed', 
+        message: 'Camera permission is required for taking photos.\n\nTo enable:\n1. Go to Settings\n2. Find this app\n3. Enable Camera permission'
       },
       location: {
-        title: 'Location Permission Required',
-        message: 'This app needs location access for GPS features.'
+        title: '📍 Location Access Needed',
+        message: 'Location permission is required for GPS features.\n\nTo enable:\n1. Go to Settings\n2. Find this app\n3. Enable Location permission'
       }
     };
 
@@ -34,36 +50,14 @@ export const permissionService = {
       config.title,
       config.message,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Later', style: 'cancel' },
         { 
-          text: 'Open Settings', 
-          onPress: async () => {
-            try {
-              if (Platform.OS === 'ios') {
-                await Linking.openURL('app-settings:');
-              } else {
-                // Try multiple methods to open app settings on Android
-                try {
-                  await Linking.openURL('android.settings.APPLICATION_DETAILS_SETTINGS:com.geetabalsanskar');
-                } catch (error1) {
-                  try {
-                    await Linking.sendIntent('android.settings.APPLICATION_DETAILS_SETTINGS', [
-                      { key: 'package', value: 'com.geetabalsanskar' }
-                    ]);
-                  } catch (error2) {
-                    // Final fallback to general settings
-                    await Linking.openSettings();
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('Failed to open settings:', error);
-              // Show user a message if all methods fail
-              Alert.alert(
-                'Settings Access',
-                'Please manually go to Settings > Apps > Elora > Permissions to enable storage access.',
-                [{ text: 'OK' }]
-              );
+          text: 'Settings', 
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
             }
           }
         }
@@ -75,7 +69,6 @@ export const permissionService = {
   hasNeverAskAgainState: (results: { [key: string]: string }) => {
     return Object.values(results).some(result => result === 'never_ask_again');
   },
-
   // Request camera permission with simple approach
   requestCameraPermission: async (): Promise<boolean> => {
     if (shouldBypassPermission('camera')) {
@@ -265,11 +258,6 @@ export const permissionService = {
 
   // Request location permission with simple approach
   requestLocationPermission: async (): Promise<boolean> => {
-    if (shouldBypassPermission('location')) {
-      console.log('Location permission request BYPASSED for testing');
-      return true;
-    }
-    
     if (Platform.OS === 'android') {
       try {
         const granted = await PermissionsAndroid.request(
@@ -295,13 +283,6 @@ export const permissionService = {
 
   // Check location permission
   checkLocationPermission: async (): Promise<boolean> => {
-    if (shouldBypassPermission('location')) {
-      if (PERMISSION_CONFIG.VERBOSE_LOGGING) {
-        console.log('Location permission check BYPASSED for testing');
-      }
-      return true;
-    }
-    
     if (Platform.OS === 'android') {
       try {
         const fineLocationGranted = await PermissionsAndroid.check(
@@ -325,7 +306,6 @@ export const permissionService = {
     }
     return true;
   },
-
   showPermissionDeniedAlert: () => {
     themedAlertService.showCameraPermissionDeniedAlert();
   },

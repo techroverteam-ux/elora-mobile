@@ -5,6 +5,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import { User, Role } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
@@ -245,13 +247,21 @@ export default function UsersScreen() {
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage system users</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={handleExport} 
+            <DownloadButton
+              onDownload={async () => {
+                const params = { search: searchTerm };
+                const blob = await userService.export(params);
+                return {
+                  blob,
+                  filename: `Users_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
+              }}
+              title="Export Users"
+              description="Downloading users data..."
+              size="medium"
+              variant="success"
               disabled={isExporting}
-              style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}
-            >
-              {isExporting ? <ActivityIndicator size="small" color="#FFF" /> : <Download size={16} color="#FFF" />}
-            </TouchableOpacity>
+            />
             <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
               <Plus size={16} color="#FFF" />
             </TouchableOpacity>

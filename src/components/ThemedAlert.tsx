@@ -52,30 +52,30 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
       case 'destructive':
         return {
           backgroundColor: '#EF4444',
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
-          minHeight: 36,
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderRadius: 12,
+          minHeight: 48,
           flex: 1
         };
       case 'cancel':
         return {
-          backgroundColor: theme.colors.surface,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
+          backgroundColor: '#F3F4F6',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderRadius: 12,
           borderWidth: 1,
-          borderColor: theme.colors.border,
-          minHeight: 36,
+          borderColor: '#E5E7EB',
+          minHeight: 48,
           flex: 1
         };
       default:
         return {
-          backgroundColor: theme.colors.primary,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          borderRadius: 8,
-          minHeight: 36,
+          backgroundColor: '#3B82F6',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          borderRadius: 12,
+          minHeight: 48,
           flex: 1
         };
     }
@@ -84,9 +84,9 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
   const getButtonTextColor = (style?: string) => {
     switch (style) {
       case 'cancel':
-        return theme.colors.text;
+        return '#374151';
       default:
-        return '#FFF';
+        return '#FFFFFF';
     }
   };
 
@@ -99,29 +99,29 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
     >
       <View style={{
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0,0,0,0.3)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20
       }}>
         <View style={{
-          backgroundColor: theme.colors.background,
-          borderRadius: 12,
-          padding: 20,
-          width: '100%',
-          maxWidth: 380,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 16,
+          padding: 24,
+          width: '85%',
+          maxWidth: 320,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 16,
+          elevation: 12
         }}>
           {/* Title */}
           <Text style={{
             fontSize: 18,
             fontWeight: 'bold',
-            color: theme.colors.text,
-            marginBottom: 8,
+            color: '#1F2937',
+            marginBottom: 12,
             textAlign: 'center'
           }}>
             {title}
@@ -129,11 +129,11 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
 
           {/* Message */}
           <Text style={{
-            fontSize: 14,
-            color: theme.colors.textSecondary,
-            lineHeight: 20,
+            fontSize: 15,
+            color: '#6B7280',
+            lineHeight: 22,
             textAlign: 'center',
-            marginBottom: 20
+            marginBottom: 24
           }}>
             {message}
           </Text>
@@ -141,7 +141,7 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
           {/* Buttons */}
           <View style={{
             flexDirection: 'row',
-            gap: 8,
+            gap: 12,
             marginTop: 8
           }}>
             {buttons.map((button, index) => {
@@ -168,7 +168,7 @@ export const ThemedAlert: React.FC<ThemedAlertProps> = ({
                   )}
                   {button.text && (
                     <Text style={{
-                      fontSize: 12,
+                      fontSize: 16,
                       fontWeight: '600',
                       color: textColor
                     }}>

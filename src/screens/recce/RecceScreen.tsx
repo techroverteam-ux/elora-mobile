@@ -5,6 +5,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
+import { modernDownloadService } from '../../services/modernDownloadService';
+import DownloadButton from '../../components/DownloadButton';
 import { permissionService } from '../../services/permissionService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
@@ -428,13 +430,20 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your recce assignments</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={handleExport} disabled={isExporting} style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, opacity: isExporting ? 0.6 : 1 }}>
-              {isExporting ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileSpreadsheet size={16} color="#FFF" />
-              )}
-            </TouchableOpacity>
+            <DownloadButton
+              onDownload={async () => {
+                const blob = await recceService.exportRecce();
+                return {
+                  blob,
+                  filename: `Recce_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
+              }}
+              title="Export Recce Data"
+              description="Downloading recce assignments..."
+              size="medium"
+              variant="success"
+              disabled={isExporting}
+            />
           </View>
         </View>
 
@@ -488,34 +497,38 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           
           {selectedAssignments.size > 0 && (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity 
-                onPress={handleBulkPPTDownload}
+              <DownloadButton
+                onDownload={async () => {
+                  const selectedStoreIds = Array.from(selectedAssignments);
+                  const blob = await recceService.bulkPpt(selectedStoreIds);
+                  return {
+                    blob,
+                    filename: `Recce_Report_${selectedAssignments.size}_Stores.pptx`
+                  };
+                }}
+                title={`PPT Report (${selectedAssignments.size} stores)`}
+                description="Generating PowerPoint report..."
+                size="medium"
+                variant="secondary"
                 disabled={isDownloadingPPT}
-                style={{ flex: 1, backgroundColor: '#F59E0B', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPPT ? 0.6 : 1 }}
-              >
-                {isDownloadingPPT ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <FileText size={16} color="#FFF" />
-                )}
-                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                  PPT ({selectedAssignments.size})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleBulkPDFDownload}
+                style={{ flex: 1, backgroundColor: '#F59E0B' }}
+              />
+              <DownloadButton
+                onDownload={async () => {
+                  const selectedStoreIds = Array.from(selectedAssignments);
+                  const blob = await recceService.bulkPdf(selectedStoreIds);
+                  return {
+                    blob,
+                    filename: `Recce_Report_${selectedAssignments.size}_Stores.pdf`
+                  };
+                }}
+                title={`PDF Report (${selectedAssignments.size} stores)`}
+                description="Generating PDF report..."
+                size="medium"
+                variant="secondary"
                 disabled={isDownloadingPDF}
-                style={{ flex: 1, backgroundColor: '#EF4444', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', opacity: isDownloadingPDF ? 0.6 : 1 }}
-              >
-                {isDownloadingPDF ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <FileText size={16} color="#FFF" />
-                )}
-                <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>
-                  PDF ({selectedAssignments.size})
-                </Text>
-              </TouchableOpacity>
+                style={{ flex: 1, backgroundColor: '#EF4444' }}
+              />
             </View>
           )}
         </View>
