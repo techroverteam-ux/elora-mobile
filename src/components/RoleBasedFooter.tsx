@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { 
   Home, 
   BarChart3, 
@@ -12,7 +13,10 @@ import {
   MessageSquare, 
   Settings,
   UserCheck,
-  Package
+  Package,
+  Shield,
+  Map,
+  Wrench
 } from 'lucide-react-native';
 
 interface FooterItem {
@@ -20,7 +24,8 @@ interface FooterItem {
   label: string;
   icon: React.ComponentType<any>;
   screen: string;
-  roles?: string[];
+  module: string;
+  alwaysShow?: boolean;
 }
 
 const FOOTER_ITEMS: FooterItem[] = [
@@ -29,56 +34,72 @@ const FOOTER_ITEMS: FooterItem[] = [
     label: 'Dashboard',
     icon: Home,
     screen: 'Dashboard',
-    roles: ['SUPER_ADMIN', 'CLIENT', 'STORE', 'RECCE']
-  },
-  {
-    key: 'analytics',
-    label: 'Analytics',
-    icon: BarChart3,
-    screen: 'Analytics',
-    roles: ['SUPER_ADMIN', 'CLIENT']
-  },
-  {
-    key: 'users',
-    label: 'Users',
-    icon: Users,
-    screen: 'Users',
-    roles: ['SUPER_ADMIN']
+    module: 'dashboard',
+    alwaysShow: true
   },
   {
     key: 'clients',
     label: 'Clients',
     icon: UserCheck,
     screen: 'Clients',
-    roles: ['SUPER_ADMIN']
+    module: 'clients'
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    icon: Users,
+    screen: 'Users',
+    module: 'users'
+  },
+  {
+    key: 'roles',
+    label: 'Roles',
+    icon: Shield,
+    screen: 'Roles',
+    module: 'roles'
   },
   {
     key: 'stores',
     label: 'Stores',
     icon: Store,
     screen: 'Stores',
-    roles: ['SUPER_ADMIN', 'CLIENT']
+    module: 'stores'
   },
   {
     key: 'recce',
     label: 'Recce',
     icon: Package,
     screen: 'Recce',
-    roles: ['SUPER_ADMIN', 'CLIENT', 'RECCE']
+    module: 'recce'
+  },
+  {
+    key: 'installation',
+    label: 'Installation',
+    icon: Wrench,
+    screen: 'Installation',
+    module: 'installation'
+  },
+  {
+    key: 'elements',
+    label: 'Elements',
+    icon: Map,
+    screen: 'Elements',
+    module: 'elements'
   },
   {
     key: 'reports',
     label: 'Reports',
     icon: FileText,
     screen: 'Reports',
-    roles: ['SUPER_ADMIN', 'CLIENT']
+    module: 'reports',
+    alwaysShow: true
   },
   {
     key: 'enquiries',
     label: 'Enquiries',
     icon: MessageSquare,
     screen: 'Enquiries',
-    roles: ['SUPER_ADMIN', 'CLIENT']
+    module: 'enquiries'
   }
 ];
 
@@ -86,25 +107,33 @@ export default function RoleBasedFooter() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { hasPermission } = usePermissions();
 
-  const getUserRole = () => {
-    if (!user?.roles || user.roles.length === 0) return 'RECCE';
-    return user.roles[0]?.name || 'RECCE';
+  // Use exact same permission logic as web portal
+  const canView = (moduleName: string) => {
+    if (!user || !user.roles || !Array.isArray(user.roles)) return false;
+
+    // SUPER_ADMIN bypass - exact same check as web portal
+    if (user.roles.some((r: any) => r.code === "SUPER_ADMIN")) return true;
+
+    // Check if ANY role has view permission for this module - exact same logic as web portal
+    return user.roles.some((role: any) => {
+      const perms = role.permissions;
+      if (!perms) return false;
+      return perms[moduleName]?.view === true;
+    });
   };
 
-  const userRole = getUserRole();
-
   const getVisibleItems = () => {
-    const filteredItems = FOOTER_ITEMS.filter(item => 
-      !item.roles || item.roles.includes(userRole)
-    );
+    const filteredItems = FOOTER_ITEMS.filter(item => {
+      // Always show items marked as alwaysShow (like Dashboard and Reports)
+      if (item.alwaysShow) return true;
+      
+      // Check permission for other items
+      return canView(item.module);
+    });
 
-    // Banking standard: Show max 5 items in footer
-    // For RECCE users, show only essential items
-    if (userRole === 'RECCE') {
-      return filteredItems.slice(0, 3); // Dashboard, Recce, Settings
-    }
-    
+    // Show max 5 items in footer for better UX
     return filteredItems.slice(0, 5);
   };
 

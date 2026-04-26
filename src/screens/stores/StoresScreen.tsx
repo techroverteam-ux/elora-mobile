@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
 import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
@@ -51,6 +52,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const navigation = useNavigation();
   const nav = navigationProp || navigation;
   const { theme } = useTheme();
+  const { isAdmin } = useAuth();
+  const isAdminUser = isAdmin();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -728,7 +731,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             </TouchableOpacity>
           )}
           
-          {item.currentStatus === StoreStatus.RECCE_SUBMITTED && (
+          {isAdminUser && item.currentStatus === StoreStatus.RECCE_SUBMITTED && (
             <>
               <TouchableOpacity 
                 onPress={() => handleApproveRecce(item._id)} 
@@ -937,7 +940,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 <FileSpreadsheet size={16} color="#FFF" />
               )}
               <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                {isDownloadingPPT ? 'Downloading...' : `PPT Report (${selectedStoreIds.size} stores)`}
+                {isDownloadingPPT ? 'Downloading...' : 'PPT'}
               </Text>
             </TouchableOpacity>
             
@@ -975,7 +978,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 <FileText size={16} color="#FFF" />
               )}
               <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                {isDownloadingPDF ? 'Downloading...' : `PDF Report (${selectedStoreIds.size} stores)`}
+                {isDownloadingPDF ? 'Downloading...' : 'PDF'}
               </Text>
             </TouchableOpacity>
           </View>

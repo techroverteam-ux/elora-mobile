@@ -45,7 +45,7 @@ interface RecceAssignment {
 
 export default function RecceScreen({ navigation }: { navigation: RecceScreenNavigationProp }) {
   const { theme } = useTheme();
-  const { isAdmin, canViewCommercialInfo } = useAuth();
+  const { isAdmin, canViewCommercialInfo, user } = useAuth();
   const [assignments, setAssignments] = useState<RecceAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -292,6 +292,11 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     // Allow selection for all stores that have completed recce (same as web portal)
     const canSelect = ['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'].includes(item.status);
     
+    // Debug logging for admin users
+    if (__DEV__ && isAdminUser) {
+      console.log(`Store ${item.store.storeName}: Admin=${isAdminUser}, Status=${item.status}, ShowReview=${isAdminUser && item.status === 'RECCE_SUBMITTED'}`);
+    }
+    
     return (
       <View style={{ 
         backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
@@ -400,7 +405,10 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           
           {isAdminUser && item.status === 'RECCE_SUBMITTED' && (
             <TouchableOpacity 
-              onPress={() => navigation.navigate('RecceReview', { storeId: item.store._id })} 
+              onPress={() => {
+                console.log('Review Photos clicked for store:', item.store._id, 'Admin:', isAdminUser);
+                navigation.navigate('RecceReview', { storeId: item.store._id });
+              }} 
               style={{ backgroundColor: '#8B5CF620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
             >
               <CheckSquare size={16} color="#8B5CF6" />
@@ -428,6 +436,11 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           <View>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Recce Inspection</Text>
             <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your recce assignments</Text>
+            {__DEV__ && (
+              <Text style={{ fontSize: 12, color: theme.colors.primary, marginTop: 4 }}>
+                Debug: User is {isAdminUser ? 'Admin' : 'Not Admin'} | Roles: {user?.roles?.map(r => r.name).join(', ') || 'None'}
+              </Text>
+            )}
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <DownloadButton
@@ -438,7 +451,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                   filename: `Recce_Export_${new Date().toISOString().split('T')[0]}.xlsx`
                 };
               }}
-              title="Export Recce Data"
+              title="Export"
               description="Downloading recce assignments..."
               size="medium"
               variant="success"
@@ -506,7 +519,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                     filename: `Recce_Report_${selectedAssignments.size}_Stores.pptx`
                   };
                 }}
-                title={`PPT Report (${selectedAssignments.size} stores)`}
+                title="PPT"
                 description="Generating PowerPoint report..."
                 size="medium"
                 variant="secondary"
@@ -522,7 +535,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                     filename: `Recce_Report_${selectedAssignments.size}_Stores.pdf`
                   };
                 }}
-                title={`PDF Report (${selectedAssignments.size} stores)`}
+                title="PDF"
                 description="Generating PDF report..."
                 size="medium"
                 variant="secondary"

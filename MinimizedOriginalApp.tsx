@@ -33,6 +33,7 @@ import StoreDetailScreen from './src/screens/stores/StoreDetailScreen';
 import RecceDetailScreen from './src/screens/recce/RecceDetailScreen';
 import InstallationDetailScreen from './src/screens/installation/InstallationDetailScreen';
 import RecceFormScreen from './src/screens/recce/RecceFormScreen';
+import RecceReviewScreen from './src/screens/recce/RecceReviewScreen';
 import InstallationFormScreen from './src/screens/installation/InstallationFormScreen';
 
 // Add back the screens that were removed
@@ -255,6 +256,22 @@ function AppContent() {
           </ScreenLayout>
         );
       
+      case 'RecceReview':
+        return (
+          <ScreenLayout 
+            title="Review Recce Photos"
+            onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Recce')}
+            showBackButton={true}
+            onProfilePress={() => navigateToScreen('Profile')}
+          >
+            <RecceReviewScreen 
+              route={{ params: navigationParams }}
+              navigation={{ goBack: () => navigateToScreen('Recce') }}
+            />
+          </ScreenLayout>
+        );
+      
       case 'Installation':
         return (
           <ScreenLayout 
@@ -353,8 +370,8 @@ const MinimizedOriginalApp = () => {
                 <AppContent />
               </NavigationContainer>
               <Toast 
-                position='top'
-                topOffset={100}
+                position='bottom'
+                bottomOffset={100}
                 visibilityTime={4000}
                 autoHide={true}
                 config={{

@@ -175,12 +175,20 @@ function MyTabBar({ state, descriptors, navigation }: any) {
 const BusinessTabNavigator = () => {
   const { user } = useAuth();
   
-  const getUserRole = () => {
-    if (!user?.roles || user.roles.length === 0) return 'RECCE';
-    return user.roles[0]?.name || 'RECCE';
-  };
+  // Use exact same permission logic as web portal
+  const canAccessTab = (moduleName: string) => {
+    if (!user || !user.roles || !Array.isArray(user.roles)) return false;
 
-  const userRole = getUserRole();
+    // SUPER_ADMIN bypass - exact same check as web portal
+    if (user.roles.some((r: any) => r.code === "SUPER_ADMIN")) return true;
+
+    // Check if ANY role has view permission for this module - exact same logic as web portal
+    return user.roles.some((role: any) => {
+      const perms = role.permissions;
+      if (!perms) return false;
+      return perms[moduleName]?.view === true;
+    });
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -188,18 +196,40 @@ const BusinessTabNavigator = () => {
         screenOptions={{ headerShown: false }}
         tabBar={() => null} // Hide default tab bar
       >
+        {/* Always show Dashboard */}
         <Tab.Screen name="Dashboard" component={DashboardScreen} />
-        <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-        <Tab.Screen name="Users" component={UsersScreen} />
-        <Tab.Screen name="Roles" component={RolesScreen} />
-        <Tab.Screen name="Clients" component={ClientsScreen} />
-        <Tab.Screen name="Stores" component={StoresScreen} />
-        <Tab.Screen name="Recce" component={RecceStack} />
-        <Tab.Screen name="Installation" component={InstallationScreen} />
-        <Tab.Screen name="Reports" component={ReportsScreen} />
-        <Tab.Screen name="Enquiries" component={EnquiriesScreen} />
-        <Tab.Screen name="RFQ" component={RFQScreen} />
-        <Tab.Screen name="Elements" component={ElementsScreen} />
+        
+        {/* Conditionally render tabs based on user roles - same logic as web portal */}
+        {canAccessTab('clients') && (
+          <Tab.Screen name="Clients" component={ClientsScreen} />
+        )}
+        {canAccessTab('users') && (
+          <Tab.Screen name="Users" component={UsersScreen} />
+        )}
+        {canAccessTab('roles') && (
+          <Tab.Screen name="Roles" component={RolesScreen} />
+        )}
+        {canAccessTab('stores') && (
+          <Tab.Screen name="Stores" component={StoresScreen} />
+        )}
+        {canAccessTab('recce') && (
+          <Tab.Screen name="Recce" component={RecceStack} />
+        )}
+        {canAccessTab('installation') && (
+          <Tab.Screen name="Installation" component={InstallationScreen} />
+        )}
+        {canAccessTab('elements') && (
+          <Tab.Screen name="Elements" component={ElementsScreen} />
+        )}
+        {canAccessTab('rfq') && (
+          <Tab.Screen name="RFQ" component={RFQScreen} />
+        )}
+        {canAccessTab('enquiries') && (
+          <Tab.Screen name="Enquiries" component={EnquiriesScreen} />
+        )}
+        {canAccessTab('reports') && (
+          <Tab.Screen name="Reports" component={ReportsScreen} />
+        )}
       </Tab.Navigator>
       
       {/* Role-based Footer Navigation */}

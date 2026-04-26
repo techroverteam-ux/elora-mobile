@@ -391,20 +391,20 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
               <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your installation assignments</Text>
             </View>
           </View>
-          <DownloadButton
-            onDownload={async () => {
-              const blob = await storeService.exportInstallation();
-              return {
-                blob,
-                filename: `Installation_Export_${new Date().toISOString().split('T')[0]}.xlsx`
-              };
-            }}
-            title="Export Installation Data"
-            description="Downloading installation assignments..."
-            size="medium"
-            variant="success"
-            disabled={isExporting}
-          />
+            <DownloadButton
+              onDownload={async () => {
+                const blob = await storeService.exportInstallation();
+                return {
+                  blob,
+                  filename: `Installation_Export_${new Date().toISOString().split('T')[0]}.xlsx`
+                };
+              }}
+              title="Export"
+              description="Downloading installation assignments..."
+              size="medium"
+              variant="success"
+              disabled={isExporting}
+            />
         </View>
 
         <View style={{ gap: 12 }}>
@@ -473,7 +473,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
                     filename: `Installation_Report_${selectedAssignments.size}_Stores.pptx`
                   };
                 }}
-                title={`PPT Report (${selectedAssignments.size} stores)`}
+                title="PPT"
                 description="Generating PowerPoint report..."
                 size="medium"
                 variant="secondary"
@@ -488,7 +488,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
                     filename: `Installation_Report_${selectedAssignments.size}_Stores.pdf`
                   };
                 }}
-                title={`PDF Report (${selectedAssignments.size} stores)`}
+                title="PDF"
                 description="Generating PDF report..."
                 size="medium"
                 variant="secondary"

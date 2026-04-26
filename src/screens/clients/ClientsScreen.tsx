@@ -241,7 +241,7 @@ export default function ClientsScreen() {
                   filename: `Clients_Export_${new Date().toISOString().split('T')[0]}.xlsx`
                 };
               }}
-              title="Export Clients"
+              title="Export"
               description="Downloading clients data..."
               size="medium"
               variant="success"

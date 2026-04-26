@@ -256,7 +256,7 @@ export default function UsersScreen() {
                   filename: `Users_Export_${new Date().toISOString().split('T')[0]}.xlsx`
                 };
               }}
-              title="Export Users"
+              title="Export"
               description="Downloading users data..."
               size="medium"
               variant="success"

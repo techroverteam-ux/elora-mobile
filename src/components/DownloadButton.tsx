@@ -149,7 +149,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
       case 'error':
         return 'Failed';
       default:
-        return '';
+        return title || 'Download';
     }
   };
 
@@ -170,11 +170,9 @@ export const DownloadButton: React.FC<DownloadButtonProps> = ({
     >
       <View style={styles.buttonContent}>
         {renderIcon()}
-        {(downloadState === 'downloading' || downloadState === 'success' || downloadState === 'error') && (
-          <Text style={[styles.buttonText, { fontSize: size === 'small' ? 10 : 12 }]}>
-            {getButtonText()}
-          </Text>
-        )}
+        <Text style={[styles.buttonText, { fontSize: size === 'small' ? 10 : 12 }]}>
+          {getButtonText()}
+        </Text>
       </View>
       
       {/* Progress bar for downloading state */}

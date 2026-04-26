@@ -8,6 +8,7 @@ import { Store, Users, CheckCircle, Clock, TrendingUp, BarChart3, Calendar, Targ
 import Toast from 'react-native-toast-message';
 import RecceUserDashboard from './RecceUserDashboard';
 import InstallationUserDashboard from './InstallationUserDashboard';
+import PermissionDebugger from '../../components/PermissionDebugger';
 
 const { width } = Dimensions.get('window');
 const cardWidth = (width - 48) / 2;
@@ -63,6 +64,9 @@ export default function DashboardScreen({ navigation }: { navigation?: any }) {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} showsVerticalScrollIndicator={false}>
+      {/* Permission Debugger - Remove this in production */}
+      <PermissionDebugger />
+      
       {/* Welcome Header */}
       <LinearGradient
         colors={['#F6B21C', '#FECC00', '#E6A500']}

@@ -47,6 +47,23 @@ function InstallationStack() {
 }
 
 function DrawerNavigator() {
+  const { user } = useAuth();
+  
+  // Use exact same permission logic as web portal
+  const canAccessScreen = (moduleName: string) => {
+    if (!user || !user.roles || !Array.isArray(user.roles)) return false;
+
+    // SUPER_ADMIN bypass - exact same check as web portal
+    if (user.roles.some((r: any) => r.code === "SUPER_ADMIN")) return true;
+
+    // Check if ANY role has view permission for this module - exact same logic as web portal
+    return user.roles.some((role: any) => {
+      const perms = role.permissions;
+      if (!perms) return false;
+      return perms[moduleName]?.view === true;
+    });
+  };
+  
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
@@ -60,16 +77,38 @@ function DrawerNavigator() {
         name="Dashboard" 
         component={(props) => <DashboardScreen {...props} onMenuPress={() => props.navigation.openDrawer()} />} 
       />
-      <Drawer.Screen name="Users" component={UsersScreen} />
-      <Drawer.Screen name="Roles" component={RolesScreen} />
-      <Drawer.Screen name="Stores" component={StoresScreen} />
-      <Drawer.Screen name="Recce" component={RecceStack} />
-      <Drawer.Screen name="Installation" component={InstallationStack} />
-      <Drawer.Screen name="Elements" component={ElementsScreen} />
-      <Drawer.Screen name="Clients" component={ClientsScreen} />
-      <Drawer.Screen name="RFQ" component={RFQScreen} />
-      <Drawer.Screen name="Enquiries" component={EnquiriesScreen} />
-      <Drawer.Screen name="Reports" component={ReportsScreen} />
+      
+      {/* Conditionally render screens based on user roles - same logic as web portal */}
+      {canAccessScreen('users') && (
+        <Drawer.Screen name="Users" component={UsersScreen} />
+      )}
+      {canAccessScreen('roles') && (
+        <Drawer.Screen name="Roles" component={RolesScreen} />
+      )}
+      {canAccessScreen('stores') && (
+        <Drawer.Screen name="Stores" component={StoresScreen} />
+      )}
+      {canAccessScreen('recce') && (
+        <Drawer.Screen name="Recce" component={RecceStack} />
+      )}
+      {canAccessScreen('installation') && (
+        <Drawer.Screen name="Installation" component={InstallationStack} />
+      )}
+      {canAccessScreen('elements') && (
+        <Drawer.Screen name="Elements" component={ElementsScreen} />
+      )}
+      {canAccessScreen('clients') && (
+        <Drawer.Screen name="Clients" component={ClientsScreen} />
+      )}
+      {canAccessScreen('rfq') && (
+        <Drawer.Screen name="RFQ" component={RFQScreen} />
+      )}
+      {canAccessScreen('enquiries') && (
+        <Drawer.Screen name="Enquiries" component={EnquiriesScreen} />
+      )}
+      {canAccessScreen('reports') && (
+        <Drawer.Screen name="Reports" component={ReportsScreen} />
+      )}
     </Drawer.Navigator>
   );
 }

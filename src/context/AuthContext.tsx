@@ -7,7 +7,22 @@ interface User {
   _id: string;
   email: string;
   name: string;
-  roles: any[];
+  roles: Role[];
+  isActive: boolean;
+}
+
+interface Role {
+  _id: string;
+  name: string;
+  code: string;
+  permissions: Record<string, PermissionSet>;
+}
+
+interface PermissionSet {
+  view: boolean;
+  create: boolean;
+  edit: boolean;
+  delete: boolean;
 }
 
 interface AuthContextType {
@@ -207,20 +222,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const canViewCommercialInfo = (): boolean => {
-    // Super admins and admins can always view commercial information
+    // Only super admins, admins, and managers can view commercial information
+    // RECCE and INSTALLATION users should not see pricing
     if (!user || !user.roles) return false;
     
-    const hasAdminRole = user.roles.some(role => 
+    return user.roles.some(role => 
       role.name === 'ADMIN' || 
       role.name === 'SUPER_ADMIN' || 
       role.name === 'MANAGER'
     );
-    
-    const hasRecceRole = user.roles.some(role => role.name === 'RECCE');
-    
-    // Super admins, admins, managers, and recce users can view commercial info
-    // Only installation users cannot see pricing
-    return hasAdminRole || hasRecceRole;
   };
 
   const canViewElementRates = (): boolean => {

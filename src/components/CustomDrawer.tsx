@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'react-native-linear-gradient';
+import { debugUserRoles, testModuleAccess } from '../utils/roleDebugger';
 import {
   Home,
   Users,
@@ -36,43 +37,47 @@ const CustomDrawer = (props: any) => {
   const [toastMessage, setToastMessage] = useState('');
   const fadeAnim = new Animated.Value(0);
 
-  // Check permissions dynamically like web portal
+  // Use exact same permission logic as web portal
   const canView = (moduleName: string) => {
-    console.log('=== PERMISSION CHECK ===');
-    console.log('Module:', moduleName);
-    console.log('User:', user);
-    console.log('User roles:', user?.roles);
+    console.log(`\n=== CHECKING PERMISSION FOR ${moduleName.toUpperCase()} ===`);
+    console.log('User:', user?.name);
+    console.log('User roles:', user?.roles?.map(r => ({ name: r.name, code: r.code })));
     
     if (!user || !user.roles || !Array.isArray(user.roles)) {
-      console.log('No user or roles found');
+      console.log('❌ No user or roles found');
       return false;
     }
 
-    // SUPER_ADMIN bypass: They see everything
+    // SUPER_ADMIN bypass - exact same check as web portal
     if (user.roles.some((r: any) => r.code === "SUPER_ADMIN")) {
-      console.log('SUPER_ADMIN access granted');
+      console.log('✅ SUPER_ADMIN access granted');
       return true;
     }
 
-    // Check if ANY assigned role has 'view' permission for this module
+    // Check if ANY role has view permission for this module - exact same logic as web portal
     const hasPermission = user.roles.some((role: any) => {
-      console.log('Checking role:', role.name, 'permissions:', role.permissions);
+      console.log(`Checking role: ${role.name || role.code}`);
       const perms = role.permissions;
       if (!perms) {
-        console.log('No permissions found for role');
+        console.log('  - No permissions object found');
         return false;
       }
-      const modulePermission = perms[moduleName]?.view === true;
-      console.log(`Module ${moduleName} permission:`, modulePermission);
-      return modulePermission;
+      const modulePerms = perms[moduleName];
+      if (!modulePerms) {
+        console.log(`  - No permissions for module '${moduleName}'`);
+        return false;
+      }
+      const canViewModule = modulePerms.view === true;
+      console.log(`  - Can view ${moduleName}: ${canViewModule}`);
+      return canViewModule;
     });
     
-    console.log('Final permission result:', hasPermission);
-    console.log('========================');
+    console.log(`Final result for ${moduleName}: ${hasPermission ? '✅ ALLOWED' : '❌ DENIED'}`);
+    console.log('===============================================\n');
     return hasPermission;
   };
 
-  // Navigation items with permission modules
+  // Navigation items with exact same modules as web portal
   const navigation = [
     { name: 'Dashboard', href: 'Dashboard', icon: Home, module: 'dashboard', alwaysShow: true },
     { name: 'Client Management', href: 'Clients', icon: UserCheck, module: 'clients' },
@@ -82,13 +87,9 @@ const CustomDrawer = (props: any) => {
     { name: 'Recce', href: 'Recce', icon: Search, module: 'recce' },
     { name: 'Installation', href: 'Installation', icon: Wrench, module: 'installation' },
     { name: 'Element Mapping', href: 'Elements', icon: Map, module: 'elements' },
-    { name: 'RFQ Generation', href: 'RFQ', icon: FileText, module: 'stores' },
+    { name: 'RFQ Generation', href: 'RFQ', icon: FileText, module: 'rfq' },
     { name: 'Enquiries', href: 'Enquiries', icon: HelpCircle, module: 'enquiries' },
-    { name: 'Reports', href: 'Reports', icon: BarChart3, module: 'reports', alwaysShow: true },
-    // TODO: Analytics - Will be developed in future
-    // { name: 'Analytics', href: 'Analytics', icon: TrendingUp, module: 'reports' },
-    // TODO: Notifications - Will be developed in future  
-    // { name: 'Notifications', href: 'Notifications', icon: Bell, module: 'dashboard' },
+    { name: 'Reports', href: 'Reports', icon: BarChart3, module: 'reports' }, // Removed alwaysShow to make it permission-based
   ];
 
   const handleLogout = () => {
