@@ -52,8 +52,9 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const navigation = useNavigation();
   const nav = navigationProp || navigation;
   const { theme } = useTheme();
-  const { isAdmin } = useAuth();
+  const { isAdmin, canViewCommercialInfo } = useAuth();
   const isAdminUser = isAdmin();
+  const canViewCosts = canViewCommercialInfo();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -640,12 +641,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               </Text>
             </View>
           )}
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Total Cost</Text>
-            <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
-              ₹{item.commercials?.totalCost?.toLocaleString() || '0'}
-            </Text>
-          </View>
+          {canViewCosts && (
+            <View>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Total Cost</Text>
+              <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
+                ₹{item.commercials?.totalCost?.toLocaleString() || '0'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Show Recce Assignment Info */}

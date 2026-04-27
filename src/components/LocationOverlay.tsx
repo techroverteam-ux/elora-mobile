@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { LocationOverlayData, LocationOverlayConfig } from '../services/imageLocationOverlay';
-import { addressVerificationService, AddressVerification } from '../services/addressVerificationService';
 
 interface LocationOverlayProps {
   locationData: LocationOverlayData;
@@ -18,205 +17,217 @@ export default function LocationOverlay({
   imageHeight,
   mapImageUri,
 }: LocationOverlayProps) {
-  const { mapSize, position, showAddress, showCoordinates, showTimestamp } = config;
-  const [addressVerification, setAddressVerification] = useState<AddressVerification | null>(null);
+  const { position } = config;
   const margin = 10;
 
-  // Verify address on component mount
-  useEffect(() => {
-    if (showAddress && locationData.location.latitude && locationData.location.longitude) {
-      addressVerificationService
-        .verifyAddress(locationData.location.latitude, locationData.location.longitude)
-        .then(setAddressVerification)
-        .catch(error => {
-          console.warn('Address verification failed:', error);
-          setAddressVerification(null);
-        });
-    }
-  }, [locationData.location.latitude, locationData.location.longitude, showAddress]);
-
-  // Calculate position with proper alignment
   const getPosition = () => {
-    const mapWidth = mapSize + 160; // Account for text width
     switch (position) {
-      case 'top-left':
-        return { left: margin, top: margin };
-      case 'top-right':
-        return { right: margin, top: margin };
-      case 'bottom-right':
-        return { right: margin, bottom: margin + 20 }; // Add extra margin for better visibility
+      case 'top-left':     return { left: margin, top: margin };
+      case 'top-right':    return { right: margin, top: margin };
+      case 'bottom-right': return { right: margin, bottom: margin };
       case 'bottom-left':
-      default:
-        return { left: margin, bottom: margin + 20 }; // Add extra margin for better visibility
+      default:             return { left: margin, bottom: margin };
     }
   };
 
-  const overlayPosition = getPosition();
+  const { latitude, longitude } = locationData.location;
+  const coords = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 
-  // Prepare text content with enhanced address verification
-  const textLines: string[] = [];
-  
-  // Always show coordinates first for technical reference
-  if (showCoordinates) {
-    textLines.push(`📍 ${locationData.coordinates}`);
-  }
-  
-  // Show verified address as proof of location
-  if (showAddress) {
-    if (addressVerification) {
-      const addressDisplay = addressVerificationService.formatAddressForDisplay(addressVerification);
-      
-      // Add verification status header
-      const statusIcon = addressVerification.isVerified ? '✅' : '⚠️';
-      const confidencePercent = Math.round(addressVerification.confidence * 100);
-      textLines.push(`${statusIcon} ${addressDisplay.verificationStatus} (${confidencePercent}%)`);
-      
-      // Add primary address
-      const address = addressDisplay.primaryLine;
-      if (address.length > 30) {
-        const parts = address.split(',');
-        parts.forEach(part => {
-          const trimmed = part.trim();
-          if (trimmed.length > 0) {
-            if (trimmed.length > 28) {
-              const words = trimmed.split(' ');
-              let currentLine = '';
-              words.forEach(word => {
-                if ((currentLine + word).length > 28) {
-                  if (currentLine) textLines.push(currentLine.trim());
-                  currentLine = word + ' ';
-                } else {
-                  currentLine += word + ' ';
-                }
-              });
-              if (currentLine) textLines.push(currentLine.trim());
-            } else {
-              textLines.push(trimmed);
-            }
-          }
-        });
-      } else {
-        textLines.push(address);
-      }
-      
-      // Add verification sources
-      if (addressVerification.sources.length > 0) {
-        textLines.push(`📊 Sources: ${addressVerification.sources.join(', ')}`);
-      }
-      
-      // Add nearby landmarks for additional proof
-      if (addressVerification.nearbyLandmarks && addressVerification.nearbyLandmarks.length > 0) {
-        textLines.push(`🏢 Near: ${addressVerification.nearbyLandmarks.slice(0, 2).join(', ')}`);
-      }
-      
-    } else if (locationData.address.formattedAddress) {
-      // Fallback to basic address if verification is not available
-      textLines.push('📍 ADDRESS:');
-      const address = locationData.address.formattedAddress;
-      
-      if (address.length > 30) {
-        const parts = address.split(',');
-        parts.forEach(part => {
-          const trimmed = part.trim();
-          if (trimmed.length > 0) {
-            textLines.push(trimmed.length > 25 ? trimmed.substring(0, 22) + '...' : trimmed);
-          }
-        });
-      } else {
-        textLines.push(address);
-      }
-    }
-  }
-  
-  // Show timestamp for verification
-  if (showTimestamp) {
-    const shortTimestamp = new Date(locationData.location.timestamp || Date.now())
-      .toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-    textLines.push(`🕒 ${shortTimestamp}`);
-  }
+  // Place / store name — from establishment result
+  const placeName = locationData.address.placeName || '';
+
+  // Full address lines — split by comma for clean display
+  const rawAddress = locationData.address.formattedAddress || '';
+  // Remove the place name from the start of the address if it's duplicated
+  const cleanAddress = placeName && rawAddress.startsWith(placeName)
+    ? rawAddress.slice(placeName.length).replace(/^[,\s]+/, '')
+    : rawAddress;
+
+  // Split into max 2 lines at natural comma boundaries
+  const addressParts = cleanAddress.split(',').map(s => s.trim()).filter(Boolean);
+  const addressLine1 = addressParts.slice(0, 2).join(', ');
+  const addressLine2 = addressParts.slice(2).join(', ');
+
+  const timestamp = new Date(locationData.location.timestamp || Date.now())
+    .toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
 
   return (
-    <View style={[styles.container, overlayPosition]}>
-      {/* Map Container */}
-      <View style={[styles.mapContainer, { width: mapSize, height: mapSize }]}>
+    <View style={[styles.card, getPosition()]}>
+
+      {/* Left — map thumbnail */}
+      <View style={styles.mapBox}>
         {mapImageUri ? (
-          <Image
-            source={{ uri: mapImageUri }}
-            style={styles.mapImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: mapImageUri }} style={styles.mapImage} resizeMode="cover" />
         ) : (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapIcon}>📍</Text>
+          <View style={styles.mapFallback}>
+            <View style={[styles.road, { top: '48%', left: 0, right: 0, height: 2 }]} />
+            <View style={[styles.road, { left: '48%', top: 0, bottom: 0, width: 2 }]} />
+            <View style={styles.pinWrap}>
+              <View style={styles.pinHead} />
+              <View style={styles.pinTail} />
+            </View>
           </View>
         )}
+        {/* Blue accuracy dot */}
+        <View style={styles.accuracyRing}>
+          <View style={styles.accuracyDot} />
+        </View>
       </View>
 
-      {/* Text Information */}
-      <View style={styles.textContainer}>
-        {textLines.map((line, index) => (
-          <Text key={index} style={styles.textLine} numberOfLines={1}>
-            {line}
-          </Text>
-        ))}
+      {/* Right — info */}
+      <View style={styles.infoBox}>
+
+        {/* Store / place name */}
+        {placeName ? (
+          <Text style={styles.placeName} numberOfLines={1}>{placeName}</Text>
+        ) : null}
+
+        {/* Address line 1 */}
+        {addressLine1 ? (
+          <Text style={styles.addressLine} numberOfLines={1}>{addressLine1}</Text>
+        ) : null}
+
+        {/* Address line 2 */}
+        {addressLine2 ? (
+          <Text style={styles.addressLine} numberOfLines={1}>{addressLine2}</Text>
+        ) : null}
+
+        {/* Coordinates */}
+        <View style={styles.coordRow}>
+          <View style={styles.redDot} />
+          <Text style={styles.coordText}>{coords}</Text>
+        </View>
+
+        {/* Timestamp */}
+        <Text style={styles.timestamp}>{timestamp}</Text>
+
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  card: {
     position: 'absolute',
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    maxWidth: 280,
-    zIndex: 1000, // Ensure overlay appears on top
-  },
-  mapContainer: {
-    backgroundColor: 'transparent', // Remove background
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 8,
     overflow: 'hidden',
-    marginRight: 8,
+    width: 270,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  mapBox: {
+    width: 76,
+    backgroundColor: '#E8F5E9',
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mapImage: {
     width: '100%',
     height: '100%',
   },
-  mapPlaceholder: {
+  mapFallback: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'transparent', // Remove background
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 6,
   },
-  mapIcon: {
-    fontSize: 24,
+  road: {
+    position: 'absolute',
+    backgroundColor: '#BDBDBD',
   },
-  textContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.85)', // Darker background for better readability
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minWidth: 180,
-    maxWidth: 220, // Increased width for longer addresses
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  pinWrap: {
+    alignItems: 'center',
   },
-  textLine: {
-    color: '#FFFFFF',
-    fontSize: 10, // Slightly smaller to fit more text
-    fontWeight: '500',
-    marginBottom: 1,
-    fontFamily: 'System',
-    lineHeight: 12,
+  pinHead: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#E53935',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  pinTail: {
+    width: 2,
+    height: 6,
+    backgroundColor: '#E53935',
+    marginTop: -1,
+  },
+  accuracyRing: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: 'rgba(66,133,244,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(66,133,244,0.1)',
+  },
+  accuracyDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#4285F4',
+  },
+  infoBox: {
+    flex: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(0,0,0,0.07)',
+  },
+  placeName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#202124',
+    marginBottom: 2,
+  },
+  addressLine: {
+    fontSize: 10,
+    color: '#3C4043',
+    fontWeight: '400',
+    lineHeight: 14,
+  },
+  coordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  redDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E53935',
+    marginRight: 4,
+  },
+  coordText: {
+    fontSize: 9,
+    color: '#1A73E8',
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  timestamp: {
+    fontSize: 9,
+    color: '#5F6368',
   },
 });

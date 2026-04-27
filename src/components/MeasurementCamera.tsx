@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, Dimensions, Alert, PermissionsAndroid, Platform, Image, PanResponder, Linking } from 'react-native';
-import { Camera, X, Capture, RotateCcw, Check, Edit3, Trash2, MapPin } from 'lucide-react-native';
+import { Camera, X, Capture, RotateCcw, Check, Edit3, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { permissionService } from '../services/permissionService';
+import { cameraDetectionService, CameraOption } from '../services/cameraDetectionService';
 import Svg, { Line, Text as SvgText, G, Rect, Path } from 'react-native-svg';
 import { launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import ViewShot from 'react-native-view-shot';
@@ -49,15 +50,19 @@ export default function MeasurementCamera({
   const [isCapturing, setIsCapturing] = useState(false);
   const [forceRefresh, setForceRefresh] = useState(0);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
-  const [drawingMode, setDrawingMode] = useState<'outline' | 'lines'>('lines'); // New: drawing mode type
-  const [drawingPaths, setDrawingPaths] = useState<string[]>([]);
-  const [drawingLines, setDrawingLines] = useState<{x1: number, y1: number, x2: number, y2: number}[]>([]); // New: simple lines
+  const [brushSize, setBrushSize] = useState(4);
+  const [brushColor, setBrushColor] = useState('#00C853');
+  const [drawingPaths, setDrawingPaths] = useState<{ d: string; size: number; color: string }[]>([]);
   const [currentPath, setCurrentPath] = useState<string>('');
-  const [currentLine, setCurrentLine] = useState<{x1: number, y1: number, x2: number, y2: number} | null>(null); // New: current line being drawn
   const [isDrawing, setIsDrawing] = useState(false);
-  const [drawingPoints, setDrawingPoints] = useState<{x: number, y: number}[]>([]);
-  const [boardOutline, setBoardOutline] = useState<{x: number, y: number}[]>([]);
-  const [measuredDimensions, setMeasuredDimensions] = useState<{width: number, height: number} | null>(null);
+
+  // Refs so PanResponder always reads latest values without stale closure
+  const isDrawingModeRef = useRef(false);
+  const capturedPhotoRef = useRef<string | null>(null);
+  const brushSizeRef = useRef(4);
+  const brushColorRef = useRef('#00C853');
+  const currentPathRef = useRef('');
+  const isDrawingRef = useRef(false);
   // Touch-based measurement controls
   const [touchMode, setTouchMode] = useState<'position' | 'resize' | 'off'>('off');
   const [isDragging, setIsDragging] = useState(false);
@@ -80,6 +85,9 @@ export default function MeasurementCamera({
   const [locationConfig, setLocationConfig] = useState<LocationOverlayConfig | null>(null);
   const [mapImageUri, setMapImageUri] = useState<string>('');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [showCameraSelector, setShowCameraSelector] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState<CameraOption[]>([]);
+  const [isDetectingCameras, setIsDetectingCameras] = useState(false);
 
   // Create PanResponder for touch-based measurement adjustment
   const measurementPanResponder = useRef(
@@ -133,59 +141,48 @@ export default function MeasurementCamera({
     })
   ).current;
 
-  // Create PanResponder for drawing (existing functionality)
+  // Create PanResponder for drawing — uses refs to avoid stale closures
   const drawingPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => isDrawingMode && !!capturedPhoto,
-      onMoveShouldSetPanResponder: () => isDrawingMode && !!capturedPhoto,
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: (event) => {
-        if (!isDrawingMode || !capturedPhoto) return;
         const { locationX, locationY } = event.nativeEvent;
-        setIsDrawing(true);
-        
-        if (drawingMode === 'lines') {
-          setCurrentLine({ x1: locationX, y1: locationY, x2: locationX, y2: locationY });
-        } else {
-          setCurrentPath(`M${locationX},${locationY}`);
-          setDrawingPoints([{ x: locationX, y: locationY }]);
-        }
+        const path = `M${locationX.toFixed(1)},${locationY.toFixed(1)}`;
+        currentPathRef.current = path;
+        isDrawingRef.current = true;
+        setCurrentPath(path);
       },
       onPanResponderMove: (event) => {
-        if (!isDrawingMode || !capturedPhoto || !isDrawing) return;
+        if (!isDrawingRef.current) return;
         const { locationX, locationY } = event.nativeEvent;
-        
-        if (drawingMode === 'lines') {
-          setCurrentLine(prev => prev ? { ...prev, x2: locationX, y2: locationY } : null);
-        } else {
-          setCurrentPath(prev => `${prev} L${locationX},${locationY}`);
-          setDrawingPoints(prev => [...prev, { x: locationX, y: locationY }]);
-        }
+        const next = `${currentPathRef.current} L${locationX.toFixed(1)},${locationY.toFixed(1)}`;
+        currentPathRef.current = next;
+        setCurrentPath(next);
       },
       onPanResponderRelease: () => {
-        if (!isDrawingMode || !capturedPhoto) return;
-        
-        if (drawingMode === 'lines') {
-          if (currentLine) {
-            setDrawingLines(prev => [...prev, currentLine]);
-            setCurrentLine(null);
-          }
-        } else {
-          if (currentPath && drawingPoints.length > 2) {
-            const closedPath = `${currentPath} Z`;
-            setDrawingPaths(prev => [...prev, closedPath]);
-            setBoardOutline(drawingPoints);
-            const dimensions = calculateDimensions(drawingPoints);
-            setMeasuredDimensions(dimensions);
-            setCurrentPath('');
-          }
-        }
-        setIsDrawing(false);
+        if (!currentPathRef.current) return;
+        const finished = currentPathRef.current;
+        setDrawingPaths(prev => [...prev, { d: finished, size: brushSizeRef.current, color: brushColorRef.current }]);
+        currentPathRef.current = '';
+        isDrawingRef.current = false;
+        setCurrentPath('');
       },
       onPanResponderTerminate: () => {
-        setIsDrawing(false);
+        isDrawingRef.current = false;
+        currentPathRef.current = '';
+        setCurrentPath('');
       },
     })
   ).current;
+
+  // Keep refs in sync with state
+  useEffect(() => { isDrawingModeRef.current = isDrawingMode; }, [isDrawingMode]);
+  useEffect(() => { capturedPhotoRef.current = capturedPhoto; }, [capturedPhoto]);
+  useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
+  useEffect(() => { brushColorRef.current = brushColor; }, [brushColor]);
 
   useEffect(() => {
     if (visible && width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
@@ -275,7 +272,53 @@ export default function MeasurementCamera({
     }
   };
 
+  const detectAvailableCameras = async (): Promise<CameraOption[]> => {
+    setIsDetectingCameras(true);
+    try {
+      const result = await cameraDetectionService.detectAllCameras();
+      // Only show installed/available cameras
+      const all = [
+        ...result.deviceCameras.filter(c => c.isAvailable),
+        ...result.gpsApps.filter(c => c.isAvailable),
+      ];
+      setAvailableCameras(all);
+      return all;
+    } finally {
+      setIsDetectingCameras(false);
+    }
+  };
+
+  const handleCameraSelect = async (camera: CameraOption) => {
+    setShowCameraSelector(false);
+    if (camera.type === 'gps_app') {
+      // Open the GPS app directly via Linking
+      await cameraDetectionService.launchSelectedCamera(
+        camera,
+        (photoUri, metadata) => {
+          setCapturedPhoto(photoUri);
+          setShowMeasurement(false);
+        },
+        (error) => Alert.alert('Camera Error', error)
+      );
+    } else {
+      // Device camera — use react-native-image-picker
+      const cameraType = camera.id === 'device_front' ? 'front' as const : 'back' as const;
+      triggerCapture(cameraType);
+    }
+  };
+
   const handleCapture = async () => {
+    if (isCapturing) return;
+    const cameras = await detectAvailableCameras();
+    if (cameras.length === 1) {
+      // Only one camera available, skip selector
+      handleCameraSelect(cameras[0]);
+    } else {
+      setShowCameraSelector(true);
+    }
+  };
+
+  const triggerCapture = async (cameraType: 'back' | 'front') => {
     if (isCapturing) return;
     
     setIsCapturing(true);
@@ -313,7 +356,7 @@ export default function MeasurementCamera({
         maxWidth: 2000,
         quality: 0.8,
         saveToPhotos: false,
-        cameraType: 'back' as const,
+        cameraType: cameraType,
         storageOptions: {
           skipBackup: true,
           path: 'images',
@@ -417,14 +460,13 @@ export default function MeasurementCamera({
         let measurements = null;
         
         // Always capture the view to include any overlays (measurements, drawings, location)
-        const shouldCaptureView = 
-          (isDrawingMode && (drawingPaths.length > 0 || currentPath || drawingLines.length > 0)) ||
+        const shouldCaptureView =
+          (isDrawingMode && drawingPaths.length > 0) ||
           (locationOverlayData && locationConfig) ||
           hasValidMeasurements;
-          
+
         if (shouldCaptureView) {
           try {
-            // Force a final capture to ensure all overlays are included
             const combinedImageUri = await viewShotRef.current?.capture?.({
               format: 'jpg',
               quality: 1.0,
@@ -432,35 +474,14 @@ export default function MeasurementCamera({
               width: cameraWidth,
               height: cameraHeight
             });
-            
             if (combinedImageUri) {
               finalImageUri = combinedImageUri;
-              
-              // Check if user has drawn on the image
-              if (isDrawingMode && (drawingPaths.length > 0 || currentPath || drawingLines.length > 0)) {
-                hasDrawings = true;
-                
-                // Include measurement data if available from outline drawing
-                if (measuredDimensions) {
-                  measurements = {
-                    width: measuredDimensions.width,
-                    height: measuredDimensions.height,
-                    unit: 'feet'
-                  };
-                }
-              }
-              
-              // Include original measurements if available
-              if (hasValidMeasurements && !measurements) {
-                measurements = {
-                  width: measurementWidthInches,
-                  height: measurementHeightInches,
-                  unit: 'inches'
-                };
+              if (isDrawingMode && drawingPaths.length > 0) hasDrawings = true;
+              if (hasValidMeasurements) {
+                measurements = { width: measurementWidthInches, height: measurementHeightInches, unit: 'inches' };
               }
             }
-          } catch (captureError) {
-            // Use the already captured photo if final capture fails
+          } catch {
             finalImageUri = capturedPhoto;
           }
         }
@@ -478,14 +499,10 @@ export default function MeasurementCamera({
         setCapturedPhoto(null);
         setShowMeasurement(false);
         setIsDrawingMode(false);
-        setDrawingMode('lines');
+        isDrawingModeRef.current = false;
         setDrawingPaths([]);
-        setDrawingLines([]);
         setCurrentPath('');
-        setCurrentLine(null);
-        setDrawingPoints([]);
-        setBoardOutline([]);
-        setMeasuredDimensions(null);
+        currentPathRef.current = '';
         // Reset overlay customization and touch mode
         setOverlaySize(1.0);
         setOverlayPosition({ x: 0, y: 0 });
@@ -515,14 +532,10 @@ export default function MeasurementCamera({
         setCapturedPhoto(null);
         setShowMeasurement(false);
         setIsDrawingMode(false);
-        setDrawingMode('lines');
+        isDrawingModeRef.current = false;
         setDrawingPaths([]);
-        setDrawingLines([]);
         setCurrentPath('');
-        setCurrentLine(null);
-        setDrawingPoints([]);
-        setBoardOutline([]);
-        setMeasuredDimensions(null);
+        currentPathRef.current = '';
         setLocationOverlayData(null);
         setLocationConfig(null);
         setMapImageUri('');
@@ -533,16 +546,12 @@ export default function MeasurementCamera({
 
   const handleRetake = () => {
     setCapturedPhoto(null);
+    capturedPhotoRef.current = null;
     setIsDrawingMode(false);
-    setDrawingMode('lines');
+    isDrawingModeRef.current = false;
     setDrawingPaths([]);
-    setDrawingLines([]);
     setCurrentPath('');
-    setCurrentLine(null);
-    setDrawingPoints([]);
-    setBoardOutline([]);
-    setMeasuredDimensions(null);
-    // Reset overlay customization to defaults
+    currentPathRef.current = '';
     setOverlaySize(1.0);
     setOverlayPosition({ x: 0, y: 0 });
     setOverlayOpacity(0.8);
@@ -556,27 +565,20 @@ export default function MeasurementCamera({
   };
 
   const handleDrawingToggle = () => {
-    setIsDrawingMode(!isDrawingMode);
-    if (!isDrawingMode) {
-      // Clear previous drawings when entering drawing mode
+    const next = !isDrawingMode;
+    setIsDrawingMode(next);
+    isDrawingModeRef.current = next;
+    if (next) {
       setDrawingPaths([]);
-      setDrawingLines([]);
       setCurrentPath('');
-      setCurrentLine(null);
-      setDrawingPoints([]);
-      setBoardOutline([]);
-      setMeasuredDimensions(null);
+      currentPathRef.current = '';
     }
   };
 
   const clearDrawing = () => {
     setDrawingPaths([]);
-    setDrawingLines([]);
     setCurrentPath('');
-    setCurrentLine(null);
-    setDrawingPoints([]);
-    setBoardOutline([]);
-    setMeasuredDimensions(null);
+    currentPathRef.current = '';
   };
 
   const calculateDimensions = (points: {x: number, y: number}[]) => {
@@ -715,7 +717,8 @@ export default function MeasurementCamera({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" statusBarTranslucent>
+    <>
+      <Modal visible={visible} animationType="slide" statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
         {/* Camera View */}
         <View style={{ 
@@ -737,7 +740,6 @@ export default function MeasurementCamera({
               borderRadius: 8,
               overflow: 'hidden'
             }}
-            {...(isDrawingMode && capturedPhoto ? drawingPanResponder.panHandlers : {})}
           >
             {capturedPhoto ? (
               <>
@@ -910,160 +912,81 @@ export default function MeasurementCamera({
               </View>
             )}
             
-            {/* Drawing Overlay - show when in drawing mode and photo is captured */}
+            {/* Drawing Overlay */}
             {isDrawingMode && capturedPhoto && (
-              <View style={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
-                width: '100%', 
-                height: '100%'
-              }}>
+              <View
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                pointerEvents="box-only"
+                {...drawingPanResponder.panHandlers}
+              >
                 <Svg width={cameraWidth} height={cameraHeight}>
-                  {/* Render simple lines */}
-                  {drawingLines.map((line, index) => (
-                    <Line
-                      key={`line-${index}`}
-                      x1={line.x1}
-                      y1={line.y1}
-                      x2={line.x2}
-                      y2={line.y2}
-                      stroke="#10B981"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  ))}
-                  
-                  {/* Render current line being drawn */}
-                  {currentLine && (
-                    <Line
-                      x1={currentLine.x1}
-                      y1={currentLine.y1}
-                      x2={currentLine.x2}
-                      y2={currentLine.y2}
-                      stroke="#F59E0B"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      opacity={0.9}
-                    />
-                  )}
-                  
-                  {/* Render completed drawing paths (for outline mode) */}
-                  {drawingPaths.map((path, index) => (
+                  {/* Completed strokes */}
+                  {drawingPaths.map((stroke, index) => (
                     <Path
-                      key={`path-${index}`}
-                      d={path}
-                      stroke="#10B981"
-                      strokeWidth="4"
-                      fill="rgba(16, 185, 129, 0.2)"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  ))}
-                  
-                  {/* Render current drawing path (for outline mode) */}
-                  {currentPath && (
-                    <Path
-                      d={currentPath}
-                      stroke="#F59E0B"
-                      strokeWidth="4"
+                      key={index}
+                      d={stroke.d}
+                      stroke={stroke.color}
+                      strokeWidth={stroke.size}
                       fill="none"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      opacity={0.9}
                     />
-                  )}
-                  
-                  {/* Show dimension lines if we have measured dimensions */}
-                  {measuredDimensions && boardOutline.length > 0 && (
-                    <>
-                      {/* Width dimension line */}
-                      <Line
-                        x1={Math.min(...boardOutline.map(p => p.x))}
-                        y1={Math.min(...boardOutline.map(p => p.y)) - 30}
-                        x2={Math.max(...boardOutline.map(p => p.x))}
-                        y2={Math.min(...boardOutline.map(p => p.y)) - 30}
-                        stroke="#EF4444"
-                        strokeWidth="2"
-                        strokeDasharray="6,3"
-                      />
-                      
-                      {/* Height dimension line */}
-                      <Line
-                        x1={Math.max(...boardOutline.map(p => p.x)) + 30}
-                        y1={Math.min(...boardOutline.map(p => p.y))}
-                        x2={Math.max(...boardOutline.map(p => p.x)) + 30}
-                        y2={Math.max(...boardOutline.map(p => p.y))}
-                        stroke="#EF4444"
-                        strokeWidth="2"
-                        strokeDasharray="6,3"
-                      />
-                      
-                      {/* Dimension labels with background */}
-                      <Rect
-                        x={(Math.min(...boardOutline.map(p => p.x)) + Math.max(...boardOutline.map(p => p.x))) / 2 - 25}
-                        y={Math.min(...boardOutline.map(p => p.y)) - 45}
-                        width={50}
-                        height={18}
-                        fill="rgba(239, 68, 68, 0.9)"
-                        rx={9}
-                      />
-                      <SvgText
-                        x={(Math.min(...boardOutline.map(p => p.x)) + Math.max(...boardOutline.map(p => p.x))) / 2}
-                        y={Math.min(...boardOutline.map(p => p.y)) - 32}
-                        fontSize="11"
-                        fill="#FFFFFF"
-                        textAnchor="middle"
-                        fontWeight="bold"
-                      >
-                        {(measuredDimensions.width * 12).toFixed(1)}"
-                      </SvgText>
-                      
-                      <Rect
-                        x={Math.max(...boardOutline.map(p => p.x)) + 15}
-                        y={(Math.min(...boardOutline.map(p => p.y)) + Math.max(...boardOutline.map(p => p.y))) / 2 - 9}
-                        width={40}
-                        height={18}
-                        fill="rgba(239, 68, 68, 0.9)"
-                        rx={9}
-                      />
-                      <SvgText
-                        x={Math.max(...boardOutline.map(p => p.x)) + 35}
-                        y={(Math.min(...boardOutline.map(p => p.y)) + Math.max(...boardOutline.map(p => p.y))) / 2 + 3}
-                        fontSize="11"
-                        fill="#FFFFFF"
-                        textAnchor="middle"
-                        fontWeight="bold"
-                      >
-                        {(measuredDimensions.height * 12).toFixed(1)}"
-                      </SvgText>
-                    </>
-                  )}
+                  ))}
+                  {/* Live stroke */}
+                  {currentPath ? (
+                    <Path
+                      d={currentPath}
+                      stroke={brushColor}
+                      strokeWidth={brushSize}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  ) : null}
                 </Svg>
-                
-                {/* Drawing guide overlay */}
+
+                {/* Brush toolbar */}
                 <View style={{
-                  position: 'absolute',
-                  bottom: 10,
-                  left: 10,
-                  right: 10,
-                  backgroundColor: 'rgba(16, 185, 129, 0.9)',
-                  padding: 8,
-                  borderRadius: 8,
-                  alignItems: 'center'
+                  position: 'absolute', top: 10, left: 10, right: 10,
+                  flexDirection: 'row', alignItems: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 12,
+                  paddingHorizontal: 12, paddingVertical: 8, gap: 10
                 }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: 'bold' }}>
-                    {drawingMode === 'lines' 
-                      ? (isDrawing 
-                          ? `Drawing line...` 
-                          : `Touch and drag to draw lines`
-                        )
-                      : (isDrawing 
-                          ? `Drawing... ${drawingPoints.length} points` 
-                          : 'Touch and drag to draw board outline'
-                        )
-                    }
-                  </Text>
+                  {/* Color swatches */}
+                  {['#00C853','#FF3B30','#FF9500','#FFCC00','#007AFF','#FFFFFF'].map(c => (
+                    <TouchableOpacity
+                      key={c}
+                      onPress={() => { setBrushColor(c); brushColorRef.current = c; }}
+                      style={{
+                        width: 22, height: 22, borderRadius: 11,
+                        backgroundColor: c,
+                        borderWidth: brushColor === c ? 3 : 1,
+                        borderColor: brushColor === c ? '#FFFFFF' : 'rgba(255,255,255,0.4)'
+                      }}
+                    />
+                  ))}
+
+                  <View style={{ flex: 1 }} />
+
+                  {/* Brush size buttons */}
+                  {[2, 4, 8, 14].map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      onPress={() => { setBrushSize(s); brushSizeRef.current = s; }}
+                      style={{
+                        width: 28, height: 28, borderRadius: 14,
+                        backgroundColor: brushSize === s ? brushColor : 'rgba(255,255,255,0.15)',
+                        justifyContent: 'center', alignItems: 'center',
+                        borderWidth: brushSize === s ? 2 : 1,
+                        borderColor: brushSize === s ? '#FFFFFF' : 'rgba(255,255,255,0.3)'
+                      }}
+                    >
+                      <View style={{
+                        width: Math.min(s + 2, 18), height: Math.min(s + 2, 18),
+                        borderRadius: 10, backgroundColor: '#FFFFFF'
+                      }} />
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             )}
@@ -1122,13 +1045,6 @@ export default function MeasurementCamera({
             <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
               {photoType.toUpperCase()} VIEW
             </Text>
-            {locationOverlayData && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                <MapPin size={12} color="#10B981" />
-                <Text style={{ color: '#10B981', fontSize: 10, marginLeft: 2 }}>GPS</Text>
-              </View>
-            )}
-
             {capturedPhoto && (
               <Text style={{ color: isDrawingMode ? '#F59E0B' : '#10B981', fontSize: 10, marginTop: 2, marginLeft: 8 }}>
                 {isDrawingMode ? 'DRAWING MODE' : 'PHOTO CAPTURED'}
@@ -1158,11 +1074,6 @@ export default function MeasurementCamera({
             <Text style={{ color: '#FFFFFF', fontSize: 11, marginTop: 2, opacity: 0.9 }}>
               Align board with measurement guide
             </Text>
-            {locationOverlayData && (
-              <Text style={{ color: '#FFFFFF', fontSize: 10, marginTop: 4, opacity: 0.8 }}>
-                📍 GPS location ready
-              </Text>
-            )}
           </View>
         )}
 
@@ -1222,10 +1133,12 @@ export default function MeasurementCamera({
                 onPress={handleRetake}
                 disabled={isCapturing}
                 style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.2)', 
+                  backgroundColor: 'rgba(0,0,0,0.7)', 
                   padding: 16, 
                   borderRadius: 30,
-                  opacity: isCapturing ? 0.5 : 1
+                  opacity: isCapturing ? 0.5 : 1,
+                  borderWidth: 2,
+                  borderColor: 'rgba(255,255,255,0.3)'
                 }}
               >
                 <RotateCcw size={24} color="#FFFFFF" />
@@ -1253,11 +1166,11 @@ export default function MeasurementCamera({
               <TouchableOpacity 
                 onPress={handleRetake}
                 style={{ 
-                  backgroundColor: 'rgba(255,255,255,0.2)', 
+                  backgroundColor: 'rgba(0,0,0,0.8)', 
                   paddingHorizontal: 20, 
                   paddingVertical: 12, 
                   borderRadius: 25,
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: 'rgba(255,255,255,0.3)'
                 }}
               >
@@ -1267,14 +1180,14 @@ export default function MeasurementCamera({
               <TouchableOpacity 
                 onPress={handleDrawingToggle}
                 style={{ 
-                  backgroundColor: isDrawingMode ? '#F59E0B' : 'rgba(255,255,255,0.2)', 
+                  backgroundColor: isDrawingMode ? '#F59E0B' : 'rgba(0,0,0,0.8)', 
                   paddingHorizontal: 16, 
                   paddingVertical: 12, 
                   borderRadius: 25,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
-                  borderWidth: 1,
+                  borderWidth: 2,
                   borderColor: isDrawingMode ? '#F59E0B' : 'rgba(255,255,255,0.3)'
                 }}
               >
@@ -1284,7 +1197,7 @@ export default function MeasurementCamera({
                 </Text>
               </TouchableOpacity>
               
-              {(drawingPaths.length > 0 || drawingLines.length > 0) && (
+              {drawingPaths.length > 0 && (
                 <TouchableOpacity 
                   onPress={clearDrawing}
                   style={{ 
@@ -1294,7 +1207,9 @@ export default function MeasurementCamera({
                     borderRadius: 25,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 6
+                    gap: 6,
+                    borderWidth: 2,
+                    borderColor: '#EF4444'
                   }}
                 >
                   <Trash2 size={16} color="#FFFFFF" />
@@ -1311,7 +1226,9 @@ export default function MeasurementCamera({
                   borderRadius: 25,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 6,
+                  borderWidth: 2,
+                  borderColor: '#10B981'
                 }}
               >
                 <Check size={18} color="#FFFFFF" />
@@ -1322,5 +1239,59 @@ export default function MeasurementCamera({
         </View>
       </View>
     </Modal>
+
+      {/* Camera Selector Modal */}
+      {showCameraSelector && (
+        <Modal visible={true} transparent={true} animationType="slide">
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}>
+            <View style={{ backgroundColor: '#1F2937', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 4 }}>
+                Choose Camera
+              </Text>
+              <Text style={{ color: '#9CA3AF', fontSize: 12, textAlign: 'center', marginBottom: 20 }}>
+                {availableCameras.length} camera{availableCameras.length !== 1 ? 's' : ''} found on this device
+              </Text>
+
+              {availableCameras.map((camera) => (
+                <TouchableOpacity
+                  key={camera.id}
+                  onPress={() => handleCameraSelect(camera)}
+                  style={{
+                    backgroundColor: camera.type === 'gps_app' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.08)',
+                    paddingHorizontal: 16,
+                    paddingVertical: 14,
+                    borderRadius: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 14,
+                    marginBottom: 10,
+                    borderWidth: 1,
+                    borderColor: camera.type === 'gps_app' ? '#10B981' : 'rgba(255,255,255,0.12)',
+                  }}
+                >
+                  <Text style={{ fontSize: 28 }}>{camera.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>{camera.name}</Text>
+                    <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 2 }}>{camera.description}</Text>
+                  </View>
+                  {camera.type === 'gps_app' && (
+                    <View style={{ backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>GPS</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                onPress={() => setShowCameraSelector(false)}
+                style={{ backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 14, borderRadius: 10, marginTop: 4, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#9CA3AF', fontSize: 14 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 }

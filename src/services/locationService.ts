@@ -10,6 +10,7 @@ export interface LocationData {
 }
 
 export interface AddressComponents {
+  placeName?: string;      // Store / building / establishment name
   street?: string;
   city?: string;
   state?: string;
@@ -210,25 +211,39 @@ class LocationService {
       throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'No results'}`);
     }
 
-    const result = data.results[0];
+    // Prefer the most precise result: establishment > premise > street_address > route
+    const priority = ['establishment', 'point_of_interest', 'premise', 'street_address', 'route'];
+    const result =
+      priority.reduce<any>((best, type) => {
+        if (best) return best;
+        return data.results.find((r: any) => r.types?.includes(type)) || null;
+      }, null) || data.results[0];
+
     const components = result.address_components || [];
-    
-    // Extract address components
+
     const addressComponents: AddressComponents = {
+      placeName: '',
       street: '',
       city: '',
       state: '',
       country: '',
       postalCode: '',
-      formattedAddress: result.formatted_address || ''
+      formattedAddress: result.formatted_address || '',
     };
+
+    // Extract place/establishment name from the first result that has it
+    const establishmentResult = data.results.find((r: any) =>
+      r.types?.some((t: string) => ['establishment', 'point_of_interest', 'premise', 'natural_feature', 'airport'].includes(t))
+    );
+    if (establishmentResult) {
+      addressComponents.placeName = establishmentResult.address_components?.[0]?.long_name || '';
+    }
 
     components.forEach((component: any) => {
       const types = component.types || [];
-      
       if (types.includes('street_number') || types.includes('route')) {
-        addressComponents.street = addressComponents.street 
-          ? `${addressComponents.street} ${component.long_name}` 
+        addressComponents.street = addressComponents.street
+          ? `${addressComponents.street} ${component.long_name}`
           : component.long_name;
       } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
         addressComponents.city = component.long_name;
@@ -241,7 +256,6 @@ class LocationService {
       }
     });
 
-    // If no formatted address from API, build one
     if (!addressComponents.formattedAddress) {
       addressComponents.formattedAddress = this.buildFormattedAddress(addressComponents);
     }
