@@ -296,6 +296,7 @@ export default function MeasurementCamera({
         camera,
         (photoUri, metadata) => {
           setCapturedPhoto(photoUri);
+          capturedPhotoRef.current = photoUri;
           setShowMeasurement(false);
         },
         (error) => Alert.alert('Camera Error', error)
@@ -400,37 +401,9 @@ export default function MeasurementCamera({
         if (response.assets && response.assets[0]) {
           const photoUri = response.assets[0].uri;
           if (photoUri) {
-            // Set the captured photo first
             setCapturedPhoto(photoUri);
+            capturedPhotoRef.current = photoUri;
             setShowMeasurement(false);
-            
-            // Wait for UI to update and render all overlays, then capture combined view
-            setTimeout(async () => {
-              try {
-                // Additional delay to ensure all overlays (measurement + map + address) are fully rendered
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Capture the combined view with all overlays using explicit options
-                const combinedImageUri = await viewShotRef.current?.capture?.({
-                  format: 'jpg',
-                  quality: 1.0,
-                  result: 'tmpfile',
-                  width: cameraWidth,
-                  height: cameraHeight
-                });
-                
-                if (combinedImageUri) {
-                  // Update with the combined image that includes photo + overlays
-                  setCapturedPhoto(combinedImageUri);
-                } else {
-                  // Keep original photo if ViewShot capture fails
-                  setCapturedPhoto(photoUri);
-                }
-              } catch (error) {
-                // Keep original photo on error
-                setCapturedPhoto(photoUri);
-              }
-            }, 200);
           } else {
             // Re-show measurement guide on failure
             if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
@@ -757,66 +730,6 @@ export default function MeasurementCamera({
                   resizeMode="cover"
                 />
                 
-                {/* Add measurement overlay to captured photo if measurements exist and not in drawing mode */}
-                {hasValidMeasurements && !isDrawingMode && (
-                  <View style={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    width: '100%', 
-                    height: '100%' 
-                  }}>
-                    <Svg width={cameraWidth} height={cameraHeight}>
-                      {/* Clean measurement rectangle overlay on photo */}
-                      <Line
-                        x1={centerX - rectWidth/2}
-                        y1={centerY - rectHeight/2}
-                        x2={centerX + rectWidth/2}
-                        y2={centerY - rectHeight/2}
-                        stroke="#10B981"
-                        strokeWidth="2"
-                      />
-                      <Line
-                        x1={centerX + rectWidth/2}
-                        y1={centerY - rectHeight/2}
-                        x2={centerX + rectWidth/2}
-                        y2={centerY + rectHeight/2}
-                        stroke="#10B981"
-                        strokeWidth="2"
-                      />
-                      <Line
-                        x1={centerX + rectWidth/2}
-                        y1={centerY + rectHeight/2}
-                        x2={centerX - rectWidth/2}
-                        y2={centerY + rectHeight/2}
-                        stroke="#10B981"
-                        strokeWidth="2"
-                      />
-                      <Line
-                        x1={centerX - rectWidth/2}
-                        y1={centerY + rectHeight/2}
-                        x2={centerX - rectWidth/2}
-                        y2={centerY - rectHeight/2}
-                        stroke="#10B981"
-                        strokeWidth="2"
-                      />
-                      
-                      {/* Clean measurement labels */}
-                      <SvgText
-                        x={centerX}
-                        y={centerY - rectHeight/2 - 15}
-                        fontSize="14"
-                        fill="#10B981"
-                        textAnchor="middle"
-                        fontWeight="bold"
-                      >
-                        {`${measurementWidthInches} × ${measurementHeightInches} inches`}
-                      </SvgText>
-                    </Svg>
-                  </View>
-                )}
-                
-    
               </>
             ) : (
               <>
@@ -829,98 +742,10 @@ export default function MeasurementCamera({
               </>
             )}
             
-            {/* Measurement Overlay - only show when not captured and measurements available */}
-            {showMeasurement && !capturedPhoto && hasValidMeasurements && (
-              <View 
-                key={`measurement-${forceRefresh}`}
-                style={{ 
-                  position: 'absolute', 
-                  top: 0, 
-                  left: 0, 
-                  width: '100%', 
-                  height: '100%' 
-                }}>
-                <Svg width={cameraWidth} height={cameraHeight}>
-                  {/* Clean measurement rectangle */}
-                  <Line
-                    x1={centerX - rectWidth/2}
-                    y1={centerY - rectHeight/2}
-                    x2={centerX + rectWidth/2}
-                    y2={centerY - rectHeight/2}
-                    stroke="#10B981"
-                    strokeWidth="3"
-                    strokeDasharray="8,4"
-                  />
-                  <Line
-                    x1={centerX + rectWidth/2}
-                    y1={centerY - rectHeight/2}
-                    x2={centerX + rectWidth/2}
-                    y2={centerY + rectHeight/2}
-                    stroke="#10B981"
-                    strokeWidth="3"
-                    strokeDasharray="8,4"
-                  />
-                  <Line
-                    x1={centerX + rectWidth/2}
-                    y1={centerY + rectHeight/2}
-                    x2={centerX - rectWidth/2}
-                    y2={centerY + rectHeight/2}
-                    stroke="#10B981"
-                    strokeWidth="3"
-                    strokeDasharray="8,4"
-                  />
-                  <Line
-                    x1={centerX - rectWidth/2}
-                    y1={centerY + rectHeight/2}
-                    x2={centerX - rectWidth/2}
-                    y2={centerY - rectHeight/2}
-                    stroke="#10B981"
-                    strokeWidth="3"
-                    strokeDasharray="8,4"
-                  />
-                  
-                  {/* Corner markers for better alignment */}
-                  <Line
-                    x1={centerX - rectWidth/2 - 15}
-                    y1={centerY - rectHeight/2}
-                    x2={centerX - rectWidth/2 + 15}
-                    y2={centerY - rectHeight/2}
-                    stroke="#10B981"
-                    strokeWidth="2"
-                  />
-                  <Line
-                    x1={centerX - rectWidth/2}
-                    y1={centerY - rectHeight/2 - 15}
-                    x2={centerX - rectWidth/2}
-                    y2={centerY - rectHeight/2 + 15}
-                    stroke="#10B981"
-                    strokeWidth="2"
-                  />
-                  
-                  {/* Clean measurement labels */}
-                  <SvgText
-                    x={centerX}
-                    y={centerY - rectHeight/2 - 20}
-                    fontSize="14"
-                    fill="#10B981"
-                    textAnchor="middle"
-                    fontWeight="bold"
-                  >
-                    {`${measurementWidthInches} × ${measurementHeightInches} inches`}
-                  </SvgText>
-                </Svg>
-              </View>
-            )}
-            
-            {/* Drawing Overlay */}
+            {/* Drawing SVG - INSIDE ViewShot so it gets baked into screenshot on confirm */}
             {isDrawingMode && capturedPhoto && (
-              <View
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                pointerEvents="box-only"
-                {...drawingPanResponder.panHandlers}
-              >
+              <View style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} pointerEvents="none">
                 <Svg width={cameraWidth} height={cameraHeight}>
-                  {/* Completed strokes */}
                   {drawingPaths.map((stroke, index) => (
                     <Path
                       key={index}
@@ -932,7 +757,6 @@ export default function MeasurementCamera({
                       strokeLinejoin="round"
                     />
                   ))}
-                  {/* Live stroke */}
                   {currentPath ? (
                     <Path
                       d={currentPath}
@@ -944,54 +768,10 @@ export default function MeasurementCamera({
                     />
                   ) : null}
                 </Svg>
-
-                {/* Brush toolbar */}
-                <View style={{
-                  position: 'absolute', top: 10, left: 10, right: 10,
-                  flexDirection: 'row', alignItems: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 12,
-                  paddingHorizontal: 12, paddingVertical: 8, gap: 10
-                }}>
-                  {/* Color swatches */}
-                  {['#00C853','#FF3B30','#FF9500','#FFCC00','#007AFF','#FFFFFF'].map(c => (
-                    <TouchableOpacity
-                      key={c}
-                      onPress={() => { setBrushColor(c); brushColorRef.current = c; }}
-                      style={{
-                        width: 22, height: 22, borderRadius: 11,
-                        backgroundColor: c,
-                        borderWidth: brushColor === c ? 3 : 1,
-                        borderColor: brushColor === c ? '#FFFFFF' : 'rgba(255,255,255,0.4)'
-                      }}
-                    />
-                  ))}
-
-                  <View style={{ flex: 1 }} />
-
-                  {/* Brush size buttons */}
-                  {[2, 4, 8, 14].map(s => (
-                    <TouchableOpacity
-                      key={s}
-                      onPress={() => { setBrushSize(s); brushSizeRef.current = s; }}
-                      style={{
-                        width: 28, height: 28, borderRadius: 14,
-                        backgroundColor: brushSize === s ? brushColor : 'rgba(255,255,255,0.15)',
-                        justifyContent: 'center', alignItems: 'center',
-                        borderWidth: brushSize === s ? 2 : 1,
-                        borderColor: brushSize === s ? '#FFFFFF' : 'rgba(255,255,255,0.3)'
-                      }}
-                    >
-                      <View style={{
-                        width: Math.min(s + 2, 18), height: Math.min(s + 2, 18),
-                        borderRadius: 10, backgroundColor: '#FFFFFF'
-                      }} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
               </View>
             )}
-            
-            {/* Location Overlay - show when enabled and photo is captured with improved positioning */}
+
+            {/* Location Overlay - inside ViewShot, pointerEvents none so it never blocks drawing */}
             {locationOverlayData && locationConfig && capturedPhoto && (
               <View style={{ 
                 position: 'absolute', 
@@ -999,8 +779,8 @@ export default function MeasurementCamera({
                 left: 0, 
                 width: '100%', 
                 height: '100%',
-                zIndex: 100 // Ensure it appears above other overlays
-              }}>
+                zIndex: 100
+              }} pointerEvents="none">
                 <LocationOverlay
                   locationData={locationOverlayData}
                   config={locationConfig}
@@ -1011,6 +791,63 @@ export default function MeasurementCamera({
               </View>
             )}
           </ViewShot>
+
+          {/* Touch-only overlay OUTSIDE ViewShot - captures finger drawing, passes coords to SVG inside ViewShot */}
+          {isDrawingMode && capturedPhoto && (
+            <View
+              style={{
+                position: 'absolute',
+                width: cameraWidth,
+                height: cameraHeight,
+                top: '50%',
+                left: '50%',
+                marginTop: -(cameraHeight / 2),
+                marginLeft: -(cameraWidth / 2),
+                backgroundColor: 'transparent',
+              }}
+              {...drawingPanResponder.panHandlers}
+            >
+              {/* Brush toolbar */}
+              <View style={{
+                position: 'absolute', top: 10, left: 10, right: 10,
+                flexDirection: 'row', alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.75)', borderRadius: 12,
+                paddingHorizontal: 12, paddingVertical: 8, gap: 10
+              }}>
+                {['#00C853','#FF3B30','#FF9500','#FFCC00','#007AFF','#FFFFFF'].map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => { setBrushColor(c); brushColorRef.current = c; }}
+                    style={{
+                      width: 22, height: 22, borderRadius: 11,
+                      backgroundColor: c,
+                      borderWidth: brushColor === c ? 3 : 1,
+                      borderColor: brushColor === c ? '#FFFFFF' : 'rgba(255,255,255,0.4)'
+                    }}
+                  />
+                ))}
+                <View style={{ flex: 1 }} />
+                {[2, 4, 8, 14].map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => { setBrushSize(s); brushSizeRef.current = s; }}
+                    style={{
+                      width: 28, height: 28, borderRadius: 14,
+                      backgroundColor: brushSize === s ? brushColor : 'rgba(255,255,255,0.15)',
+                      justifyContent: 'center', alignItems: 'center',
+                      borderWidth: brushSize === s ? 2 : 1,
+                      borderColor: brushSize === s ? '#FFFFFF' : 'rgba(255,255,255,0.3)'
+                    }}
+                  >
+                    <View style={{
+                      width: Math.min(s + 2, 18), height: Math.min(s + 2, 18),
+                      borderRadius: 10, backgroundColor: '#FFFFFF'
+                    }} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Top Controls */}
@@ -1056,7 +893,7 @@ export default function MeasurementCamera({
         </View>
 
         {/* Measurement Info with location status - simplified to prevent memory issues */}
-        {showMeasurement && !capturedPhoto && hasValidMeasurements && (
+        {showMeasurement && !capturedPhoto && hasValidMeasurements && !isDrawingMode && (
           <View style={{ 
             position: 'absolute', 
             top: 120, 
@@ -1077,8 +914,7 @@ export default function MeasurementCamera({
           </View>
         )}
 
-        {/* Instructions with correct measurements - only show for measurement photos */}
-        {showMeasurement && !capturedPhoto && hasValidMeasurements && (
+        {showMeasurement && !capturedPhoto && hasValidMeasurements && !isDrawingMode && (
           <View style={{ 
             position: 'absolute', 
             bottom: 180, 

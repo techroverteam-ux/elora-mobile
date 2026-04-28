@@ -91,12 +91,12 @@ export default function LocationOverlay({
 
         {/* Address line 1 */}
         {addressLine1 ? (
-          <Text style={styles.addressLine} numberOfLines={1}>{addressLine1}</Text>
+          <Text style={styles.addressLine} numberOfLines={2}>{addressLine1}</Text>
         ) : null}
 
         {/* Address line 2 */}
         {addressLine2 ? (
-          <Text style={styles.addressLine} numberOfLines={1}>{addressLine2}</Text>
+          <Text style={styles.addressLine} numberOfLines={2}>{addressLine2}</Text>
         ) : null}
 
         {/* Coordinates */}
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.97)',
     borderRadius: 8,
     overflow: 'hidden',
-    width: 270,
+    width: 360,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.1)',
   },
   mapBox: {
-    width: 76,
+    width: 100,
     backgroundColor: '#E8F5E9',
     position: 'relative',
     justifyContent: 'center',
@@ -189,23 +189,23 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     flex: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     justifyContent: 'center',
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(0,0,0,0.07)',
   },
   placeName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#202124',
     marginBottom: 2,
   },
   addressLine: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#3C4043',
     fontWeight: '400',
-    lineHeight: 14,
+    lineHeight: 15,
   },
   coordRow: {
     flexDirection: 'row',
@@ -214,20 +214,20 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   redDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: '#E53935',
-    marginRight: 4,
+    marginRight: 5,
   },
   coordText: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#1A73E8',
     fontWeight: '600',
     fontFamily: 'monospace',
   },
   timestamp: {
-    fontSize: 9,
+    fontSize: 10,
     color: '#5F6368',
   },
 });
