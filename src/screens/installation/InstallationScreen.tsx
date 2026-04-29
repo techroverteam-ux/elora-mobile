@@ -50,6 +50,9 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
+  // Individual card download states
+  const [cardDownloadStates, setCardDownloadStates] = useState<{[key: string]: {pdf: boolean, ppt: boolean}}>({});
+  
   // Pagination
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -182,8 +185,10 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     setIsExporting(true);
     try {
       const blob = await storeService.exportInstallation();
-      await fileService.downloadFile(blob, 'Installation_Export.xlsx');
-      Toast.show({ type: 'success', text1: 'Installation data exported successfully!' });
+      await modernDownloadService.downloadExcel({
+        blob,
+        filename: `Installation_Export_${new Date().toISOString().split('T')[0]}`
+      });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Export failed' });
     } finally {
@@ -199,8 +204,10 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     setIsDownloadingPPT(true);
     try {
       const blob = await storeService.bulkPpt(Array.from(selectedAssignments), 'installation');
-      await fileService.downloadFile(blob, `Installation_Report_${selectedAssignments.size}_Stores.pptx`);
-      Toast.show({ type: 'success', text1: `Downloaded PPT with ${selectedAssignments.size} stores` });
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Installation_Report_${selectedAssignments.size}_Stores.pptx`
+      });
       setSelectedAssignments(new Set());
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to download PPTs' });
@@ -217,8 +224,10 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     setIsDownloadingPDF(true);
     try {
       const blob = await storeService.bulkPdf(Array.from(selectedAssignments), 'installation');
-      await fileService.downloadFile(blob, `Installation_Report_${selectedAssignments.size}_Stores.pdf`);
-      Toast.show({ type: 'success', text1: `Downloaded PDF with ${selectedAssignments.size} stores` });
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Installation_Report_${selectedAssignments.size}_Stores.pdf`
+      });
       setSelectedAssignments(new Set());
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Failed to download PDFs' });
@@ -342,7 +351,7 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
           </View>
         )}
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <TouchableOpacity 
             onPress={() => {
               console.log('InstallationScreen: Navigating to detail', item._id);
@@ -374,6 +383,119 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
               <CheckSquare size={16} color="#10B981" />
               <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Installation Complete</Text>
             </TouchableOpacity>
+          )}
+          
+          {/* Individual Download Buttons */}
+          {(item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED') && (
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, width: '100%' }}>
+              {/* PDF Download */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const assignmentId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [assignmentId]: { ...prev[assignmentId], pdf: true }
+                  }));
+                  
+                  try {
+                    const blob = await storeService.getPdf(item.store._id, 'installation');
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `installation_${item.store.dealerCode}.pdf`
+                    });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [assignmentId]: { ...prev[assignmentId], pdf: false }
+                    }));
+                  }
+                }}
+                disabled={cardDownloadStates[item._id]?.pdf}
+                style={{ 
+                  flex: 1,
+                  backgroundColor: '#EF4444', 
+                  paddingHorizontal: 12, 
+                  paddingVertical: 8, 
+                  borderRadius: 8, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
+                }}
+              >
+                {cardDownloadStates[item._id]?.pdf ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileText size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              
+              {/* PPT Download */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const assignmentId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [assignmentId]: { ...prev[assignmentId], ppt: true }
+                  }));
+                  
+                  try {
+                    const blob = await storeService.getPpt(item.store._id, 'installation');
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `installation_${item.store.dealerCode}.pptx`
+                    });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [assignmentId]: { ...prev[assignmentId], ppt: false }
+                    }));
+                  }
+                }}
+                disabled={cardDownloadStates[item._id]?.ppt}
+                style={{ 
+                  flex: 1,
+                  backgroundColor: '#F59E0B', 
+                  paddingHorizontal: 12, 
+                  paddingVertical: 8, 
+                  borderRadius: 8, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#F59E0B',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
+                }}
+              >
+                {cardDownloadStates[item._id]?.ppt ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileText size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
@@ -464,37 +586,139 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
           </View>
           
           {isAdmin && selectedAssignments.size > 0 && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <DownloadButton
-                onDownload={async () => {
-                  const blob = await storeService.bulkPpt(Array.from(selectedAssignments), 'installation');
-                  return {
-                    blob,
-                    filename: `Installation_Report_${selectedAssignments.size}_Stores.pptx`
-                  };
-                }}
-                title="PPT"
-                description="Generating PowerPoint report..."
-                size="medium"
-                variant="secondary"
-                disabled={isDownloadingPPT}
-                style={{ flex: 1, backgroundColor: '#F59E0B' }}
-              />
-              <DownloadButton
-                onDownload={async () => {
-                  const blob = await storeService.bulkPdf(Array.from(selectedAssignments), 'installation');
-                  return {
-                    blob,
-                    filename: `Installation_Report_${selectedAssignments.size}_Stores.pdf`
-                  };
-                }}
-                title="PDF"
-                description="Generating PDF report..."
-                size="medium"
-                variant="secondary"
-                disabled={isDownloadingPDF}
-                style={{ flex: 1, backgroundColor: '#EF4444' }}
-              />
+            <View style={{ marginBottom: 12 }}>
+              {/* Selection Count Header */}
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                backgroundColor: theme.colors.primary + '10',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                marginBottom: 8,
+                borderWidth: 1,
+                borderColor: theme.colors.primary + '20'
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <CheckSquare size={16} color={theme.colors.primary} />
+                  <Text style={{ 
+                    color: theme.colors.primary, 
+                    fontSize: 14, 
+                    fontWeight: '600', 
+                    marginLeft: 6 
+                  }}>
+                    {selectedAssignments.size} installation{selectedAssignments.size > 1 ? 's' : ''} selected
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setSelectedAssignments(new Set())}
+                  style={{ padding: 4 }}
+                >
+                  <X size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Enhanced Download Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={handleBulkPPTDownload}
+                  disabled={isDownloadingPPT}
+                  style={{ 
+                    flex: 1, 
+                    backgroundColor: '#F59E0B', 
+                    paddingVertical: 14, 
+                    paddingHorizontal: 16, 
+                    borderRadius: 10, 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    shadowColor: '#F59E0B',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3
+                  }}
+                >
+                  {isDownloadingPPT ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <View style={{ 
+                        marginLeft: 8, 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 4 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <FileText size={18} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
+                      <View style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 6, 
+                        paddingVertical: 2, 
+                        borderRadius: 10, 
+                        marginLeft: 6 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={handleBulkPDFDownload}
+                  disabled={isDownloadingPDF}
+                  style={{ 
+                    flex: 1, 
+                    backgroundColor: '#EF4444', 
+                    paddingVertical: 14, 
+                    paddingHorizontal: 16, 
+                    borderRadius: 10, 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    shadowColor: '#EF4444',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3
+                  }}
+                >
+                  {isDownloadingPDF ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <View style={{ 
+                        marginLeft: 8, 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 4 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <FileText size={18} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
+                      <View style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 6, 
+                        paddingVertical: 2, 
+                        borderRadius: 10, 
+                        marginLeft: 6 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>

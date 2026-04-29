@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
-import DownloadButton from '../../components/DownloadButton';
 import { permissionService } from '../../services/permissionService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
@@ -56,6 +55,9 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
   const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
+  
+  // Individual card download states
+  const [cardDownloadStates, setCardDownloadStates] = useState<{[key: string]: {pdf: boolean, ppt: boolean}}>({});
 
   // Enhanced state to match web portal
   const [page, setPage] = useState(1);
@@ -167,15 +169,16 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     
     setIsExporting(true);
     try {
-      Toast.show({ type: 'info', text1: 'Preparing Excel...', text2: 'Please wait' });
-      
       const blob = await recceService.exportRecce();
       
       if (!blob || blob.size === 0) {
         throw new Error('Empty file received from server');
       }
       
-      await fileService.downloadFile(blob, `Recce_Export_${new Date().toISOString().split('T')[0]}.xlsx`);
+      await modernDownloadService.downloadExcel({
+        blob,
+        filename: `Recce_Export_${new Date().toISOString().split('T')[0]}`
+      });
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to export data';
       Toast.show({ type: 'error', text1: 'Export Failed', text2: errorMessage });
@@ -204,15 +207,16 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     
     setIsDownloadingPPT(true);
     try {
-      Toast.show({ type: 'info', text1: 'Preparing PPT...', text2: 'Please wait' });
-      
       const blob = await recceService.bulkPpt(selectedStoreIds);
       
       if (!blob || blob.size === 0) {
         throw new Error('Empty file received from server');
       }
       
-      await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pptx`);
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Recce_Report_${selectedAssignments.size}_Stores.pptx`
+      });
       setSelectedAssignments(new Set());
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to download PPTs';
@@ -261,15 +265,16 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     
     setIsDownloadingPDF(true);
     try {
-      Toast.show({ type: 'info', text1: 'Preparing PDF...', text2: 'Please wait' });
-      
       const blob = await recceService.bulkPdf(selectedStoreIds);
       
       if (!blob || blob.size === 0) {
         throw new Error('Empty file received from server');
       }
       
-      await fileService.downloadFile(blob, `Recce_Report_${selectedAssignments.size}_Stores.pdf`);
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Recce_Report_${selectedAssignments.size}_Stores.pdf`
+      });
       setSelectedAssignments(new Set());
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to download PDFs';
@@ -384,7 +389,7 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           </View>
         )}
 
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
           <TouchableOpacity 
             onPress={() => navigation.navigate('RecceDetail', { storeId: item.store._id })} 
             style={{ flex: 1, backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
@@ -424,6 +429,119 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
               <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Recce Complete</Text>
             </TouchableOpacity>
           )}
+          
+          {/* Individual Download Buttons */}
+          {['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'].includes(item.status) && (
+            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, width: '100%' }}>
+              {/* PDF Download */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const assignmentId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [assignmentId]: { ...prev[assignmentId], pdf: true }
+                  }));
+                  
+                  try {
+                    const blob = await recceService.getPdf(item.store._id);
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `recce_${item.store.dealerCode}.pdf`
+                    });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [assignmentId]: { ...prev[assignmentId], pdf: false }
+                    }));
+                  }
+                }}
+                disabled={cardDownloadStates[item._id]?.pdf}
+                style={{ 
+                  flex: 1,
+                  backgroundColor: '#EF4444', 
+                  paddingHorizontal: 12, 
+                  paddingVertical: 8, 
+                  borderRadius: 8, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
+                }}
+              >
+                {cardDownloadStates[item._id]?.pdf ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileText size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              
+              {/* PPT Download */}
+              <TouchableOpacity
+                onPress={async () => {
+                  const assignmentId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [assignmentId]: { ...prev[assignmentId], ppt: true }
+                  }));
+                  
+                  try {
+                    const blob = await recceService.getPpt(item.store._id);
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `recce_${item.store.dealerCode}.pptx`
+                    });
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [assignmentId]: { ...prev[assignmentId], ppt: false }
+                    }));
+                  }
+                }}
+                disabled={cardDownloadStates[item._id]?.ppt}
+                style={{ 
+                  flex: 1,
+                  backgroundColor: '#F59E0B', 
+                  paddingHorizontal: 12, 
+                  paddingVertical: 8, 
+                  borderRadius: 8, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#F59E0B',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
+                }}
+              >
+                {cardDownloadStates[item._id]?.ppt ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileSpreadsheet size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     );
@@ -443,20 +561,35 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
             )}
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <DownloadButton
-              onDownload={async () => {
-                const blob = await recceService.exportRecce();
-                return {
-                  blob,
-                  filename: `Recce_Export_${new Date().toISOString().split('T')[0]}.xlsx`
-                };
-              }}
-              title="Export"
-              description="Downloading recce assignments..."
-              size="medium"
-              variant="success"
+            <TouchableOpacity
+              onPress={handleExport}
               disabled={isExporting}
-            />
+              style={{ 
+                backgroundColor: isExporting ? '#10B98180' : '#10B981', 
+                paddingHorizontal: 12, 
+                paddingVertical: 8, 
+                borderRadius: 8, 
+                flexDirection: 'row', 
+                alignItems: 'center',
+                shadowColor: '#10B981',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.2,
+                shadowRadius: 2,
+                elevation: 2
+              }}
+            >
+              {isExporting ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Exporting...</Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Download size={16} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Export</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -509,39 +642,139 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           )}
           
           {selectedAssignments.size > 0 && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <DownloadButton
-                onDownload={async () => {
-                  const selectedStoreIds = Array.from(selectedAssignments);
-                  const blob = await recceService.bulkPpt(selectedStoreIds);
-                  return {
-                    blob,
-                    filename: `Recce_Report_${selectedAssignments.size}_Stores.pptx`
-                  };
-                }}
-                title="PPT"
-                description="Generating PowerPoint report..."
-                size="medium"
-                variant="secondary"
-                disabled={isDownloadingPPT}
-                style={{ flex: 1, backgroundColor: '#F59E0B' }}
-              />
-              <DownloadButton
-                onDownload={async () => {
-                  const selectedStoreIds = Array.from(selectedAssignments);
-                  const blob = await recceService.bulkPdf(selectedStoreIds);
-                  return {
-                    blob,
-                    filename: `Recce_Report_${selectedAssignments.size}_Stores.pdf`
-                  };
-                }}
-                title="PDF"
-                description="Generating PDF report..."
-                size="medium"
-                variant="secondary"
-                disabled={isDownloadingPDF}
-                style={{ flex: 1, backgroundColor: '#EF4444' }}
-              />
+            <View style={{ marginBottom: 12 }}>
+              {/* Selection Count Header */}
+              <View style={{ 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                backgroundColor: theme.colors.primary + '10',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+                marginBottom: 8,
+                borderWidth: 1,
+                borderColor: theme.colors.primary + '20'
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <CheckSquare size={16} color={theme.colors.primary} />
+                  <Text style={{ 
+                    color: theme.colors.primary, 
+                    fontSize: 14, 
+                    fontWeight: '600', 
+                    marginLeft: 6 
+                  }}>
+                    {selectedAssignments.size} recce{selectedAssignments.size > 1 ? 's' : ''} selected
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setSelectedAssignments(new Set())}
+                  style={{ padding: 4 }}
+                >
+                  <X size={16} color={theme.colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Enhanced Download Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={handleBulkPPTDownload}
+                  disabled={isDownloadingPPT}
+                  style={{ 
+                    flex: 1, 
+                    backgroundColor: '#F59E0B', 
+                    paddingVertical: 14, 
+                    paddingHorizontal: 16, 
+                    borderRadius: 10, 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    shadowColor: '#F59E0B',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3
+                  }}
+                >
+                  {isDownloadingPPT ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <View style={{ 
+                        marginLeft: 8, 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 4 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <FileSpreadsheet size={18} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
+                      <View style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 6, 
+                        paddingVertical: 2, 
+                        borderRadius: 10, 
+                        marginLeft: 6 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  onPress={handleBulkPDFDownload}
+                  disabled={isDownloadingPDF}
+                  style={{ 
+                    flex: 1, 
+                    backgroundColor: '#EF4444', 
+                    paddingVertical: 14, 
+                    paddingHorizontal: 16, 
+                    borderRadius: 10, 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    shadowColor: '#EF4444',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3
+                  }}
+                >
+                  {isDownloadingPDF ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <View style={{ 
+                        marginLeft: 8, 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 8, 
+                        paddingVertical: 2, 
+                        borderRadius: 4 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <FileText size={18} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
+                      <View style={{ 
+                        backgroundColor: 'rgba(255,255,255,0.2)', 
+                        paddingHorizontal: 6, 
+                        paddingVertical: 2, 
+                        borderRadius: 10, 
+                        marginLeft: 6 
+                      }}>
+                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>

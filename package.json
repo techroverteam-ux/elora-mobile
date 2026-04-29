@@ -1,6 +1,6 @@
 {
   "name": "EloraMob",
-  "version": "1.5.0",
+  "version": "1.9.0",
   "private": true,
   "scripts": {
     "android": "react-native run-android",

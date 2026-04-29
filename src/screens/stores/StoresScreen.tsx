@@ -133,6 +133,9 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  
+  // Individual card download states
+  const [cardDownloadStates, setCardDownloadStates] = useState<{[key: string]: {pdf: boolean, ppt: boolean}}>({});
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -773,6 +776,12 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               {/* PDF Download */}
               <TouchableOpacity
                 onPress={async () => {
+                  const storeId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [storeId]: { ...prev[storeId], pdf: true }
+                  }));
+                  
                   try {
                     const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
                     const blob = await storeService.getPdf(item._id, reportType);
@@ -782,8 +791,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                     });
                   } catch (error) {
                     Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [storeId]: { ...prev[storeId], pdf: false }
+                    }));
                   }
                 }}
+                disabled={cardDownloadStates[item._id]?.pdf}
                 style={{ 
                   backgroundColor: '#EF4444', 
                   paddingHorizontal: 12, 
@@ -792,16 +807,36 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                   flexDirection: 'row', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  minWidth: 60
+                  minWidth: 60,
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
                 }}
               >
-                <FileText size={14} color="#FFF" />
-                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
+                {cardDownloadStates[item._id]?.pdf ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileText size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
+                  </View>
+                )}
               </TouchableOpacity>
               
               {/* PPT Download */}
               <TouchableOpacity
                 onPress={async () => {
+                  const storeId = item._id;
+                  setCardDownloadStates(prev => ({
+                    ...prev,
+                    [storeId]: { ...prev[storeId], ppt: true }
+                  }));
+                  
                   try {
                     const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
                     const blob = await storeService.getPpt(item._id, reportType);
@@ -811,8 +846,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                     });
                   } catch (error) {
                     Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+                  } finally {
+                    setCardDownloadStates(prev => ({
+                      ...prev,
+                      [storeId]: { ...prev[storeId], ppt: false }
+                    }));
                   }
                 }}
+                disabled={cardDownloadStates[item._id]?.ppt}
                 style={{ 
                   backgroundColor: '#F59E0B', 
                   paddingHorizontal: 12, 
@@ -821,11 +862,25 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                   flexDirection: 'row', 
                   alignItems: 'center', 
                   justifyContent: 'center',
-                  minWidth: 60
+                  minWidth: 60,
+                  shadowColor: '#F59E0B',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 2
                 }}
               >
-                <FileSpreadsheet size={14} color="#FFF" />
-                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
+                {cardDownloadStates[item._id]?.ppt ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileSpreadsheet size={14} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -906,84 +961,167 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           />
         </View>
         
-        {/* Bulk Download Buttons */}
+        {/* Enhanced Bulk Download Buttons with Count */}
         {selectedStoreIds.size > 0 && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  const selectedIds = Array.from(selectedStoreIds);
-                  const reportType = 'recce';
-                  const blob = await storeService.bulkPpt(selectedIds, reportType);
-                  await modernDownloadService.downloadFile({
-                    blob,
-                    filename: `Store_Report_${selectedStoreIds.size}_Stores.pptx`
-                  });
-                  setSelectedStoreIds(new Set());
-                } catch (error) {
-                  Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                }
-              }}
-              disabled={isDownloadingPPT}
-              style={{ 
-                flex: 1, 
-                backgroundColor: '#F59E0B', 
-                paddingVertical: 12, 
-                paddingHorizontal: 16, 
-                borderRadius: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                opacity: isDownloadingPPT ? 0.6 : 1
-              }}
-            >
-              {isDownloadingPPT ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileSpreadsheet size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                {isDownloadingPPT ? 'Downloading...' : 'PPT'}
-              </Text>
-            </TouchableOpacity>
+          <View style={{ marginBottom: 12 }}>
+            {/* Selection Count Header */}
+            <View style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              backgroundColor: theme.colors.primary + '10',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 8,
+              marginBottom: 8,
+              borderWidth: 1,
+              borderColor: theme.colors.primary + '20'
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <CheckSquare size={16} color={theme.colors.primary} />
+                <Text style={{ 
+                  color: theme.colors.primary, 
+                  fontSize: 14, 
+                  fontWeight: '600', 
+                  marginLeft: 6 
+                }}>
+                  {selectedStoreIds.size} store{selectedStoreIds.size > 1 ? 's' : ''} selected
+                </Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setSelectedStoreIds(new Set())}
+                style={{ padding: 4 }}
+              >
+                <X size={16} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
             
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  const selectedIds = Array.from(selectedStoreIds);
-                  const reportType = 'recce';
-                  const blob = await storeService.bulkPdf(selectedIds, reportType);
-                  await modernDownloadService.downloadFile({
-                    blob,
-                    filename: `Store_Report_${selectedStoreIds.size}_Stores.pdf`
-                  });
-                  setSelectedStoreIds(new Set());
-                } catch (error) {
-                  Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                }
-              }}
-              disabled={isDownloadingPDF}
-              style={{ 
-                flex: 1, 
-                backgroundColor: '#EF4444', 
-                paddingVertical: 12, 
-                paddingHorizontal: 16, 
-                borderRadius: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                opacity: isDownloadingPDF ? 0.6 : 1
-              }}
-            >
-              {isDownloadingPDF ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <FileText size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                {isDownloadingPDF ? 'Downloading...' : 'PDF'}
-              </Text>
-            </TouchableOpacity>
+            {/* Download Buttons */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const selectedIds = Array.from(selectedStoreIds);
+                    const reportType = 'recce';
+                    const blob = await storeService.bulkPpt(selectedIds, reportType);
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `Store_Report_${selectedStoreIds.size}_Stores.pptx`
+                    });
+                    setSelectedStoreIds(new Set());
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+                  }
+                }}
+                disabled={isDownloadingPPT}
+                style={{ 
+                  flex: 1, 
+                  backgroundColor: '#F59E0B', 
+                  paddingVertical: 14, 
+                  paddingHorizontal: 16, 
+                  borderRadius: 10, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#F59E0B',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 3
+                }}
+              >
+                {isDownloadingPPT ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <View style={{ 
+                      marginLeft: 8, 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 2, 
+                      borderRadius: 4 
+                    }}>
+                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileSpreadsheet size={18} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
+                    <View style={{ 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      paddingHorizontal: 6, 
+                      paddingVertical: 2, 
+                      borderRadius: 10, 
+                      marginLeft: 6 
+                    }}>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedStoreIds.size}</Text>
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={async () => {
+                  try {
+                    const selectedIds = Array.from(selectedStoreIds);
+                    const reportType = 'recce';
+                    const blob = await storeService.bulkPdf(selectedIds, reportType);
+                    await modernDownloadService.downloadFile({
+                      blob,
+                      filename: `Store_Report_${selectedStoreIds.size}_Stores.pdf`
+                    });
+                    setSelectedStoreIds(new Set());
+                  } catch (error) {
+                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+                  }
+                }}
+                disabled={isDownloadingPDF}
+                style={{ 
+                  flex: 1, 
+                  backgroundColor: '#EF4444', 
+                  paddingVertical: 14, 
+                  paddingHorizontal: 16, 
+                  borderRadius: 10, 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 3
+                }}
+              >
+                {isDownloadingPDF ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <View style={{ 
+                      marginLeft: 8, 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      paddingHorizontal: 8, 
+                      paddingVertical: 2, 
+                      borderRadius: 4 
+                    }}>
+                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <FileText size={18} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
+                    <View style={{ 
+                      backgroundColor: 'rgba(255,255,255,0.2)', 
+                      paddingHorizontal: 6, 
+                      paddingVertical: 2, 
+                      borderRadius: 10, 
+                      marginLeft: 6 
+                    }}>
+                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedStoreIds.size}</Text>
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
