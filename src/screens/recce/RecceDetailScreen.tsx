@@ -41,6 +41,8 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
     try {
       setLoading(true);
       const response = await storeService.getById(storeId);
+      console.log('Recce Screen - Store data:', JSON.stringify(response.store?.contact, null, 2));
+      console.log('Recce Screen - Full store:', JSON.stringify(response.store, null, 2));
       setStore(response.store);
     } catch (error) {
       Toast.show({
@@ -185,7 +187,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                 Contact: {store.contact?.personName || '-'}
               </Text>
               <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                Mobile: {store.contact?.mobile || '-'}
+                Mobile: {store.contact?.mobile || store.contact?.phone || store.mobile || store.phone || store.contactMobile || store.dealerMobile || '-'}
               </Text>
             </View>
           </View>
@@ -288,7 +290,7 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
           </View>
         )}
 
-        {/* Recce Photos */}
+        {/* Recce Photos - Show all for admins, only approved for regular users */}
         {store.recce?.reccePhotos && store.recce.reccePhotos.length > 0 && (
           <View style={{ 
             backgroundColor: theme.colors.surface, 
@@ -301,94 +303,108 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
               <Ruler size={20} color="#10B981" />
               <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                Recce Photos ({store.recce.reccePhotos.length})
+                Recce Photos ({isAdmin() ? store.recce.reccePhotos.length : store.recce.reccePhotos.filter(photo => photo.approvalStatus === 'APPROVED').length})
               </Text>
+              {!isAdmin() && (
+                <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginLeft: 8 }}>
+                  (Approved only)
+                </Text>
+              )}
             </View>
             
-            {store.recce.reccePhotos.map((reccePhoto: any, index: number) => (
-              <View key={index} style={{ 
-                backgroundColor: theme.colors.background, 
-                borderRadius: 12, 
-                padding: 16, 
-                marginBottom: 12,
-                borderWidth: 1,
-                borderColor: theme.colors.border
-              }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
-                    Board {index + 1}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {getStatusBadge(reccePhoto.approvalStatus)}
-                    {isAdmin() && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedPhotoIndex(index);
-                          setNewStatus('APPROVED');
-                          setShowStatusModal(true);
-                        }}
-                        style={{ padding: 4 }}
-                      >
-                        <Edit3 size={16} color={theme.colors.primary} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-
-                {reccePhoto.rejectionReason && (
-                  <View style={{ 
-                    backgroundColor: '#EF444420', 
-                    borderRadius: 8, 
-                    padding: 12, 
+            {store.recce.reccePhotos
+              .filter((photo: any) => isAdmin() || photo.approvalStatus === 'APPROVED')
+              .map((reccePhoto: any, displayIndex: number) => {
+                // Find original index for proper mapping
+                const originalIndex = store.recce.reccePhotos.findIndex((p: any) => p === reccePhoto);
+                return (
+                  <View key={originalIndex} style={{ 
+                    backgroundColor: theme.colors.background, 
+                    borderRadius: 12, 
+                    padding: 16, 
                     marginBottom: 12,
                     borderWidth: 1,
-                    borderColor: '#EF4444'
+                    borderColor: reccePhoto.approvalStatus === 'APPROVED' ? '#10B981' : 
+                                reccePhoto.approvalStatus === 'REJECTED' ? '#EF4444' : 
+                                theme.colors.border
                   }}>
-                    <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#EF4444', marginBottom: 4 }}>
-                      Rejection Reason:
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#EF4444' }}>
-                      {reccePhoto.rejectionReason}
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
+                        Board {originalIndex + 1} {!isAdmin() ? '(Approved)' : ''}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        {getStatusBadge(reccePhoto.approvalStatus)}
+                        {isAdmin() && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setSelectedPhotoIndex(originalIndex);
+                              setNewStatus('APPROVED');
+                              setShowStatusModal(true);
+                            }}
+                            style={{ padding: 4 }}
+                          >
+                            <Edit3 size={16} color={theme.colors.primary} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+
+                    {reccePhoto.rejectionReason && (
+                      <View style={{ 
+                        backgroundColor: '#EF444420', 
+                        borderRadius: 8, 
+                        padding: 12, 
+                        marginBottom: 12,
+                        borderWidth: 1,
+                        borderColor: '#EF4444'
+                      }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#EF4444', marginBottom: 4 }}>
+                          Rejection Reason:
+                        </Text>
+                        <Text style={{ fontSize: 14, color: '#EF4444' }}>
+                          {reccePhoto.rejectionReason}
+                        </Text>
+                      </View>
+                    )}
+
+                    <TouchableOpacity
+                      onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))}
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Image
+                        source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
+                        style={{ width: '100%', height: 200, borderRadius: 8 }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
+                        Dimensions: {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+                        ({reccePhoto.measurements.unit === 'in' 
+                          ? `${(reccePhoto.measurements.width / 12).toFixed(2)} × ${(reccePhoto.measurements.height / 12).toFixed(2)} ft`
+                          : `${reccePhoto.measurements.width} × ${reccePhoto.measurements.height} ft`
+                        })
+                      </Text>
+                    </View>
+
+                    {reccePhoto.elements && reccePhoto.elements.length > 0 && (
+                      <View style={{ 
+                        backgroundColor: theme.colors.primary + '10', 
+                        borderRadius: 8, 
+                        padding: 8 
+                      }}>
+                        <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
+                          Element: {reccePhoto.elements[0].elementName}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
-
-                <TouchableOpacity
-                  onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))}
-                  style={{ marginBottom: 12 }}
-                >
-                  <Image
-                    source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                    style={{ width: '100%', height: 200, borderRadius: 8 }}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>
-                    Dimensions: {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                    ({reccePhoto.measurements.unit === 'in' 
-                      ? `${(reccePhoto.measurements.width / 12).toFixed(2)} × ${(reccePhoto.measurements.height / 12).toFixed(2)} ft`
-                      : `${reccePhoto.measurements.width} × ${reccePhoto.measurements.height} ft`
-                    })
-                  </Text>
-                </View>
-
-                {reccePhoto.elements && reccePhoto.elements.length > 0 && (
-                  <View style={{ 
-                    backgroundColor: theme.colors.primary + '10', 
-                    borderRadius: 8, 
-                    padding: 8 
-                  }}>
-                    <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>
-                      Element: {reccePhoto.elements[0].elementName}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
+                );
+              })
+            }
           </View>
         )}
 

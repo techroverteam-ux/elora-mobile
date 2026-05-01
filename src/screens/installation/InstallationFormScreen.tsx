@@ -48,10 +48,11 @@ export default function InstallationFormScreen({ route, navigation }: Installati
       const store = response.store;
       setStoreData(store);
       
-      // Initialize installation photos object based on recce photos count
-      if (store.recce?.reccePhotos) {
+      // Initialize installation photos object based on approved recce photos count only
+      if (store?.recce?.reccePhotos) {
+        const approvedPhotos = store.recce.reccePhotos.filter(photo => photo.approvalStatus === 'APPROVED');
         const initialPhotos: {[key: number]: {before?: string, after?: string, closeup?: string}} = {};
-        store.recce.reccePhotos.forEach((_: any, index: number) => {
+        approvedPhotos.forEach((_, index: number) => {
           initialPhotos[index] = { before: undefined, after: undefined, closeup: undefined };
         });
         setInstallationPhotos(initialPhotos);
@@ -77,9 +78,19 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   };
 
   const handleSubmit = async () => {
-    const reccePhotosCount = storeData?.recce?.reccePhotos?.length || 0;
+    const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+    const reccePhotosCount = approvedReccePhotos.length;
     
-    // Check minimum 2 photos per board (before + after)
+    if (reccePhotosCount === 0) {
+      showModal(
+        'No Approved Photos', 
+        'There are no approved recce photos available for installation. Please contact admin.', 
+        'error'
+      );
+      return;
+    }
+    
+    // Check minimum 2 photos per approved board (before + after)
     let missingPhotos = [];
     for (let i = 0; i < reccePhotosCount; i++) {
       const boardPhotos = installationPhotos[i] || {};
@@ -122,9 +133,9 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
               for (let i = 0; i < reccePhotosCount; i++) {
                 const boardPhotos = installationPhotos[i] || {};
-                const reccePhoto = storeData.recce.reccePhotos[i];
+                const approvedReccePhoto = approvedReccePhotos[i];
                 
-                // Add each photo type for this board
+                // Add each photo type for this approved board
                 Object.entries(boardPhotos).forEach(([photoType, photoUri]) => {
                   if (photoUri) {
                     formData.append(`installationPhoto${fileIndex}`, {
@@ -133,10 +144,13 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                       name: `installation_board${i + 1}_${photoType}.jpg`,
                     } as any);
                     
+                    // Find original index safely
+                    const originalIndex = storeData?.recce?.reccePhotos?.findIndex(p => p === approvedReccePhoto) ?? i;
+                    
                     installationPhotosData.push({ 
-                      reccePhotoIndex: i, 
+                      reccePhotoIndex: originalIndex, // Original index
                       photoType,
-                      measurements: reccePhoto.measurements
+                      measurements: approvedReccePhoto?.measurements || { width: 0, height: 0, unit: 'ft' }
                     });
                     fileIndex++;
                   }
@@ -203,6 +217,12 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     setCameraVisible(false);
   };
 
+  // Get the approved recce photo for camera measurements
+  const getCurrentReccePhoto = () => {
+    const approvedPhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+    return approvedPhotos[currentPhotoIndex] || null;
+  };
+
   if (!storeData) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -211,8 +231,8 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     );
   }
 
-  const reccePhotos = storeData.recce?.reccePhotos || [];
-  const initialPhotos = storeData.recce?.initialPhotos || [];
+  const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+  const initialPhotos = storeData?.recce?.initialPhotos || [];
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -351,14 +371,14 @@ export default function InstallationFormScreen({ route, navigation }: Installati
           borderColor: theme.colors.border
         }}>
           <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>
-            Installation Photos for Each Board
+            Installation Photos for Each Approved Board
           </Text>
           <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>
-            Upload minimum 2 photos per board: Before & After installation ({reccePhotos.length} boards)
+            Upload minimum 2 photos per approved board: Before & After installation ({storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0} approved boards)
           </Text>
           
           <View style={{ gap: 16 }}>
-            {reccePhotos.map((reccePhoto: any, index: number) => {
+            {(storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || []).map((reccePhoto: any, index: number) => {
               const boardPhotos = installationPhotos[index] || {};
               const photoCount = Object.values(boardPhotos).filter(photo => photo).length;
               
@@ -372,7 +392,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
-                      Board {index + 1}
+                      Approved Board {index + 1}
                     </Text>
                     <View style={{ 
                       backgroundColor: photoCount >= 2 ? '#10B98120' : '#F59E0B20', 
@@ -405,11 +425,11 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                       </TouchableOpacity>
                       <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
                         <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
-                          {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit}
+                          {reccePhoto?.measurements?.width || 0} × {reccePhoto?.measurements?.height || 0} {reccePhoto?.measurements?.unit || 'ft'}
                         </Text>
-                        {reccePhoto.elements && reccePhoto.elements.length > 0 && (
+                        {reccePhoto?.elements && reccePhoto.elements.length > 0 && (
                           <Text style={{ fontSize: 10, color: '#3B82F6', marginTop: 2 }}>
-                            Element: {reccePhoto.elements[0].elementName}
+                            Element: {reccePhoto.elements[0]?.elementName || 'Unknown'}
                           </Text>
                         )}
                       </View>
@@ -556,15 +576,15 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             disabled={loading || Object.values(installationPhotos).some(boardPhotos => {
               const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
               return photoCount < 2;
-            })}
+            }) || (storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0) === 0}
             style={{
               flex: 2,
               padding: 16,
               borderRadius: 12,
-              backgroundColor: Object.values(installationPhotos).some(boardPhotos => {
+              backgroundColor: (Object.values(installationPhotos).some(boardPhotos => {
                 const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
                 return photoCount < 2;
-              }) ? theme.colors.border : '#10B981',
+              }) || (storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0) === 0) ? theme.colors.border : '#10B981',
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'
@@ -587,8 +607,8 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         visible={cameraVisible}
         onClose={handleCameraClose}
         onCapture={handlePhotoCapture}
-        width={currentPhotoType === 'before' ? (reccePhotos[currentPhotoIndex]?.measurements?.width?.toString() || '0') : '0'}
-        height={currentPhotoType === 'before' ? (reccePhotos[currentPhotoIndex]?.measurements?.height?.toString() || '0') : '0'}
+        width={currentPhotoType === 'before' ? (getCurrentReccePhoto()?.measurements?.width?.toString() || '0') : '0'}
+        height={currentPhotoType === 'before' ? (getCurrentReccePhoto()?.measurements?.height?.toString() || '0') : '0'}
         photoType={currentPhotoType === 'before' ? 'front' : currentPhotoType === 'after' ? 'side' : 'closeUp'}
         clientId={currentPhotoType === 'before' ? storeData?.clientId : undefined}
       />
