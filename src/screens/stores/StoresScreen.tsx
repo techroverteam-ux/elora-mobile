@@ -23,6 +23,10 @@ interface Store {
     city: string;
     state?: string;
   };
+  contact?: {
+    mobile?: string;
+    personName?: string;
+  };
   currentStatus: string;
   specs?: {
     width: number;
@@ -622,6 +626,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
               {item.location.city}, {item.location.state}
             </Text>
+            {item.contact?.mobile && (
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                📱 {item.contact.mobile}
+              </Text>
+            )}
           </View>
           
           <View style={{ backgroundColor: getStatusColor(item.currentStatus) + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
