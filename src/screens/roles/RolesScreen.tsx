@@ -10,7 +10,7 @@ import { Role, PermissionSet } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 
-const MODULES = ['users', 'roles', 'stores', 'recce', 'installation', 'enquiries', 'reports', 'elements', 'clients'];
+const MODULES = ['users', 'roles', 'stores', 'recce', 'installation', 'rfq', 'enquiries', 'reports', 'elements', 'clients'];
 
 export default function RolesScreen() {
   const { theme } = useTheme();

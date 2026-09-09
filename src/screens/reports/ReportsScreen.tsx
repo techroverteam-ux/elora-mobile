@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity, Filter, Calendar, Download, Eye } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, ActivityIndicator } from 'react-native';
+import { BarChart3, TrendingUp, Users, Package, CheckCircle, Clock, Award, MapPin, Activity, Filter, Calendar, Download, Eye, ClipboardList, ChevronRight } from 'lucide-react-native';
+import * as XLSX from 'xlsx';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import { permissionService } from '../../services/permissionService';
 
 interface Analytics {
   overview: {
@@ -67,14 +70,82 @@ interface Analytics {
   }>;
 }
 
-export default function ReportsScreen() {
+export default function ReportsScreen({ navigation }: { navigation?: { navigate: (screen: string, params?: any) => void } } = {}) {
   console.log('ReportsScreen: Component initialized');
-  
+
   const { theme } = useTheme();
   const { user } = useAuth();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [showAllAssignments, setShowAllAssignments] = useState(false);
+  const [isExportingAssignments, setIsExportingAssignments] = useState(false);
+
+  // Client-side Excel export of the Assignments table — mirrors elora-web's
+  // exportAssignments() (also client-side, using the same `xlsx` library) since
+  // there's no backend export endpoint for this report.
+  const handleExportAssignments = async (assignments: Array<{ storeName: string; dealerCode: string; city: string; state: string; assignedTo: string; role: string; date: string; status: string }>) => {
+    if (!assignments || assignments.length === 0) {
+      Toast.show({ type: 'error', text1: 'No data to export' });
+      return;
+    }
+
+    const hasPermission = await permissionService.checkStoragePermission();
+    if (!hasPermission) {
+      const granted = await permissionService.requestStoragePermission();
+      if (!granted) {
+        permissionService.showStoragePermissionDeniedAlert();
+        return;
+      }
+    }
+
+    setIsExportingAssignments(true);
+    try {
+      const rows = assignments.map(a => ({
+        'Store Name': a.storeName,
+        'Dealer Code': a.dealerCode,
+        'City': a.city,
+        'State': a.state,
+        'Assigned To': a.assignedTo,
+        'Role': a.role,
+        'Date': a.date ? new Date(a.date).toLocaleDateString() : '-',
+        'Status': a.status?.replace(/_/g, ' '),
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 20 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Assignments');
+      const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+
+      const today = new Date().toISOString().split('T')[0];
+      const filename = `Elora_Assignments_${today}.xlsx`;
+      const downloadPath = `${ReactNativeBlobUtil.fs.dirs.DownloadDir}/${filename}`;
+      await ReactNativeBlobUtil.fs.writeFile(downloadPath, base64, 'base64');
+
+      if (Platform.OS === 'android') {
+        try {
+          ReactNativeBlobUtil.android.addCompleteDownload({
+            title: filename,
+            description: 'Downloaded file',
+            mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            path: downloadPath,
+            showNotification: true,
+          });
+        } catch (notificationError) {
+          console.warn('Could not show download notification:', notificationError);
+        }
+      }
+
+      Toast.show({ type: 'success', text1: 'Exported successfully', text2: filename });
+    } catch (error) {
+      console.error('Assignments export error:', error);
+      Toast.show({ type: 'error', text1: 'Export failed', text2: 'Please try again.' });
+    } finally {
+      setIsExportingAssignments(false);
+    }
+  };
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -368,6 +439,79 @@ export default function ReportsScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Detailed Assignments */}
+            {analytics.assignments && analytics.assignments.length > 0 && (
+              <View style={{ backgroundColor: theme.colors.surface, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ClipboardList size={20} color={theme.colors.primary} />
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
+                      Assignments ({analytics.assignments.length})
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleExportAssignments(analytics.assignments)}
+                    disabled={isExportingAssignments}
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#10B98120', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}
+                  >
+                    {isExportingAssignments ? (
+                      <ActivityIndicator size="small" color="#10B981" />
+                    ) : (
+                      <>
+                        <Download size={14} color="#10B981" />
+                        <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Export</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <View>
+                  {(showAllAssignments ? analytics.assignments : analytics.assignments.slice(0, 15)).map((a, idx, arr) => (
+                    <TouchableOpacity
+                      key={a.storeId || idx}
+                      onPress={() => a.storeId && navigation?.navigate?.('StoreDetail', { storeId: a.storeId })}
+                      disabled={!a.storeId || !navigation?.navigate}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 10,
+                        borderBottomWidth: idx === arr.length - 1 ? 0 : 1,
+                        borderBottomColor: theme.colors.border,
+                      }}
+                    >
+                      <View style={{ flex: 1, marginRight: 8 }}>
+                        <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+                          {a.storeName || 'Unknown Store'}
+                          {a.dealerCode ? <Text style={{ color: theme.colors.textSecondary, fontWeight: '400' }}> ({a.dealerCode})</Text> : null}
+                        </Text>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                          {[a.city, a.state].filter(Boolean).join(', ') || '-'} • {a.assignedTo || 'Unassigned'}{a.role ? ` (${a.role})` : ''}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: theme.colors.primary + '20', marginBottom: 4 }}>
+                          <Text style={{ color: theme.colors.primary, fontSize: 10, fontWeight: '700' }} numberOfLines={1}>
+                            {(a.status || '-').replace(/_/g, ' ')}
+                          </Text>
+                        </View>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>{formatDate(a.date)}</Text>
+                      </View>
+                      {a.storeId && navigation?.navigate && <ChevronRight size={16} color={theme.colors.textSecondary} style={{ marginLeft: 6 }} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {analytics.assignments.length > 15 && (
+                  <TouchableOpacity
+                    onPress={() => setShowAllAssignments(!showAllAssignments)}
+                    style={{ marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border, alignItems: 'center' }}
+                  >
+                    <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>
+                      {showAllAssignments ? 'Show less' : `Show all ${analytics.assignments.length}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         ) : (
           /* USER DASHBOARD */

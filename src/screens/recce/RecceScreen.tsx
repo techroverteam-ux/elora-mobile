@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X, UserPlus } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
 import { permissionService } from '../../services/permissionService';
+import { userService } from '../../services/userService';
+import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 import { testRecceAPI, debugStorage } from '../../utils/testRecceAPI';
@@ -55,7 +57,13 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
   const [isDownloadingPPT, setIsDownloadingPPT] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
   const [showStatusFilter, setShowStatusFilter] = useState(false);
-  
+
+  // Bulk "Assign Installation" (admin-only, mirrors elora-web's Recce page action)
+  const [isInstallAssignModalOpen, setIsInstallAssignModalOpen] = useState(false);
+  const [availableInstallUsers, setAvailableInstallUsers] = useState<any[]>([]);
+  const [selectedInstallUserId, setSelectedInstallUserId] = useState('');
+  const [isAssigningInstallation, setIsAssigningInstallation] = useState(false);
+
   // Individual card download states
   const [cardDownloadStates, setCardDownloadStates] = useState<{[key: string]: {pdf: boolean, ppt: boolean}}>({});
 
@@ -154,6 +162,59 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
       newSet.add(id);
     }
     setSelectedAssignments(newSet);
+  };
+
+  // Only Recce-approved stores are eligible to hand off to an installer
+  const getEligibleInstallStoreIds = () => {
+    return assignments
+      .filter(a => selectedAssignments.has(a._id) && a.status === 'RECCE_APPROVED')
+      .map(a => a.store._id);
+  };
+
+  const openInstallAssignModal = async () => {
+    const eligibleIds = getEligibleInstallStoreIds();
+    if (eligibleIds.length === 0) {
+      Toast.show({ type: 'error', text1: 'Select at least one Recce-approved store' });
+      return;
+    }
+    if (eligibleIds.length < selectedAssignments.size) {
+      Toast.show({ type: 'info', text1: `${eligibleIds.length} of ${selectedAssignments.size} selected are eligible`, text2: 'Only Recce-approved stores can be assigned' });
+    }
+
+    setSelectedInstallUserId('');
+    try {
+      const data = await userService.getByRole('INSTALLATION');
+      setAvailableInstallUsers(data.users || []);
+      setIsInstallAssignModalOpen(true);
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to fetch installation users' });
+      setAvailableInstallUsers([]);
+    }
+  };
+
+  const handleAssignInstallation = async () => {
+    if (!selectedInstallUserId) {
+      Toast.show({ type: 'error', text1: 'Please select an installer' });
+      return;
+    }
+    const storeIds = getEligibleInstallStoreIds();
+    if (storeIds.length === 0) {
+      Toast.show({ type: 'error', text1: 'No eligible stores selected' });
+      return;
+    }
+
+    setIsAssigningInstallation(true);
+    try {
+      await storeService.assign(storeIds, selectedInstallUserId, 'INSTALLATION');
+      Toast.show({ type: 'success', text1: `Installation assigned to ${storeIds.length} store${storeIds.length > 1 ? 's' : ''}` });
+      setIsInstallAssignModalOpen(false);
+      setSelectedAssignments(new Set());
+      fetchAssignments();
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: error.response?.data?.message || 'Assignment failed' });
+    } finally {
+      setIsAssigningInstallation(false);
+    }
   };
 
   const handleExport = async () => {
@@ -774,6 +835,30 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                     </View>
                   )}
                 </TouchableOpacity>
+
+                {isAdminUser && (
+                  <TouchableOpacity
+                    onPress={openInstallAssignModal}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#3B82F6',
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      borderRadius: 10,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#3B82F6',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 4,
+                      elevation: 3
+                    }}
+                  >
+                    <UserPlus size={18} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '600', marginLeft: 6 }}>Assign</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -851,6 +936,107 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           }
         />
       )}
+
+      {/* Bulk Assign Installation Modal (admin-only) */}
+      <Modal
+        visible={isInstallAssignModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsInstallAssignModalOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: theme.colors.background,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            maxHeight: '80%',
+            paddingBottom: 20
+          }}>
+            <View style={{ padding: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 4 }}>
+                Assign Installation
+              </Text>
+              <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginBottom: 16 }}>
+                {getEligibleInstallStoreIds().length} store{getEligibleInstallStoreIds().length > 1 ? 's' : ''} will be assigned
+              </Text>
+
+              <ScrollView style={{ maxHeight: 320 }}>
+                {availableInstallUsers.length === 0 && (
+                  <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: 24 }}>
+                    No installation users found
+                  </Text>
+                )}
+                {availableInstallUsers.map((u: any) => (
+                  <TouchableOpacity
+                    key={u._id}
+                    onPress={() => setSelectedInstallUserId(u._id)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 12,
+                      borderRadius: 8,
+                      marginBottom: 8,
+                      backgroundColor: selectedInstallUserId === u._id ? theme.colors.primary + '20' : theme.colors.surface,
+                      borderWidth: 1,
+                      borderColor: selectedInstallUserId === u._id ? theme.colors.primary : theme.colors.border
+                    }}
+                  >
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: selectedInstallUserId === u._id ? theme.colors.primary : theme.colors.border,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 12
+                    }}>
+                      <Text style={{
+                        color: selectedInstallUserId === u._id ? '#FFF' : theme.colors.text,
+                        fontWeight: 'bold'
+                      }}>
+                        {u.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{u.name}</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{u.email}</Text>
+                    </View>
+                    {selectedInstallUserId === u._id && (
+                      <CheckSquare size={20} color={theme.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setIsInstallAssignModalOpen(false)}
+                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
+                >
+                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleAssignInstallation}
+                  disabled={!selectedInstallUserId || isAssigningInstallation}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 8,
+                    backgroundColor: selectedInstallUserId ? theme.colors.primary : theme.colors.border,
+                    alignItems: 'center'
+                  }}
+                >
+                  {isAssigningInstallation ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={{ color: '#FFF', fontWeight: '600' }}>Assign</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

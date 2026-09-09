@@ -3,10 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-na
 import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle, XCircle, Clock, X, User, Calendar, Wrench } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import StoreDetailsEditor from '../../components/StoreDetailsEditor';
 
 interface StoreDetailProps {
   route: {
@@ -22,6 +24,7 @@ interface StoreDetailProps {
 export default function StoreDetailScreen({ route, navigation }: StoreDetailProps) {
   const { theme } = useTheme();
   const { canViewCommercialInfo } = useAuth();
+  const { hasPermission } = usePermissions();
   const insets = useSafeAreaInsets();
   const { storeId } = route.params;
   const [store, setStore] = useState<any>(null);
@@ -116,10 +119,10 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
         <View style={{ marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             {/* Location Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
+            <View style={{
+              flex: 1,
+              backgroundColor: theme.colors.surface,
+              borderRadius: 12,
               padding: 12,
               borderWidth: 1,
               borderColor: theme.colors.border
@@ -146,33 +149,44 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 </Text>
               )}
             </View>
+          </View>
 
-            {/* Dealer Info Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+          {/* Dealer Info Card — full width so the Edit control has room */}
+          <View style={{
+            marginBottom: 8,
+            backgroundColor: theme.colors.surface,
+            borderRadius: 12,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: theme.colors.border
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Building2 size={16} color="#F59E0B" />
                 <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Dealer</Text>
               </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Code: {store.dealerCode}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Vendor: {store.vendorCode || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Contact: {store.contact?.personName || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                Mobile: {store.contact?.mobile || '-'}
-              </Text>
+              {hasPermission('stores', 'edit') && (
+                <StoreDetailsEditor
+                  storeId={storeId}
+                  initialData={store}
+                  onUpdate={(updatedData: any) => {
+                    setStore((prev: any) => ({ ...prev, ...updatedData }));
+                  }}
+                />
+              )}
             </View>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+              Code: {store.dealerCode}
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+              Vendor: {store.vendorCode || '-'}
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
+              Contact: {store.contact?.personName || '-'}
+            </Text>
+            <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
+              Mobile: {store.contact?.mobile || '-'}
+            </Text>
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>

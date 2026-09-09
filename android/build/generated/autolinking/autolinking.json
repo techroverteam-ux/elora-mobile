@@ -104,6 +104,31 @@
         }
       }
     },
+    "@react-native-documents/picker": {
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker",
+      "name": "@react-native-documents/picker",
+      "platforms": {
+        "ios": {
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/react-native-document-picker.podspec",
+          "version": "12.0.2",
+          "configurations": [],
+          "scriptPhases": []
+        },
+        "android": {
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/android",
+          "packageImportPath": "import com.reactnativedocumentpicker.RNDocumentPickerPackage;",
+          "packageInstance": "new RNDocumentPickerPackage()",
+          "buildTypes": [],
+          "libraryName": "rndocumentpickerCGen",
+          "componentDescriptors": [],
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cxxModuleCMakeListsModuleName": null,
+          "cxxModuleCMakeListsPath": null,
+          "cxxModuleHeaderName": null,
+          "isPureCxxDependency": false
+        }
+      }
+    },
     "@react-native-vector-icons/material-design-icons": {
       "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons",
       "name": "@react-native-vector-icons/material-design-icons",
@@ -737,7 +762,7 @@
         {
           "name": "--terminal <string>",
           "description": "Launches the Metro Bundler in a new window using the specified terminal path.",
-          "default": "vscode"
+          "default": "Apple_Terminal"
         },
         {
           "name": "--binary-path <string>",
@@ -905,7 +930,7 @@
         {
           "name": "--terminal <string>",
           "description": "Launches the Metro Bundler in a new window using the specified terminal path.",
-          "default": "vscode"
+          "default": "Apple_Terminal"
         },
         {
           "name": "--appId <string>",

@@ -38,6 +38,7 @@ import InstallationFormScreen from './src/screens/installation/InstallationFormS
 
 // Add back the screens that were removed
 import UsersScreen from './src/screens/users/UsersScreen';
+import UserDetailScreen from './src/screens/users/UserDetailScreen';
 import RolesScreen from './src/screens/roles/RolesScreen';
 import ElementsScreen from './src/screens/elements/ElementsScreen';
 import ClientsScreen from './src/screens/clients/ClientsScreen';
@@ -93,15 +94,28 @@ function AppContent() {
       // Users Management
       case 'Users':
         return (
-          <ScreenLayout 
+          <ScreenLayout
             title="Users Management"
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
-            <UsersScreen />
+            <UsersScreen navigation={{ navigate: navigateToScreen }} />
           </ScreenLayout>
         );
-      
+
+      case 'UserDetail':
+        return (
+          <ScreenLayout
+            title="User Details"
+            onMenuPress={openDrawer}
+            onBackPress={() => navigateToScreen('Users')}
+            showBackButton={true}
+            onProfilePress={() => navigateToScreen('Profile')}
+          >
+            <UserDetailScreen route={{ params: navigationParams }} />
+          </ScreenLayout>
+        );
+
       // Roles Management
       case 'Roles':
         return (
@@ -165,12 +179,12 @@ function AppContent() {
       // Reports
       case 'Reports':
         return (
-          <ScreenLayout 
-            title="Reports" 
+          <ScreenLayout
+            title="Reports"
             onMenuPress={openDrawer}
             onProfilePress={() => navigateToScreen('Profile')}
           >
-            <ReportsScreen />
+            <ReportsScreen navigation={{ navigate: navigateToScreen }} />
           </ScreenLayout>
         );
       

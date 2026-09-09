@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench } from 'lucide-react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
@@ -82,6 +82,10 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [filterClientName, setFilterClientName] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
+  const [showFilterClientDropdown, setShowFilterClientDropdown] = useState(false);
   
   // Download menu state
   const [downloadMenuOpen, setDownloadMenuOpen] = useState<{storeId: string; type: string} | null>(null);
@@ -91,8 +95,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     zone: '', state: '', district: '', city: '',
     vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
     clientCode: '',
-    latitude: '', longitude: ''
+    latitude: '', longitude: '',
+    directInstallation: false,
+    boards: [] as { elementId: string; elementName: string; quantity: number; customRate: number; width: string; height: string; unit: string }[]
   });
+  const [openBoardElementIndex, setOpenBoardElementIndex] = useState<number | null>(null);
 
   // Add Store Modal - using ref to prevent re-render issues
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
@@ -101,6 +108,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
 
   useEffect(() => {
     fetchClients();
+    fetchCities();
   }, []);
 
   const fetchClients = async () => {
@@ -110,6 +118,16 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     } catch (error) {
       console.error('Failed to fetch clients', error);
       setClients([]);
+    }
+  };
+
+  const fetchCities = async () => {
+    try {
+      const response = await storeService.getCities();
+      setAvailableCities(response.cities || response.data?.cities || []);
+    } catch (error) {
+      console.error('Failed to fetch cities', error);
+      setAvailableCities([]);
     }
   };
 
@@ -147,14 +165,15 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [totalStores, setTotalStores] = useState(0);
 
   useEffect(() => {
-    fetchStores();
+    fetchStores(1);
   }, [searchTerm, filterStatus]);
 
-  const fetchStores = async () => {
+  const fetchStores = async (pageOverride?: number) => {
+    const requestedPage = pageOverride ?? page;
     try {
       setLoading(true);
       const params = {
-        page,
+        page: requestedPage,
         limit: 20,
         status: filterStatus !== 'ALL' ? filterStatus : undefined,
         search: searchTerm || undefined,
@@ -162,7 +181,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         clientCode: filterClientCode || undefined,
         clientName: filterClientName || undefined,
       };
-      
+
+      if (pageOverride !== undefined && pageOverride !== page) {
+        setPage(pageOverride);
+      }
+
       const data = await storeService.getAll(params);
       setStores(data.stores || []);
       if (data.pagination) {
@@ -512,6 +535,12 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
+  const isDirectInstallBoardsInvalid = () => {
+    if (!newStoreData.directInstallation) return false;
+    if (newStoreData.boards.length === 0) return true;
+    return newStoreData.boards.some(b => !b.width || !b.height || !b.elementId);
+  };
+
   const handleAddStore = async () => {
     if (!newStoreData.dealerCode || !newStoreData.dealerName) {
       Toast.show({ type: 'error', text1: 'Dealer Code and Name are required' });
@@ -519,6 +548,14 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
     if (!newStoreData.clientCode) {
       Toast.show({ type: 'error', text1: 'Client Code is required' });
+      return;
+    }
+    if (newStoreData.directInstallation && newStoreData.boards.length === 0) {
+      Toast.show({ type: 'error', text1: 'Add at least one board for Direct Installation' });
+      return;
+    }
+    if (isDirectInstallBoardsInvalid()) {
+      Toast.show({ type: 'error', text1: 'Each board needs a width, height and element selected' });
       return;
     }
 
@@ -540,16 +577,21 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               lng: Number(newStoreData.longitude)
             }
           })
-        }
+        },
+        directInstallation: newStoreData.directInstallation,
+        ...(newStoreData.directInstallation && { boards: newStoreData.boards })
       };
       const response = await storeService.create(payload);
       Toast.show({ type: 'success', text1: 'Store added successfully!' });
       setIsAddStoreModalOpen(false);
+      setOpenBoardElementIndex(null);
       setNewStoreData({
         zone: '', state: '', district: '', city: '',
         vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
         clientCode: '',
-        latitude: '', longitude: ''
+        latitude: '', longitude: '',
+        directInstallation: false,
+        boards: []
       });
       fetchStores();
       
@@ -959,17 +1001,161 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         </View>
 
         {/* Simple Search */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 12 }}>
-          <Search size={20} color={theme.colors.textSecondary} />
-          <TextInput
-            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-            placeholder="Search stores..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
+            <Search size={20} color={theme.colors.textSecondary} />
+            <TextInput
+              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
+              placeholder="Search stores..."
+              placeholderTextColor={theme.colors.textSecondary}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowFilterPanel(!showFilterPanel)}
+            style={{
+              width: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: (filterCity || filterClientCode || filterClientName) ? theme.colors.primary : theme.colors.surface,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: (filterCity || filterClientCode || filterClientName) ? theme.colors.primary : theme.colors.border,
+            }}
+          >
+            <Filter size={20} color={(filterCity || filterClientCode || filterClientName) ? '#FFF' : theme.colors.textSecondary} />
+          </TouchableOpacity>
         </View>
-        
+
+        {/* Filter Panel: Status / City / Client */}
+        {showFilterPanel && (
+          <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, padding: 12, marginBottom: 12, gap: 10 }}>
+            <View>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>STATUS</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {['ALL', ...Object.values(StoreStatus)].map((status) => (
+                    <TouchableOpacity
+                      key={status}
+                      onPress={() => setFilterStatus(status)}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 14,
+                        backgroundColor: filterStatus === status ? theme.colors.primary : theme.colors.background,
+                        borderWidth: 1,
+                        borderColor: filterStatus === status ? theme.colors.primary : theme.colors.border,
+                      }}
+                    >
+                      <Text style={{ color: filterStatus === status ? '#FFF' : theme.colors.text, fontSize: 11, fontWeight: '600' }}>
+                        {status.replace(/_/g, ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>CITY</Text>
+              <TouchableOpacity
+                onPress={() => setShowCityDropdown(!showCityDropdown)}
+                style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <Text style={{ color: filterCity ? theme.colors.text : theme.colors.textSecondary, fontSize: 13 }}>
+                  {filterCity || 'All cities'}
+                </Text>
+                <ChevronDown size={14} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+              {showCityDropdown && (
+                <View style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 160 }}>
+                  <ScrollView nestedScrollEnabled>
+                    <TouchableOpacity
+                      onPress={() => { setFilterCity(''); setShowCityDropdown(false); }}
+                      style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                    >
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>All cities</Text>
+                    </TouchableOpacity>
+                    {availableCities.map((city) => (
+                      <TouchableOpacity
+                        key={city}
+                        onPress={() => { setFilterCity(city); setShowCityDropdown(false); }}
+                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                      >
+                        <Text style={{ color: theme.colors.text, fontSize: 13 }}>{city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <View>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>CLIENT</Text>
+              <TouchableOpacity
+                onPress={() => setShowFilterClientDropdown(!showFilterClientDropdown)}
+                style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <Text style={{ color: filterClientCode ? theme.colors.text : theme.colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
+                  {filterClientCode ? `${filterClientName || filterClientCode}` : 'All clients'}
+                </Text>
+                <ChevronDown size={14} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+              {showFilterClientDropdown && (
+                <View style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 160 }}>
+                  <ScrollView nestedScrollEnabled>
+                    <TouchableOpacity
+                      onPress={() => { setFilterClientCode(''); setFilterClientName(''); setShowFilterClientDropdown(false); }}
+                      style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                    >
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>All clients</Text>
+                    </TouchableOpacity>
+                    {clients.map((client) => (
+                      <TouchableOpacity
+                        key={client._id || client.clientCode}
+                        onPress={() => {
+                          setFilterClientCode(client.clientCode);
+                          setFilterClientName(client.clientName);
+                          setShowFilterClientDropdown(false);
+                        }}
+                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                      >
+                        <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>{client.clientName}</Text>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>{client.clientCode}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setFilterCity('');
+                  setFilterClientCode('');
+                  setFilterClientName('');
+                  setFilterStatus('ALL');
+                  fetchStores(1);
+                }}
+                style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 13 }}>Reset</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowFilterPanel(false);
+                  fetchStores(1);
+                }}
+                style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: theme.colors.primary, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>Apply Filters</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Enhanced Bulk Download Buttons with Count */}
         {selectedStoreIds.size > 0 && (
           <View style={{ marginBottom: 12 }}>
@@ -1159,6 +1345,29 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 No stores found
               </Text>
             </View>
+          }
+          ListFooterComponent={
+            stores.length > 0 && totalPages > 1 ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 12 }}>
+                <TouchableOpacity
+                  onPress={() => page > 1 && fetchStores(page - 1)}
+                  disabled={page === 1}
+                  style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, opacity: page === 1 ? 0.5 : 1 }}
+                >
+                  <ChevronLeft size={18} color={theme.colors.text} />
+                </TouchableOpacity>
+                <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 13 }}>
+                  Page {page} of {totalPages} ({totalStores} stores)
+                </Text>
+                <TouchableOpacity
+                  onPress={() => page < totalPages && fetchStores(page + 1)}
+                  disabled={page === totalPages}
+                  style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, opacity: page === totalPages ? 0.5 : 1 }}
+                >
+                  <ChevronRight size={18} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
+            ) : null
           }
         />
       )}
@@ -1432,18 +1641,185 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                       />
                     </View>
                   </View>
+
+                  {/* Direct Installation */}
+                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8, marginTop: 16 }}>DIRECT INSTALLATION</Text>
+                  <TouchableOpacity
+                    onPress={() => setNewStoreData({
+                      ...newStoreData,
+                      directInstallation: !newStoreData.directInstallation,
+                      boards: !newStoreData.directInstallation ? newStoreData.boards : []
+                    })}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                  >
+                    {newStoreData.directInstallation ? (
+                      <CheckSquare size={20} color={theme.colors.primary} />
+                    ) : (
+                      <Square size={20} color={theme.colors.textSecondary} />
+                    )}
+                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>Direct Installation (Skip Recce)</Text>
+                  </TouchableOpacity>
+
+                  {newStoreData.directInstallation && (
+                    <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, gap: 12 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>Boards (Required)</Text>
+                        <TouchableOpacity
+                          onPress={() => setNewStoreData({
+                            ...newStoreData,
+                            boards: [...newStoreData.boards, { elementId: '', elementName: '', quantity: 1, customRate: 0, width: '', height: '', unit: 'ft' }]
+                          })}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                        >
+                          <Plus size={14} color={theme.colors.primary} />
+                          <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600' }}>Add Board</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {newStoreData.boards.length === 0 && (
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontStyle: 'italic' }}>
+                          No boards added. Please add at least one board.
+                        </Text>
+                      )}
+
+                      {newStoreData.boards.map((board, index) => {
+                        const selectedClient = clients.find(c => c.clientCode === newStoreData.clientCode);
+                        return (
+                          <View key={index} style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, gap: 8 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600' }}>Board {index + 1}</Text>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  const newBoards = newStoreData.boards.filter((_, i) => i !== index);
+                                  setNewStoreData({ ...newStoreData, boards: newBoards });
+                                  if (openBoardElementIndex === index) setOpenBoardElementIndex(null);
+                                }}
+                              >
+                                <X size={16} color="#EF4444" />
+                              </TouchableOpacity>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>WIDTH *</Text>
+                                <TextInput
+                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14 }}
+                                  value={board.width}
+                                  onChangeText={(text) => {
+                                    const newBoards = [...newStoreData.boards];
+                                    newBoards[index] = { ...newBoards[index], width: text };
+                                    setNewStoreData({ ...newStoreData, boards: newBoards });
+                                  }}
+                                  placeholder="W"
+                                  placeholderTextColor={theme.colors.textSecondary}
+                                  keyboardType="numeric"
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>HEIGHT *</Text>
+                                <TextInput
+                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14 }}
+                                  value={board.height}
+                                  onChangeText={(text) => {
+                                    const newBoards = [...newStoreData.boards];
+                                    newBoards[index] = { ...newBoards[index], height: text };
+                                    setNewStoreData({ ...newStoreData, boards: newBoards });
+                                  }}
+                                  placeholder="H"
+                                  placeholderTextColor={theme.colors.textSecondary}
+                                  keyboardType="numeric"
+                                />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>UNIT</Text>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    const newBoards = [...newStoreData.boards];
+                                    newBoards[index] = { ...newBoards[index], unit: newBoards[index].unit === 'ft' ? 'in' : 'ft' };
+                                    setNewStoreData({ ...newStoreData, boards: newBoards });
+                                  }}
+                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, alignItems: 'center' }}
+                                >
+                                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{board.unit}</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+
+                            <View>
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>ELEMENT *</Text>
+                              <TouchableOpacity
+                                onPress={() => setOpenBoardElementIndex(openBoardElementIndex === index ? null : index)}
+                                style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                              >
+                                <Text style={{ color: board.elementId ? theme.colors.text : theme.colors.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
+                                  {board.elementId ? `${board.elementName} (₹${board.customRate}/sq.unit)` : (newStoreData.clientCode ? 'Select element' : 'Select a client first')}
+                                </Text>
+                                <ChevronDown size={14} color={theme.colors.textSecondary} />
+                              </TouchableOpacity>
+                              {openBoardElementIndex === index && (
+                                <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, marginTop: 4, maxHeight: 140 }}>
+                                  <ScrollView nestedScrollEnabled>
+                                    {(selectedClient?.elements || []).length === 0 ? (
+                                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12, padding: 10 }}>
+                                        No elements configured for this client
+                                      </Text>
+                                    ) : (
+                                      selectedClient.elements.map((el: any) => (
+                                        <TouchableOpacity
+                                          key={el.elementId}
+                                          onPress={() => {
+                                            const newBoards = [...newStoreData.boards];
+                                            newBoards[index] = { ...newBoards[index], elementId: el.elementId, elementName: el.elementName, customRate: el.customRate };
+                                            setNewStoreData({ ...newStoreData, boards: newBoards });
+                                            setOpenBoardElementIndex(null);
+                                          }}
+                                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                                        >
+                                          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>{el.elementName}</Text>
+                                          <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>₹{el.customRate}/sq.unit</Text>
+                                        </TouchableOpacity>
+                                      ))
+                                    )}
+                                  </ScrollView>
+                                </View>
+                              )}
+                            </View>
+
+                            <View>
+                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>QUANTITY</Text>
+                              <TextInput
+                                style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14, width: 80 }}
+                                value={String(board.quantity)}
+                                onChangeText={(text) => {
+                                  const newBoards = [...newStoreData.boards];
+                                  newBoards[index] = { ...newBoards[index], quantity: Number(text) || 1 };
+                                  setNewStoreData({ ...newStoreData, boards: newBoards });
+                                }}
+                                placeholder="1"
+                                placeholderTextColor={theme.colors.textSecondary}
+                                keyboardType="numeric"
+                              />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               </ScrollView>
-              
+
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
                 <TouchableOpacity
                   onPress={() => {
                     setIsAddStoreModalOpen(false);
+                    setOpenBoardElementIndex(null);
                     setNewStoreData({
                       zone: '', state: '', district: '', city: '',
                       vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
                       clientCode: '',
-                      latitude: '', longitude: ''
+                      latitude: '', longitude: '',
+                      directInstallation: false,
+                      boards: []
                     });
                   }}
                   style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
@@ -1452,8 +1828,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddStore}
-                  disabled={!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
+                  disabled={!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode || isDirectInstallBoardsInvalid()}
+                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode || isDirectInstallBoardsInvalid()) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
                 >
                   <Text style={{ color: '#FFF', fontWeight: '600' }}>Add Store</Text>
                 </TouchableOpacity>

@@ -146,6 +146,13 @@ export const storeService = {
     return data;
   },
 
+  // Distinct list of cities across all stores — used to populate the City filter
+  // (same endpoint elora-web uses on Stores/RFQ/Recce/Reports).
+  getCities: async () => {
+    const { data } = await api.get('/stores/cities');
+    return data;
+  },
+
   // Assignment Operations
   assign: async (storeIds: string[], userId: string, stage: 'RECCE' | 'INSTALLATION') => {
     const { data } = await api.post('/stores/assign', {

@@ -40,6 +40,7 @@ interface ClientElement {
   elementId: string;
   elementName: string;
   customRate: number;
+  quantity: number;
 }
 
 export default function ClientsScreen() {
@@ -66,6 +67,7 @@ export default function ClientsScreen() {
   const [clientElements, setClientElements] = useState<ClientElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState('');
   const [customRate, setCustomRate] = useState('');
+  const [elementQuantity, setElementQuantity] = useState('1');
   const [isElementDropdownOpen, setIsElementDropdownOpen] = useState(false);
 
   useEffect(() => {
@@ -89,7 +91,9 @@ export default function ClientsScreen() {
 
   const fetchElements = async () => {
     try {
-      const data = await elementService.getAll({ limit: 100 });
+      // Unpaginated on purpose — this feeds the "add element to client" picker, which needs
+      // the whole catalog, not just the first page (matches elora-web's /elements/all call).
+      const data = await elementService.getAllUnpaginated();
       setAvailableElements(data.elements || []);
     } catch (error) {
       console.error('Failed to load elements:', error);
@@ -102,6 +106,7 @@ export default function ClientsScreen() {
     setClientElements([]);
     setSelectedElementId('');
     setCustomRate('');
+    setElementQuantity('1');
     setModalVisible(true);
   };
 
@@ -113,9 +118,10 @@ export default function ClientsScreen() {
       gstNumber: client.gstNumber,
       enableLocationMapping: client.enableLocationMapping || false,
     });
-    setClientElements(client.elements || []);
+    setClientElements((client.elements || []).map((el: any) => ({ ...el, quantity: el.quantity || 1 })));
     setSelectedElementId('');
     setCustomRate('');
+    setElementQuantity('1');
     setModalVisible(true);
   };
 
@@ -461,6 +467,7 @@ export default function ClientsScreen() {
                               onPress={() => {
                                 setSelectedElementId(element._id);
                                 setCustomRate(element.standardRate.toString());
+                                setElementQuantity('1');
                                 setIsElementDropdownOpen(false);
                               }}
                               style={{
@@ -501,8 +508,27 @@ export default function ClientsScreen() {
                       keyboardType="decimal-pad"
                     />
                   </View>
+
+                  <View style={{ width: 70 }}>
+                    <TextInput
+                      value={elementQuantity}
+                      onChangeText={setElementQuantity}
+                      style={{
+                        backgroundColor: theme.colors.surface,
+                        padding: 12,
+                        borderRadius: 8,
+                        color: theme.colors.text,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        textAlign: 'center'
+                      }}
+                      placeholder="Qty"
+                      placeholderTextColor={theme.colors.textSecondary}
+                      keyboardType="number-pad"
+                    />
+                  </View>
                 </View>
-                
+
                 <TouchableOpacity
                   onPress={() => {
                     if (selectedElementId && customRate) {
@@ -511,10 +537,12 @@ export default function ClientsScreen() {
                         setClientElements([...clientElements, {
                           elementId: element._id,
                           elementName: element.name,
-                          customRate: Number(customRate)
+                          customRate: Number(customRate),
+                          quantity: Math.max(1, Number(elementQuantity) || 1)
                         }]);
                         setSelectedElementId('');
                         setCustomRate('');
+                        setElementQuantity('1');
                       }
                     }
                   }}
@@ -553,6 +581,29 @@ export default function ClientsScreen() {
                         <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
                           ₹{element.customRate}/sq.ft
                         </Text>
+                      </View>
+                      <View style={{ alignItems: 'center', marginRight: 8 }}>
+                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10, marginBottom: 2 }}>QTY</Text>
+                        <TextInput
+                          value={String(element.quantity ?? 1)}
+                          onChangeText={(text) => {
+                            const updated = [...clientElements];
+                            updated[index] = { ...updated[index], quantity: Math.max(1, Number(text) || 1) };
+                            setClientElements(updated);
+                          }}
+                          keyboardType="number-pad"
+                          style={{
+                            width: 44,
+                            textAlign: 'center',
+                            backgroundColor: theme.colors.surface,
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            borderRadius: 6,
+                            paddingVertical: 4,
+                            color: theme.colors.text,
+                            fontSize: 13
+                          }}
+                        />
                       </View>
                       <TouchableOpacity
                         onPress={() => {

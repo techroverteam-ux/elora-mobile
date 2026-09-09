@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, Download, Users as UsersIcon, UserCheck, Shield, ChevronDown } from 'lucide-react-native';
+import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff, Download, Users as UsersIcon, UserCheck, Shield, ChevronDown, Upload, FileSpreadsheet, Building2, Info } from 'lucide-react-native';
+import { pick, types, isErrorWithCode, errorCodes } from '@react-native-documents/picker';
 import { useTheme } from '../../context/ThemeContext';
 import { userService } from '../../services/userService';
 import { roleService } from '../../services/roleService';
@@ -11,7 +12,9 @@ import { User, Role } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
 
-export default function UsersScreen() {
+type PickedFile = { uri: string; name: string; type: string };
+
+export default function UsersScreen({ navigation }: { navigation?: { navigate: (screen: string, params?: any) => void } } = {}) {
   const { theme } = useTheme();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -34,6 +37,20 @@ export default function UsersScreen() {
     roles: [] as string[],
     isActive: true,
   });
+
+  // Bulk Excel upload of users (matches elora-web's POST /users/upload flow)
+  const [bulkUploadModalVisible, setBulkUploadModalVisible] = useState(false);
+  const [bulkUploadFiles, setBulkUploadFiles] = useState<PickedFile[]>([]);
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [uploadStats, setUploadStats] = useState<any>(null);
+
+  // Bulk-assign stores to a user via Excel (matches web's POST /users/:id/bulk-assign-stores)
+  const [bulkAssignModalVisible, setBulkAssignModalVisible] = useState(false);
+  const [bulkAssignTarget, setBulkAssignTarget] = useState<User | null>(null);
+  const [bulkAssignFiles, setBulkAssignFiles] = useState<PickedFile[]>([]);
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
+  const [bulkAssignStats, setBulkAssignStats] = useState<any>(null);
 
   useEffect(() => {
     fetchRoles();
@@ -190,6 +207,110 @@ export default function UsersScreen() {
     }));
   };
 
+  // Pick one or more .xlsx/.xls files from the device. Returns [] (silently) if the
+  // user cancels the picker.
+  const pickExcelFiles = async (): Promise<PickedFile[]> => {
+    try {
+      const results = await pick({ type: [types.xlsx, types.xls], allowMultiSelection: true });
+      return results.map(r => ({
+        uri: r.uri,
+        name: r.name || 'upload.xlsx',
+        type: r.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }));
+    } catch (error) {
+      if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) {
+        return [];
+      }
+      Toast.show({ type: 'error', text1: 'Failed to pick file' });
+      return [];
+    }
+  };
+
+  const openBulkUploadModal = () => {
+    setBulkUploadFiles([]);
+    setUploadStats(null);
+    setBulkUploadModalVisible(true);
+  };
+
+  const handleDownloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
+    try {
+      const blob = await userService.getTemplate();
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: 'Users_Upload_Template.xlsx',
+      });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Failed to download template' });
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  };
+
+  const handleAddBulkUploadFiles = async () => {
+    const picked = await pickExcelFiles();
+    if (picked.length > 0) {
+      setBulkUploadFiles(prev => [...prev, ...picked]);
+    }
+  };
+
+  const removeBulkUploadFile = (index: number) => {
+    setBulkUploadFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkUpload = async () => {
+    if (bulkUploadFiles.length === 0) return;
+    setIsBulkUploading(true);
+    try {
+      const data = await userService.uploadBulk(bulkUploadFiles);
+      setUploadStats(data);
+      if (data?.errorCount > 0) {
+        Toast.show({ type: 'error', text1: `Upload rejected: ${data.errorCount} errors found` });
+      } else {
+        Toast.show({ type: 'success', text1: `${data?.successCount ?? 0} users uploaded successfully!` });
+        setBulkUploadFiles([]);
+        fetchUsers();
+      }
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Upload failed', text2: error?.response?.data?.message || 'Please try again' });
+    } finally {
+      setIsBulkUploading(false);
+    }
+  };
+
+  const openBulkAssignModal = (user: User) => {
+    setBulkAssignTarget(user);
+    setBulkAssignFiles([]);
+    setBulkAssignStats(null);
+    setBulkAssignModalVisible(true);
+  };
+
+  const handleAddBulkAssignFiles = async () => {
+    const picked = await pickExcelFiles();
+    if (picked.length > 0) {
+      setBulkAssignFiles(prev => [...prev, ...picked]);
+    }
+  };
+
+  const removeBulkAssignFile = (index: number) => {
+    setBulkAssignFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkAssignTarget || bulkAssignFiles.length === 0) return;
+    setIsBulkAssigning(true);
+    try {
+      const data = await userService.bulkAssignStores(bulkAssignTarget._id, bulkAssignFiles);
+      setBulkAssignStats(data);
+      Toast.show({ type: 'success', text1: `${data?.successCount ?? 0} stores assigned to ${bulkAssignTarget.name}` });
+      setBulkAssignFiles([]);
+    } catch (error: any) {
+      Toast.show({ type: 'error', text1: 'Assignment failed', text2: error?.response?.data?.message || 'Please try again' });
+    } finally {
+      setIsBulkAssigning(false);
+    }
+  };
+
   const renderUser = ({ item }: { item: User }) => (
     <View style={{ backgroundColor: theme.colors.surface, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -223,8 +344,14 @@ export default function UsersScreen() {
       </View>
       
       <View style={{ flexDirection: 'row', gap: 8 }}>
+        <TouchableOpacity onPress={() => navigation?.navigate?.('UserDetail', { userId: item._id })} style={{ backgroundColor: theme.colors.primary + '20', padding: 10, borderRadius: 8 }}>
+          <Eye size={16} color={theme.colors.primary} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => toggleStatus(item)} style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8 }}>
           <UserCheck size={16} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => openBulkAssignModal(item)} style={{ backgroundColor: '#8B5CF620', padding: 10, borderRadius: 8 }}>
+          <Building2 size={16} color="#8B5CF6" />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleEdit(item)} style={{ flex: 1, backgroundColor: '#F59E0B20', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
           <Edit2 size={16} color="#F59E0B" />
@@ -262,6 +389,9 @@ export default function UsersScreen() {
               variant="success"
               disabled={isExporting}
             />
+            <TouchableOpacity onPress={openBulkUploadModal} style={{ backgroundColor: '#3B82F6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, justifyContent: 'center' }}>
+              <Upload size={16} color="#FFF" />
+            </TouchableOpacity>
             <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
               <Plus size={16} color="#FFF" />
             </TouchableOpacity>
@@ -457,6 +587,197 @@ export default function UsersScreen() {
                 <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Bulk Excel Upload Modal (matches web's Users bulk-upload flow) */}
+      <Modal
+        visible={bulkUploadModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setBulkUploadModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Bulk Upload Users</Text>
+              <TouchableOpacity onPress={() => setBulkUploadModalVisible(false)}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {uploadStats ? (
+                <View style={{ gap: 12 }}>
+                  <View style={{
+                    padding: 16, borderRadius: 12,
+                    backgroundColor: uploadStats.errorCount === 0 ? '#10B98120' : '#EF444420',
+                  }}>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: uploadStats.errorCount === 0 ? '#10B981' : '#EF4444' }}>
+                      {uploadStats.errorCount === 0 ? 'Upload Successful!' : 'Upload Rejected'}
+                    </Text>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>
+                      Processed: {uploadStats.totalProcessed ?? 0} | Valid: {uploadStats.successCount ?? 0} | Errors: {uploadStats.errorCount ?? 0}
+                    </Text>
+                    {uploadStats.errorCount > 0 && (
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 6 }}>
+                        Fix all errors and re-upload the file.
+                      </Text>
+                    )}
+                  </View>
+                  {uploadStats.errors?.length > 0 && (
+                    <View style={{ gap: 4 }}>
+                      {uploadStats.errors.slice(0, 20).map((e: any, i: number) => (
+                        <Text key={i} style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                          • {e.error}{e.row ? ` (Row ${e.row})` : ''}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => { setBulkUploadModalVisible(false); setUploadStats(null); }}
+                    style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 8 }}
+                  >
+                    <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  <TouchableOpacity
+                    onPress={handleDownloadTemplate}
+                    disabled={isDownloadingTemplate}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#10B98120', padding: 14, borderRadius: 8 }}
+                  >
+                    {isDownloadingTemplate ? <ActivityIndicator size="small" color="#10B981" /> : <Download size={18} color="#10B981" />}
+                    <Text style={{ color: '#10B981', fontWeight: '600' }}>Download Template</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleAddBulkUploadFiles}
+                    style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.border, borderRadius: 8, padding: 20, alignItems: 'center', gap: 8 }}
+                  >
+                    <FileSpreadsheet size={28} color={theme.colors.textSecondary} />
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Tap to select Excel file(s)</Text>
+                  </TouchableOpacity>
+
+                  {bulkUploadFiles.length > 0 && (
+                    <View style={{ gap: 8 }}>
+                      {bulkUploadFiles.map((file, i) => (
+                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                          <FileSpreadsheet size={16} color={theme.colors.primary} />
+                          <Text style={{ flex: 1, marginLeft: 8, color: theme.colors.text, fontSize: 13 }} numberOfLines={1}>{file.name}</Text>
+                          <TouchableOpacity onPress={() => removeBulkUploadFile(i)}>
+                            <X size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={handleBulkUpload}
+                    disabled={isBulkUploading || bulkUploadFiles.length === 0}
+                    style={{
+                      backgroundColor: bulkUploadFiles.length === 0 ? theme.colors.border : theme.colors.primary,
+                      padding: 14, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+                    }}
+                  >
+                    {isBulkUploading ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Upload</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Bulk Assign Stores Modal (matches web's per-user "Bulk Assign Stores" Excel flow) */}
+      <Modal
+        visible={bulkAssignModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setBulkAssignModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Bulk Assign Stores</Text>
+              <TouchableOpacity onPress={() => setBulkAssignModalVisible(false)}>
+                <X size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginBottom: 16 }}>to {bulkAssignTarget?.name}</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {bulkAssignStats ? (
+                <View style={{ gap: 12 }}>
+                  <View style={{ padding: 16, borderRadius: 12, alignItems: 'center', backgroundColor: (bulkAssignStats.errors?.length || 0) === 0 ? '#10B98120' : '#F59E0B20' }}>
+                    <Text style={{ fontSize: 28, fontWeight: 'bold', color: (bulkAssignStats.errors?.length || 0) === 0 ? '#10B981' : '#F59E0B' }}>
+                      {bulkAssignStats.successCount ?? 0} / {bulkAssignStats.totalProcessed ?? 0}
+                    </Text>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 4 }}>stores assigned</Text>
+                  </View>
+                  {bulkAssignStats.errors?.length > 0 && (
+                    <View style={{ gap: 4 }}>
+                      {bulkAssignStats.errors.slice(0, 20).map((e: any, i: number) => (
+                        <Text key={i} style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
+                          • {e.error}{e.row ? ` (Row ${e.row})` : ''}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+                  <TouchableOpacity
+                    onPress={() => { setBulkAssignModalVisible(false); setBulkAssignStats(null); }}
+                    style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 8 }}
+                  >
+                    <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#3B82F620', padding: 10, borderRadius: 8 }}>
+                    <Info size={14} color="#3B82F6" style={{ marginTop: 2 }} />
+                    <Text style={{ flex: 1, color: theme.colors.textSecondary, fontSize: 12 }}>
+                      Upload an Excel file listing store/dealer codes to assign to this installer or recce user.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleAddBulkAssignFiles}
+                    style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.border, borderRadius: 8, padding: 20, alignItems: 'center', gap: 8 }}
+                  >
+                    <FileSpreadsheet size={28} color={theme.colors.textSecondary} />
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600' }}>Tap to select Excel file(s)</Text>
+                  </TouchableOpacity>
+
+                  {bulkAssignFiles.length > 0 && (
+                    <View style={{ gap: 8 }}>
+                      {bulkAssignFiles.map((file, i) => (
+                        <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
+                          <FileSpreadsheet size={16} color={theme.colors.primary} />
+                          <Text style={{ flex: 1, marginLeft: 8, color: theme.colors.text, fontSize: 13 }} numberOfLines={1}>{file.name}</Text>
+                          <TouchableOpacity onPress={() => removeBulkAssignFile(i)}>
+                            <X size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={handleBulkAssign}
+                    disabled={isBulkAssigning || bulkAssignFiles.length === 0}
+                    style={{
+                      backgroundColor: bulkAssignFiles.length === 0 ? theme.colors.border : theme.colors.primary,
+                      padding: 14, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center',
+                    }}
+                  >
+                    {isBulkAssigning ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Assign Stores</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>

@@ -21,6 +21,21 @@ export const elementService = {
     }
   },
 
+  // Unpaginated — returns the full element catalog in one call (same endpoint elora-web uses
+  // when populating an element picker, e.g. Client Management's "link element to client" flow).
+  // Prefer this over getAll() for any picker that needs the complete list, since getAll() is
+  // paginated and silently truncates past its `limit`.
+  getAllUnpaginated: async () => {
+    try {
+      const response = await api.get('/elements/all');
+      return response.data;
+    } catch (error: any) {
+      console.error('Element service getAllUnpaginated error:', error);
+      console.error('Error response:', error.response?.data);
+      throw error;
+    }
+  },
+
   create: async (elementData: any) => {
     try {
       console.log('Creating element with data:', elementData);

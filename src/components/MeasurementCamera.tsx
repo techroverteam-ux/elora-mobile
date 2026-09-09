@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, Dimensions, Alert, PermissionsAndroid, Platform, Image, PanResponder, Linking } from 'react-native';
-import { Camera, X, Capture, RotateCcw, Check, Edit3, Trash2 } from 'lucide-react-native';
+import { Camera, X, Capture, RotateCcw, Check, Edit3, Trash2, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { permissionService } from '../services/permissionService';
 import { cameraDetectionService, CameraOption } from '../services/cameraDetectionService';
 import Svg, { Line, Text as SvgText, G, Rect, Path } from 'react-native-svg';
-import { launchCamera, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
 import ViewShot from 'react-native-view-shot';
 import LocationOverlay from './LocationOverlay';
 import { imageLocationOverlay, LocationOverlayData, LocationOverlayConfig } from '../services/imageLocationOverlay';
@@ -422,6 +422,99 @@ export default function MeasurementCamera({
     } catch (error) {
       setIsCapturing(false);
       Alert.alert('Camera Error', 'Failed to open camera. Please ensure you are using a real device with camera access enabled.');
+    }
+  };
+
+  const triggerGalleryPick = async () => {
+    if (isCapturing) return;
+
+    setIsCapturing(true);
+
+    try {
+      // Check gallery permission first
+      const hasPermission = await permissionService.checkGalleryPermission();
+
+      if (!hasPermission) {
+        const granted = await permissionService.requestGalleryPermission();
+        if (!granted) {
+          Alert.alert(
+            'Photo Library Permission Required',
+            'Access to your photos is needed to upload an image. Please enable photo library access in your device settings.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('app-settings:');
+                } else {
+                  Linking.openSettings();
+                }
+              }}
+            ]
+          );
+          setIsCapturing(false);
+          return;
+        }
+      }
+
+      const options = {
+        mediaType: 'photo' as MediaType,
+        includeBase64: false,
+        maxHeight: 2000,
+        maxWidth: 2000,
+        quality: 0.8,
+        selectionLimit: 1,
+      };
+
+      launchImageLibrary(options, async (response: ImagePickerResponse) => {
+        setIsCapturing(false);
+
+        if (response.didCancel) {
+          // Re-show measurement guide when picking is cancelled
+          if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
+            setShowMeasurement(true);
+          }
+          return;
+        }
+
+        if (response.errorCode) {
+          let errorMessage = 'Could not open your photo library';
+          switch (response.errorCode) {
+            case 'permission':
+              errorMessage = 'Photo library permission denied. Please enable it in settings.';
+              permissionService.showStoragePermissionDeniedAlert();
+              return;
+            default:
+              errorMessage = `Photo library error: ${response.errorMessage || response.errorCode}`;
+          }
+
+          Alert.alert('Photo Library Error', errorMessage);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          const photoUri = response.assets[0].uri;
+          if (photoUri) {
+            setCapturedPhoto(photoUri);
+            capturedPhotoRef.current = photoUri;
+            setShowMeasurement(false);
+          } else {
+            // Re-show measurement guide on failure
+            if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
+              setShowMeasurement(true);
+            }
+            Alert.alert('Error', 'Failed to load the selected photo. Please try again.');
+          }
+        } else {
+          // Re-show measurement guide on failure
+          if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
+            setShowMeasurement(true);
+          }
+          Alert.alert('Error', 'No photo was selected. Please try again.');
+        }
+      });
+    } catch (error) {
+      setIsCapturing(false);
+      Alert.alert('Photo Library Error', 'Failed to open your photo library. Please try again.');
     }
   };
 
@@ -980,12 +1073,12 @@ export default function MeasurementCamera({
                 <RotateCcw size={24} color="#FFFFFF" />
               </TouchableOpacity>
               
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleCapture}
                 disabled={isCapturing}
-                style={{ 
-                  backgroundColor: isCapturing ? '#059669' : '#10B981', 
-                  padding: 20, 
+                style={{
+                  backgroundColor: isCapturing ? '#059669' : '#10B981',
+                  padding: 20,
                   borderRadius: 40,
                   borderWidth: 4,
                   borderColor: '#FFFFFF',
@@ -994,8 +1087,21 @@ export default function MeasurementCamera({
               >
                 <Camera size={32} color="#FFFFFF" />
               </TouchableOpacity>
-              
-              <View style={{ width: 56 }} />
+
+              <TouchableOpacity
+                onPress={triggerGalleryPick}
+                disabled={isCapturing}
+                style={{
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  padding: 16,
+                  borderRadius: 30,
+                  opacity: isCapturing ? 0.5 : 1,
+                  borderWidth: 2,
+                  borderColor: 'rgba(255,255,255,0.3)'
+                }}
+              >
+                <ImagePlus size={24} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>

@@ -263,6 +263,89 @@ export const permissionService = {
     return true;
   },
 
+  // Request gallery / photo-library permission (read-only — does not also ask for camera)
+  requestGalleryPermission: async (): Promise<boolean> => {
+    if (shouldBypassPermission('storage')) {
+      console.log('Gallery permission request BYPASSED for testing');
+      return true;
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        // First check if permission is already granted
+        const hasPermission = await permissionService.checkGalleryPermission();
+        if (hasPermission) {
+          return true;
+        }
+
+        const androidVersion = Platform.Version;
+        console.log(`Requesting gallery permission — Android version: ${androidVersion}`);
+
+        // Android 13+ (API 33+) uses the scoped media-images permission
+        if (androidVersion >= 33) {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+          );
+
+          if (granted === 'never_ask_again') {
+            permissionService.handleNeverAskAgainState('storage');
+            return false;
+          }
+
+          return granted === PermissionsAndroid.RESULTS.GRANTED;
+        }
+
+        // Android 12 and below use the legacy read-storage permission
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        );
+
+        if (granted === 'never_ask_again') {
+          permissionService.handleNeverAskAgainState('storage');
+          return false;
+        }
+
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Gallery permission error:', err);
+        return false;
+      }
+    }
+    // iOS: the system shows its own photo-library prompt the first time the
+    // picker is launched, driven by NSPhotoLibraryUsageDescription in Info.plist
+    return true;
+  },
+
+  // Check gallery / photo-library permission
+  checkGalleryPermission: async (): Promise<boolean> => {
+    if (shouldBypassPermission('storage')) {
+      if (PERMISSION_CONFIG.VERBOSE_LOGGING) {
+        console.log('Gallery permission check BYPASSED for testing');
+      }
+      return true;
+    }
+
+    if (Platform.OS === 'android') {
+      try {
+        const androidVersion = Platform.Version;
+
+        if (androidVersion >= 33) {
+          return await PermissionsAndroid.check(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+          );
+        }
+
+        return await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        );
+      } catch (err) {
+        console.warn('Gallery permission check error:', err);
+        return false;
+      }
+    }
+    return true;
+  },
+
   // Request location permission with simple approach
   requestLocationPermission: async (): Promise<boolean> => {
     if (shouldBypassPermission('location')) {
