@@ -1536,7 +1536,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                       </TouchableOpacity>
                       {showClientDropdown && (
                         <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 150 }}>
-                          <ScrollView>
+                          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
                             {clients.map((client) => (
                               <TouchableOpacity
                                 key={client._id}

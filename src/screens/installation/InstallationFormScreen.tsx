@@ -29,6 +29,10 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const [currentPhotoType, setCurrentPhotoType] = useState<'before' | 'after' | 'closeup'>('before');
   const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: {before?: string, after?: string, closeup?: string}}>({});
+  // Real mime type/extension for each installationPhotos entry (camera photos are always JPEG after
+  // ViewShot recomposition, but gallery-picked "clean" photos like these before/after/closeup shots
+  // may be PNG/HEIC/WEBP/etc, so we must not hardcode image/jpeg when uploading them)
+  const [installationPhotoMeta, setInstallationPhotoMeta] = useState<{[key: number]: {before?: {mimeType: string, fileExtension: string}, after?: {mimeType: string, fileExtension: string}, closeup?: {mimeType: string, fileExtension: string}}}>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalConfig, setModalConfig] = useState({
@@ -133,15 +137,19 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
               for (let i = 0; i < reccePhotosCount; i++) {
                 const boardPhotos = installationPhotos[i] || {};
+                const boardPhotoMeta = installationPhotoMeta[i] || {};
                 const approvedReccePhoto = approvedReccePhotos[i];
-                
+
                 // Add each photo type for this approved board
                 Object.entries(boardPhotos).forEach(([photoType, photoUri]) => {
                   if (photoUri) {
+                    const meta = (boardPhotoMeta as any)[photoType];
+                    const mimeType = meta?.mimeType || 'image/jpeg';
+                    const fileExtension = meta?.fileExtension || 'jpg';
                     formData.append(`installationPhoto${fileIndex}`, {
                       uri: photoUri,
-                      type: 'image/jpeg',
-                      name: `installation_board${i + 1}_${photoType}.jpg`,
+                      type: mimeType,
+                      name: `installation_board${i + 1}_${photoType}.${fileExtension}`,
                     } as any);
                     
                     // Find original index safely
@@ -202,12 +210,25 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     };
     photoType?: string;
     capturedAt?: string;
+    mimeType?: string;
+    fileExtension?: string;
+    source?: 'camera' | 'gallery';
   }) => {
     setInstallationPhotos(prev => ({
       ...prev,
       [currentPhotoIndex]: {
         ...prev[currentPhotoIndex],
         [currentPhotoType]: photoUri
+      }
+    }));
+    setInstallationPhotoMeta(prev => ({
+      ...prev,
+      [currentPhotoIndex]: {
+        ...prev[currentPhotoIndex],
+        [currentPhotoType]: {
+          mimeType: metadata?.mimeType || 'image/jpeg',
+          fileExtension: metadata?.fileExtension || 'jpg',
+        }
       }
     }));
     setCameraVisible(false);

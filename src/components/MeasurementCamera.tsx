@@ -24,6 +24,9 @@ interface MeasurementCameraProps {
     photoType?: string;
     capturedAt?: string;
     locationData?: LocationOverlayData;
+    mimeType?: string;
+    fileExtension?: string;
+    source?: 'camera' | 'gallery';
   }) => void;
   width: string;
   height: string;
@@ -34,6 +37,29 @@ interface MeasurementCameraProps {
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Maps a picker-reported mime type to a safe file extension for the upload
+// FormData. Falls back to jpg for anything unrecognized/undefined, which
+// matches the previous (hardcoded) behavior for camera captures.
+const extensionForMimeType = (mimeType?: string): string => {
+  switch ((mimeType || '').toLowerCase()) {
+    case 'image/png':
+      return 'png';
+    case 'image/heic':
+      return 'heic';
+    case 'image/heif':
+      return 'heif';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    case 'image/jpg':
+    case 'image/jpeg':
+      return 'jpg';
+    default:
+      return 'jpg';
+  }
+};
 
 export default function MeasurementCamera({ 
   visible, 
@@ -59,6 +85,13 @@ export default function MeasurementCamera({
   // Refs so PanResponder always reads latest values without stale closure
   const isDrawingModeRef = useRef(false);
   const capturedPhotoRef = useRef<string | null>(null);
+  // The real mime type / source of the currently held photo, so that a raw
+  // (non-recompressed) gallery pick — which may be PNG/HEIC/WEBP rather than
+  // JPEG — gets uploaded with an accurate type instead of always being
+  // mislabeled as image/jpeg (which is only guaranteed true for a fresh
+  // camera capture or a photo that gets re-rendered through ViewShot below).
+  const pickedMimeTypeRef = useRef<string | undefined>(undefined);
+  const pickedSourceRef = useRef<'camera' | 'gallery'>('camera');
   const brushSizeRef = useRef(4);
   const brushColorRef = useRef('#00C853');
   const currentPathRef = useRef('');
@@ -401,6 +434,8 @@ export default function MeasurementCamera({
         if (response.assets && response.assets[0]) {
           const photoUri = response.assets[0].uri;
           if (photoUri) {
+            pickedMimeTypeRef.current = response.assets[0].type;
+            pickedSourceRef.current = 'camera';
             setCapturedPhoto(photoUri);
             capturedPhotoRef.current = photoUri;
             setShowMeasurement(false);
@@ -494,6 +529,11 @@ export default function MeasurementCamera({
         if (response.assets && response.assets[0]) {
           const photoUri = response.assets[0].uri;
           if (photoUri) {
+            // Gallery picks aren't guaranteed to be JPEG (could be PNG, HEIC,
+            // WEBP, etc.) — remember the real type so it isn't mislabeled at
+            // upload time. See handleConfirm() for how this is used.
+            pickedMimeTypeRef.current = response.assets[0].type;
+            pickedSourceRef.current = 'gallery';
             setCapturedPhoto(photoUri);
             capturedPhotoRef.current = photoUri;
             setShowMeasurement(false);
@@ -531,6 +571,12 @@ export default function MeasurementCamera({
           (locationOverlayData && locationConfig) ||
           hasValidMeasurements;
 
+        // Whether the final bytes going to onCapture are a fresh ViewShot
+        // render (always real JPEG) or the original picked/captured file
+        // passed through unmodified (only reliably JPEG for a device camera
+        // capture — a gallery pick can be PNG/HEIC/WEBP/etc).
+        let wasRecomposed = false;
+
         if (shouldCaptureView) {
           try {
             const combinedImageUri = await viewShotRef.current?.capture?.({
@@ -542,6 +588,7 @@ export default function MeasurementCamera({
             });
             if (combinedImageUri) {
               finalImageUri = combinedImageUri;
+              wasRecomposed = true;
               if (isDrawingMode && drawingPaths.length > 0) hasDrawings = true;
               if (hasValidMeasurements) {
                 measurements = { width: measurementWidthInches, height: measurementHeightInches, unit: 'inches' };
@@ -551,14 +598,22 @@ export default function MeasurementCamera({
             finalImageUri = capturedPhoto;
           }
         }
-        
+
+        // ViewShot always outputs real JPEG regardless of source; a raw
+        // pass-through keeps whatever type the camera/gallery actually gave us.
+        const mimeType = wasRecomposed ? 'image/jpeg' : (pickedMimeTypeRef.current || 'image/jpeg');
+        const fileExtension = wasRecomposed ? 'jpg' : extensionForMimeType(pickedMimeTypeRef.current);
+
         // Pass the image with metadata
         onCapture(finalImageUri, {
           hasDrawings,
           measurements,
           photoType,
           capturedAt: new Date().toISOString(),
-          locationData: locationOverlayData || undefined
+          locationData: locationOverlayData || undefined,
+          mimeType,
+          fileExtension,
+          source: pickedSourceRef.current
         });
         
         // Reset state
@@ -584,7 +639,8 @@ export default function MeasurementCamera({
         setMapImageUri('');
         onClose();
       } catch (error) {
-        // Fallback to original photo
+        // Fallback to original photo — this is always the raw picked/captured
+        // file (no ViewShot recompose happened), so use its real tracked type.
         onCapture(capturedPhoto, {
           photoType,
           capturedAt: new Date().toISOString(),
@@ -593,7 +649,10 @@ export default function MeasurementCamera({
             width: measurementWidthInches,
             height: measurementHeightInches,
             unit: 'inches'
-          } : undefined
+          } : undefined,
+          mimeType: pickedMimeTypeRef.current || 'image/jpeg',
+          fileExtension: extensionForMimeType(pickedMimeTypeRef.current),
+          source: pickedSourceRef.current
         });
         setCapturedPhoto(null);
         setShowMeasurement(false);
@@ -613,6 +672,7 @@ export default function MeasurementCamera({
   const handleRetake = () => {
     setCapturedPhoto(null);
     capturedPhotoRef.current = null;
+    pickedMimeTypeRef.current = undefined;
     setIsDrawingMode(false);
     isDrawingModeRef.current = false;
     setDrawingPaths([]);

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle, XCircle, Clock, X, User, Calendar, Wrench } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -31,9 +32,21 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchStoreDetails();
-  }, []);
+  // Re-fetch every time this screen is focused — both on first mount, and
+  // (crucially) every time it regains focus, e.g. coming back from the Recce
+  // form (or Installation form) after submitting photos. React Navigation
+  // keeps this screen mounted underneath while those forms are open, so a
+  // mount-only effect never re-runs and this screen kept showing the
+  // pre-submission store data (no recce photos at all) even though the
+  // upload itself succeeded. This matches the reported symptom exactly: both
+  // initial photos and recce photos "not showing back" after a recce is
+  // completed, regardless of whether the photo came from the camera or
+  // gallery — it was never actually a photo/upload problem.
+  useFocusEffect(
+    useCallback(() => {
+      fetchStoreDetails();
+    }, [storeId])
+  );
 
   const fetchStoreDetails = async () => {
     try {

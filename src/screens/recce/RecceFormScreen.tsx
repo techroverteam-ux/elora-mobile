@@ -25,11 +25,18 @@ interface ReccePhoto {
   file?: File | null;
   photo: string | null;
   localPhoto?: string | null; // For local preview before upload
+  localPhotoMimeType?: string; // Real mime type of localPhoto (camera or gallery), for correct upload
+  localPhotoFileExtension?: string; // Matching file extension for localPhoto
   width: string;
   height: string;
   unit: string;
   elementId: string;
   elementName: string;
+}
+
+interface LocalPhotoMeta {
+  mimeType: string;
+  fileExtension: string;
 }
 
 export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
@@ -54,6 +61,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const [notes, setNotes] = useState('');
   const [initialPhotos, setInitialPhotos] = useState<string[]>([]);
   const [localInitialPhotos, setLocalInitialPhotos] = useState<string[]>([]); // Local storage for immediate preview
+  const [localInitialPhotoMeta, setLocalInitialPhotoMeta] = useState<LocalPhotoMeta[]>([]); // Real mime type/extension per localInitialPhotos entry, for correct upload
   const [reccePhotos, setReccePhotos] = useState<ReccePhoto[]>([{
     file: null,
     photo: null,
@@ -222,10 +230,13 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       const newInitialPhotos = localInitialPhotos; // Use local photos for upload
       submitFormData.append('initialPhotosCount', newInitialPhotos.length.toString());
       newInitialPhotos.forEach((photoUri, index) => {
+        const meta = localInitialPhotoMeta[index];
+        const mimeType = meta?.mimeType || 'image/jpeg';
+        const fileExtension = meta?.fileExtension || 'jpg';
         submitFormData.append(`initialPhoto${index}`, {
           uri: photoUri,
-          type: 'image/jpeg',
-          name: `initial_${index}.jpg`,
+          type: mimeType,
+          name: `initial_${index}.${fileExtension}`,
         } as any);
       });
       
@@ -242,10 +253,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       let photoIndex = 0;
       reccePhotos.forEach((rp) => {
         if (rp.localPhoto) {
+          const mimeType = rp.localPhotoMimeType || 'image/jpeg';
+          const fileExtension = rp.localPhotoFileExtension || 'jpg';
           submitFormData.append(`reccePhoto${photoIndex}`, {
             uri: rp.localPhoto,
-            type: 'image/jpeg',
-            name: `recce_${photoIndex}.jpg`,
+            type: mimeType,
+            name: `recce_${photoIndex}.${fileExtension}`,
           } as any);
           photoIndex++;
         }
@@ -324,14 +337,19 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     photoType?: string;
     capturedAt?: string;
     locationData?: any;
+    mimeType?: string;
+    fileExtension?: string;
+    source?: 'camera' | 'gallery';
   }) => {
     if (currentRecceIndex !== null) {
       // Recce photo - store locally for immediate preview
       const newReccePhotos = [...reccePhotos];
       newReccePhotos[currentRecceIndex].localPhoto = photoUri; // Store in local for preview
+      newReccePhotos[currentRecceIndex].localPhotoMimeType = metadata?.mimeType || 'image/jpeg';
+      newReccePhotos[currentRecceIndex].localPhotoFileExtension = metadata?.fileExtension || 'jpg';
       newReccePhotos[currentRecceIndex].photo = null; // Clear server photo
       newReccePhotos[currentRecceIndex].file = null; // New photo, not a file
-      
+
       // If measurements were drawn, update the measurements
       if (metadata?.hasDrawings && metadata?.measurements) {
         newReccePhotos[currentRecceIndex].width = metadata.measurements.width.toString();
@@ -353,6 +371,10 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     } else {
       // Initial photo - store locally for immediate preview
       setLocalInitialPhotos([...localInitialPhotos, photoUri]);
+      setLocalInitialPhotoMeta([...localInitialPhotoMeta, {
+        mimeType: metadata?.mimeType || 'image/jpeg',
+        fileExtension: metadata?.fileExtension || 'jpg',
+      }]);
     }
     setCameraVisible(false);
   };
@@ -607,6 +629,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                   onPress={() => {
                     const newPhotos = localInitialPhotos.filter((_, i) => i !== index);
                     setLocalInitialPhotos(newPhotos);
+                    setLocalInitialPhotoMeta(localInitialPhotoMeta.filter((_, i) => i !== index));
                   }}
                   style={{
                     position: 'absolute',

@@ -211,15 +211,14 @@ class LocationService {
       throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'No results'}`);
     }
 
-    // Prefer the most precise result: establishment > premise > street_address > route
+    // Prefer the most precise result for the display name / formatted address:
+    // establishment > premise > street_address > route
     const priority = ['establishment', 'point_of_interest', 'premise', 'street_address', 'route'];
-    const result =
+    const bestResult =
       priority.reduce<any>((best, type) => {
         if (best) return best;
         return data.results.find((r: any) => r.types?.includes(type)) || null;
       }, null) || data.results[0];
-
-    const components = result.address_components || [];
 
     const addressComponents: AddressComponents = {
       placeName: '',
@@ -228,7 +227,7 @@ class LocationService {
       state: '',
       country: '',
       postalCode: '',
-      formattedAddress: result.formatted_address || '',
+      formattedAddress: bestResult.formatted_address || '',
     };
 
     // Extract place/establishment name from the first result that has it
@@ -239,22 +238,37 @@ class LocationService {
       addressComponents.placeName = establishmentResult.address_components?.[0]?.long_name || '';
     }
 
-    components.forEach((component: any) => {
-      const types = component.types || [];
-      if (types.includes('street_number') || types.includes('route')) {
-        addressComponents.street = addressComponents.street
-          ? `${addressComponents.street} ${component.long_name}`
-          : component.long_name;
-      } else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-        addressComponents.city = component.long_name;
-      } else if (types.includes('administrative_area_level_1')) {
-        addressComponents.state = component.long_name;
-      } else if (types.includes('country')) {
-        addressComponents.country = component.long_name;
-      } else if (types.includes('postal_code')) {
-        addressComponents.postalCode = component.long_name;
-      }
+    // Google splits one coordinate's address hierarchy across SEPARATE result
+    // entries (a precise street-level result, a plain route, a locality, an
+    // admin-area result, etc.) rather than always bundling everything into one
+    // result's address_components. Reading components from only the single
+    // "best" result above (picked by type priority) can silently drop the
+    // street: an `establishment`/`point_of_interest` result often carries the
+    // political hierarchy (district, state) but no `street_number`/`route` of
+    // its own, even though a different result in the very same response does.
+    // So scan every result's components instead, and keep the most specific
+    // value found for each field.
+    let streetNumber = '';
+    let route = '';
+    data.results.forEach((r: any) => {
+      (r.address_components || []).forEach((component: any) => {
+        const types = component.types || [];
+        if (types.includes('street_number') && !streetNumber) {
+          streetNumber = component.long_name;
+        } else if (types.includes('route') && !route) {
+          route = component.long_name;
+        } else if ((types.includes('locality') || types.includes('administrative_area_level_2')) && !addressComponents.city) {
+          addressComponents.city = component.long_name;
+        } else if (types.includes('administrative_area_level_1') && !addressComponents.state) {
+          addressComponents.state = component.long_name;
+        } else if (types.includes('country') && !addressComponents.country) {
+          addressComponents.country = component.long_name;
+        } else if (types.includes('postal_code') && !addressComponents.postalCode) {
+          addressComponents.postalCode = component.long_name;
+        }
+      });
     });
+    addressComponents.street = [streetNumber, route].filter(Boolean).join(' ');
 
     if (!addressComponents.formattedAddress) {
       addressComponents.formattedAddress = this.buildFormattedAddress(addressComponents);
