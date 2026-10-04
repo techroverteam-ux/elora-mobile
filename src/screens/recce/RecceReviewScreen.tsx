@@ -434,8 +434,8 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
                 >
                   <Image
                     source={{ uri: imageService.getFullImageUrl(photo) }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
+                    style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                    resizeMode="contain"
                     onError={() => {}}
                     onLoad={() => {}}
                   />
@@ -490,8 +490,8 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
                 }}>
                   <Image
                     source={{ uri: imageService.getFullImageUrl(photo.photo) }}
-                    style={{ width: '100%', height: 200, borderRadius: 8, marginBottom: 12 }}
-                    resizeMode="cover"
+                    style={{ width: '100%', height: 220, borderRadius: 8, marginBottom: 12, backgroundColor: '#0F172A' }}
+                    resizeMode="contain"
                     onError={() => {}}
                     onLoad={() => {}}
                   />
@@ -698,7 +698,7 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
               This store doesn't have any recce photos submitted for review yet.
             </Text>
           </View>
-        )}}
+        )}
       </ScrollView>
 
       {/* Image Viewer Modal */}

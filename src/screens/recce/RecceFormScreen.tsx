@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Modal } from 'react-native';
-import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw, Plus, Ruler } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Modal, Platform, AppState, AppStateStatus, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import { Camera, Upload, Save, X, MapPin, Navigation, RefreshCw, Plus, Ruler, CheckCircle, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -42,6 +44,9 @@ interface LocalPhotoMeta {
 export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const { theme } = useTheme();
   const { recceId, storeId } = route.params;
+  const targetId = storeId || recceId;
+  const draftKey = `@draft_recce_${targetId}`;
+
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -82,11 +87,126 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const [isResubmission, setIsResubmission] = useState(false);
   const [showElementSelector, setShowElementSelector] = useState<number | null>(null);
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // Refs for immediate flush-save on AppState change without stale state
+  const stateRef = useRef({
+    notes,
+    localInitialPhotos,
+    localInitialPhotoMeta,
+    reccePhotos,
+    formData,
+    currentLocation,
+  });
 
   useEffect(() => {
-    loadStoreData();
-    getCurrentLocationAndAddress();
-  }, []);
+    stateRef.current = {
+      notes,
+      localInitialPhotos,
+      localInitialPhotoMeta,
+      reccePhotos,
+      formData,
+      currentLocation,
+    };
+  }, [notes, localInitialPhotos, localInitialPhotoMeta, reccePhotos, formData, currentLocation]);
+
+  const saveDraftToStorage = async () => {
+    if (!targetId) return;
+    try {
+      const current = stateRef.current;
+      // Only save draft if user has entered data or captured photos
+      const hasWork =
+        current.notes.trim().length > 0 ||
+        current.localInitialPhotos.length > 0 ||
+        current.reccePhotos.some(rp => rp.localPhoto || rp.width || rp.height || rp.elementId);
+      
+      if (hasWork) {
+        const draft = {
+          ...current,
+          savedAt: Date.now(),
+        };
+        await AsyncStorage.setItem(draftKey, JSON.stringify(draft));
+      }
+    } catch (err) {
+      console.warn('Failed to save recce draft:', err);
+    }
+  };
+
+  // Restore draft and load store data on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const init = async () => {
+      await loadStoreData();
+      getCurrentLocationAndAddress();
+
+      // Check for saved draft
+      try {
+        const rawDraft = await AsyncStorage.getItem(draftKey);
+        if (rawDraft && isMounted) {
+          const draft = JSON.parse(rawDraft);
+          if (draft) {
+            if (draft.notes) setNotes(draft.notes);
+            if (Array.isArray(draft.localInitialPhotos) && draft.localInitialPhotos.length > 0) {
+              setLocalInitialPhotos(draft.localInitialPhotos);
+            }
+            if (Array.isArray(draft.localInitialPhotoMeta) && draft.localInitialPhotoMeta.length > 0) {
+              setLocalInitialPhotoMeta(draft.localInitialPhotoMeta);
+            }
+            if (Array.isArray(draft.reccePhotos) && draft.reccePhotos.length > 0) {
+              setReccePhotos(draft.reccePhotos);
+            }
+            if (draft.formData) {
+              setFormData(prev => ({
+                ...prev,
+                address: draft.formData.address || prev.address,
+                updatedAddress: draft.formData.updatedAddress || prev.updatedAddress,
+              }));
+            }
+            if (draft.currentLocation) {
+              setCurrentLocation(draft.currentLocation);
+            }
+            Toast.show({
+              type: 'info',
+              text1: 'Ongoing Work Restored',
+              text2: 'Your measurements and photos were restored intact.',
+              visibilityTime: 4000,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to restore draft:', err);
+      } finally {
+        if (isMounted) setDraftLoaded(true);
+      }
+    };
+
+    init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetId]);
+
+  // Auto-save draft on state change with debounce
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const timer = setTimeout(() => {
+      saveDraftToStorage();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [notes, localInitialPhotos, localInitialPhotoMeta, reccePhotos, formData, currentLocation, draftLoaded]);
+
+  // Flush-save draft immediately when phone call arrives, phone locks, or app is backgrounded
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'inactive' || nextState === 'background') {
+        saveDraftToStorage();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [targetId]);
 
   const loadStoreData = async () => {
     try {
@@ -95,8 +215,8 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       setStoreData(store);
       setFormData(prev => ({
         ...prev,
-        originalAddress: store.location?.address || store.address || '123 Main St, City, State 12345',
-        address: store.location?.address || store.address || '123 Main St, City, State 12345'
+        originalAddress: store.location?.address || store.address || '',
+        address: prev.address || store.location?.address || store.address || ''
       }));
       
       // Fetch client elements if clientId exists
@@ -123,7 +243,6 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
             imageService.getFullImageUrl(photo)
           );
           setInitialPhotos(existingInitialPhotos);
-          setLocalInitialPhotos([]); // Clear local photos when loading from server
         }
         
         // Load existing recce photos
@@ -142,11 +261,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         }
       }
     } catch (error) {
-      setFormData(prev => ({
-        ...prev,
-        originalAddress: '123 Main St, City, State 12345',
-        address: '123 Main St, City, State 12345'
-      }));
+      console.warn('Failed to load store data:', error);
     }
   };
 
@@ -159,17 +274,22 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       setCurrentLocation(location);
       setFormData(prev => ({
         ...prev,
-        updatedAddress: addressData.formattedAddress || ''
+        updatedAddress: addressData.formattedAddress || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`
       }));
-    } catch (error) {
-      // Location error - continue without location
+    } catch (error: any) {
+      console.warn('Failed to get GPS location:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'GPS Location',
+        text2: error?.message || 'Could not fetch current GPS location. Please check device location settings.'
+      });
     } finally {
       setLocationLoading(false);
     }
   };
 
   const useCurrentLocation = () => {
-    if (currentLocation) {
+    if (formData.updatedAddress) {
       setFormData(prev => ({
         ...prev,
         address: prev.updatedAddress
@@ -177,7 +297,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       Toast.show({
         type: 'success',
         text1: 'Address Updated',
-        text2: 'Using current location address'
+        text2: 'Using current GPS location address'
       });
     }
   };
@@ -226,10 +346,28 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       // Check if this is a resubmission
       const isResubmission = storeData?.recce?.submittedDate;
       
+      // Helper to ensure photo URI is a local file before submission
+      const ensureLocalFileUri = async (uri: string): Promise<string> => {
+        if (!uri) return uri;
+        if (Platform.OS === 'android' && uri.startsWith('content://')) {
+          try {
+            const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/upload_${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+            await ReactNativeBlobUtil.fs.cp(uri, destPath);
+            return `file://${destPath}`;
+          } catch (err) {
+            console.warn('Failed to convert content URI before upload:', err);
+            return uri;
+          }
+        }
+        return uri;
+      };
+
       // Add initial photos count and files
       const newInitialPhotos = localInitialPhotos; // Use local photos for upload
       submitFormData.append('initialPhotosCount', newInitialPhotos.length.toString());
-      newInitialPhotos.forEach((photoUri, index) => {
+      for (let index = 0; index < newInitialPhotos.length; index++) {
+        let photoUri = newInitialPhotos[index];
+        photoUri = await ensureLocalFileUri(photoUri);
         const meta = localInitialPhotoMeta[index];
         const mimeType = meta?.mimeType || 'image/jpeg';
         const fileExtension = meta?.fileExtension || 'jpg';
@@ -238,7 +376,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           type: mimeType,
           name: `initial_${index}.${fileExtension}`,
         } as any);
-      });
+      }
       
       // Add recce photos data and files - handle both new and existing photos
       const reccePhotosData = reccePhotos.map((rp) => ({
@@ -251,18 +389,19 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       
       // Add new photos (localPhoto) to FormData
       let photoIndex = 0;
-      reccePhotos.forEach((rp) => {
+      for (const rp of reccePhotos) {
         if (rp.localPhoto) {
+          const resolvedUri = await ensureLocalFileUri(rp.localPhoto);
           const mimeType = rp.localPhotoMimeType || 'image/jpeg';
           const fileExtension = rp.localPhotoFileExtension || 'jpg';
           submitFormData.append(`reccePhoto${photoIndex}`, {
-            uri: rp.localPhoto,
+            uri: resolvedUri,
             type: mimeType,
             name: `recce_${photoIndex}.${fileExtension}`,
           } as any);
           photoIndex++;
         }
-      });
+      }
       
       // For resubmission, send existing photos data
       if (isResubmission) {
@@ -283,8 +422,70 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         submitFormData.append('existingInitialPhotos', JSON.stringify(existingInitialPhotos));
       }
 
+      // Pre-check total upload size to guarantee staying under Vercel 4.5MB serverless limit
+      let totalUploadBytes = 0;
+      const allResolvedUris: string[] = [];
+      for (const uri of newInitialPhotos) {
+        if (uri) {
+          const resolved = await ensureLocalFileUri(uri);
+          allResolvedUris.push(resolved);
+        }
+      }
+      for (const rp of reccePhotos) {
+        if (rp.localPhoto) {
+          const resolved = await ensureLocalFileUri(rp.localPhoto);
+          allResolvedUris.push(resolved);
+        }
+      }
+
+      for (const uri of allResolvedUris) {
+        try {
+          const cleanPath = uri.replace('file://', '');
+          const stat = await ReactNativeBlobUtil.fs.stat(cleanPath);
+          totalUploadBytes += Number(stat.size) || 0;
+        } catch {
+          // ignore stat error
+        }
+      }
+
+      console.log('Total recce upload payload bytes:', totalUploadBytes);
+
+      if (totalUploadBytes > 4.2 * 1024 * 1024) {
+        Alert.alert(
+          'Payload Too Large (Server Limit 4.5MB)',
+          `The total size of the photos being submitted is ${(totalUploadBytes / (1024 * 1024)).toFixed(1)}MB, which exceeds the serverless limit of 4.5MB.\n\nThis occurs when high-resolution photos were restored from an older draft.\n\nWould you like to clear the draft photos so you can capture fresh, lightweight photos?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Clear Draft Photos',
+              style: 'destructive',
+              onPress: async () => {
+                await AsyncStorage.removeItem(draftKey);
+                setLocalInitialPhotos([]);
+                setLocalInitialPhotoMeta([]);
+                setReccePhotos(prev => prev.map(rp => ({ ...rp, localPhoto: null, file: null })));
+                Toast.show({
+                  type: 'info',
+                  text1: 'Draft Photos Cleared',
+                  text2: 'Please capture new optimized photos.'
+                });
+              }
+            }
+          ]
+        );
+        setLoading(false);
+        return;
+      }
+
       await storeService.submitRecce(storeId || recceId, submitFormData);
       
+      // Clear saved draft on successful submission
+      try {
+        await AsyncStorage.removeItem(draftKey);
+      } catch (err) {
+        // ignore
+      }
+
       // After successful upload, refresh data to get server URLs
       await loadStoreData();
       
@@ -296,11 +497,45 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       
       navigation.goBack();
     } catch (error: any) {
-      Toast.show({
-        type: 'error',
-        text1: 'Submission Failed',
-        text2: error.response?.data?.message || 'Failed to submit recce'
-      });
+      console.error('Submit error:', error);
+      console.error('Submit error response:', error.response?.data);
+      console.error('Submit error status:', error.response?.status);
+
+      if (error.response?.status === 413) {
+        Alert.alert(
+          '413: Request Entity Too Large',
+          'The server rejected the upload because total photo size exceeded the 4.5MB server limit (caused by older high-res draft photos).\n\nWould you like to clear the draft photos and take new optimized photos?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Clear Draft Photos',
+              style: 'destructive',
+              onPress: async () => {
+                await AsyncStorage.removeItem(draftKey);
+                setLocalInitialPhotos([]);
+                setLocalInitialPhotoMeta([]);
+                setReccePhotos(prev => prev.map(rp => ({ ...rp, localPhoto: null, file: null })));
+                Toast.show({
+                  type: 'info',
+                  text1: 'Draft Photos Cleared',
+                  text2: 'Please capture new lightweight photos.'
+                });
+              }
+            }
+          ]
+        );
+      } else {
+        const serverDetails =
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to submit recce';
+        Toast.show({
+          type: 'error',
+          text1: 'Submission Failed',
+          text2: typeof serverDetails === 'string' ? serverDetails : JSON.stringify(serverDetails)
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -412,6 +647,45 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     setReccePhotos(newReccePhotos);
   };
 
+  const handleClearDraft = () => {
+    Alert.alert(
+      'Clear Saved Draft?',
+      'This will remove all temporarily saved draft photos and measurements for this store so you can start fresh. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear Draft',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(draftKey);
+              setLocalInitialPhotos([]);
+              setLocalInitialPhotoMeta([]);
+              setReccePhotos([{ 
+                file: null, 
+                photo: null, 
+                localPhoto: null, 
+                width: '', 
+                height: '', 
+                unit: 'in', 
+                elementId: '', 
+                elementName: '' 
+              }]);
+              setNotes('');
+              Toast.show({
+                type: 'info',
+                text1: 'Draft Cleared',
+                text2: 'Draft photos and measurements have been reset.'
+              });
+            } catch (err) {
+              console.warn('Failed to clear draft:', err);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleCameraClose = () => {
     setCameraVisible(false);
   };
@@ -425,9 +699,32 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 8 }}>
           Store ID: {storeData?.storeId || storeData?._id || storeId}
         </Text>
-        <Text style={{ fontSize: 14, color: theme.colors.textSecondary, marginBottom: 24 }}>
-          Upload initial photos, then add measurements for each board
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <Text style={{ fontSize: 14, color: theme.colors.textSecondary, flex: 1 }}>
+            Upload initial photos, then add measurements for each board
+          </Text>
+          {(localInitialPhotos.length > 0 || reccePhotos.some(p => p.localPhoto)) ? (
+            <TouchableOpacity
+              onPress={handleClearDraft}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#EF444415',
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: '#EF444440',
+                marginLeft: 8,
+              }}
+            >
+              <Trash2 size={13} color="#EF4444" />
+              <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                Clear Draft
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         {/* Store Location & Address */}
         <View style={{ 
@@ -438,9 +735,30 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
           borderWidth: 1,
           borderColor: theme.colors.border
         }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-            Store Location
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+              Store Location & GPS
+            </Text>
+            <TouchableOpacity 
+              onPress={getCurrentLocationAndAddress}
+              disabled={locationLoading}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: theme.colors.primary + '15',
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: theme.colors.primary + '30'
+              }}
+            >
+              <RefreshCw size={14} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                {locationLoading ? 'Locating...' : 'Refresh GPS'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           
           <View style={{ marginBottom: 12 }}>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
@@ -454,43 +772,66 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
               padding: 12
             }}>
               <Text style={{ color: theme.colors.textSecondary, fontSize: 14 }}>
-                {formData.originalAddress || 'Loading...'}
+                {formData.originalAddress || 'Not specified'}
               </Text>
             </View>
           </View>
           
-          {currentLocation && (
-            <View style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <MapPin size={16} color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
-                  Current Location Address
-                </Text>
-                <TouchableOpacity 
-                  onPress={getCurrentLocationAndAddress}
-                  disabled={locationLoading}
-                  style={{ marginLeft: 8 }}
-                >
-                  <RefreshCw size={14} color={theme.colors.primary} />
-                </TouchableOpacity>
-              </View>
-              <View style={{
-                backgroundColor: theme.colors.primary + '10',
-                borderWidth: 1,
-                borderColor: theme.colors.primary + '30',
-                borderRadius: 8,
-                padding: 12
-              }}>
-                <Text style={{ color: theme.colors.text, fontSize: 14 }}>
-                  {formData.updatedAddress || 'Getting location...'}
-                </Text>
-              </View>
-            </View>
-          )}
-          
+          {/* Current GPS Location Status Card */}
           <View style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+              <MapPin size={16} color={currentLocation ? '#10B981' : theme.colors.primary} />
+              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
+                Current GPS Location
+              </Text>
+              {currentLocation && (
+                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 8 }}>
+                  <Text style={{ color: '#10B981', fontSize: 11, fontWeight: 'bold' }}>
+                    {currentLocation.latitude.toFixed(5)}, {currentLocation.longitude.toFixed(5)}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={{
+              backgroundColor: theme.colors.primary + '10',
+              borderWidth: 1,
+              borderColor: theme.colors.primary + '30',
+              borderRadius: 8,
+              padding: 12
+            }}>
+              <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+                {locationLoading 
+                  ? 'Fetching GPS coordinates and address...'
+                  : (formData.updatedAddress || 'GPS location not yet acquired. Tap "Refresh GPS" to detect.')}
+              </Text>
+            </View>
+          </View>
+          
+          {formData.updatedAddress ? (
+            <TouchableOpacity
+              onPress={useCurrentLocation}
+              style={{
+                backgroundColor: theme.colors.primary + '15',
+                borderWidth: 1,
+                borderColor: theme.colors.primary,
+                borderRadius: 8,
+                padding: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12
+              }}
+            >
+              <Navigation size={15} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600', marginLeft: 8 }}>
+                Use Current Location Address
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <View style={{ marginBottom: 4 }}>
             <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-              Corrected Address *
+              Corrected Store Address *
             </Text>
             <TextInput
               style={{
@@ -511,27 +852,6 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
               multiline
             />
           </View>
-          
-          {currentLocation && formData.updatedAddress && (
-            <TouchableOpacity
-              onPress={useCurrentLocation}
-              style={{
-                backgroundColor: theme.colors.primary + '15',
-                borderWidth: 1,
-                borderColor: theme.colors.primary,
-                borderRadius: 8,
-                padding: 12,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Navigation size={16} color={theme.colors.primary} />
-              <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: '600', marginLeft: 8 }}>
-                Use Current Location Address
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Initial Photos Section */}
@@ -558,12 +878,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
               <View key={`server-${index}`} style={{ position: 'relative' }}>
                 <TouchableOpacity 
                   onPress={() => setSelectedImagePreview(photo)}
-                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: theme.colors.primary + '20' }}
+                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A' }}
                 >
                   <Image 
                     source={{ uri: photo }} 
                     style={{ width: '100%', height: '100%' }} 
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
                   {/* Server photo indicator */}
                   <View style={{
@@ -605,12 +925,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
               <View key={`local-${index}`} style={{ position: 'relative' }}>
                 <TouchableOpacity 
                   onPress={() => setSelectedImagePreview(photo)}
-                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: theme.colors.primary + '20' }}
+                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A' }}
                 >
                   <Image 
                     source={{ uri: photo }} 
                     style={{ width: '100%', height: '100%' }} 
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
                   {/* Local photo indicator */}
                   <View style={{
@@ -798,12 +1118,12 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
                   Photo Preview (Tap to view full size)
                 </Text>
-                <View style={{ position: 'relative', borderRadius: 12, overflow: 'hidden' }}>
+                <View style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', backgroundColor: '#0F172A' }}>
                   <TouchableOpacity onPress={() => setSelectedImagePreview(reccePhoto.localPhoto || reccePhoto.photo)}>
                     <Image 
                       source={{ uri: reccePhoto.localPhoto || reccePhoto.photo }} 
-                      style={{ width: '100%', height: 200, backgroundColor: 'transparent' }} 
-                      resizeMode="cover" 
+                      style={{ width: '100%', height: 220, backgroundColor: '#0F172A' }} 
+                      resizeMode="contain" 
                     />
                   </TouchableOpacity>
                   {/* Photo source indicator */}

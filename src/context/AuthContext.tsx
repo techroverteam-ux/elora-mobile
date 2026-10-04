@@ -1,15 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../lib/api';
+import api, { extractCookieValue, performTokenRefresh } from '../lib/api';
 import { AppState, DeviceEventEmitter } from 'react-native';
 
-interface User {
+export interface User {
   _id: string;
   email: string;
   name: string;
   roles: Role[];
   isActive: boolean;
 }
+
+export type UserType = User;
 
 interface Role {
   _id: string;
@@ -44,71 +46,115 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRef = useRef<User | null>(null);
 
-  // Handle app state changes to check token validity
+  // Keep userRef synchronized with state
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active' && user) {
-        // Check auth when app becomes active
-        checkAuth();
+    userRef.current = user;
+  }, [user]);
+
+  // Handle app state changes: silently refresh token when returning to the app
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'active' && userRef.current) {
+        try {
+          await performTokenRefresh();
+        } catch {
+          // If refresh failed due to offline/network, do not kick out
+        }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [user]);
+  }, []);
 
-  // Handle token expiration events
+  // Handle token expiration events: only triggered when refresh token is definitively rejected (401/403)
   useEffect(() => {
     const handleTokenExpired = () => {
       logout();
     };
 
-    // Use React Native's DeviceEventEmitter for cross-component communication
     const subscription = DeviceEventEmitter.addListener('tokenExpired', handleTokenExpired);
     return () => subscription.remove();
   }, []);
 
+  // Proactive periodic token refresh: while user is logged in and working,
+  // silently refresh the token every 5 minutes so it NEVER expires during continuous use.
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (userRef.current) {
+        try {
+          await performTokenRefresh();
+        } catch {
+          // Silent failure (e.g. temporary offline) will retry next interval or on demand
+        }
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
+
   const checkAuth = async () => {
     try {
-      // Check if we have stored tokens first
-      const token = await AsyncStorage.getItem('authToken');
+      // 1. Immediately hydrate cached user to avoid jarring screen transitions
+      const cachedUser = await AsyncStorage.getItem('user');
+      if (cachedUser && !userRef.current) {
+        try {
+          const parsed = JSON.parse(cachedUser);
+          setUser(parsed);
+          userRef.current = parsed;
+          setIsLoading(false);
+        } catch {}
+      }
+
+      // 2. Check if we have stored tokens
+      const token = (await AsyncStorage.getItem('authToken')) || (await AsyncStorage.getItem('access_token'));
       if (!token) {
         setUser(null);
+        userRef.current = null;
         return;
       }
-      
-      // Use same endpoint as web portal
+
+      // 3. Validate user profile with backend
       const response = await api.get('/auth/me');
-      
       if (response.data) {
         setUser(response.data);
+        userRef.current = response.data;
+        await AsyncStorage.setItem('user', JSON.stringify(response.data));
       } else {
         setUser(null);
+        userRef.current = null;
       }
     } catch (error: any) {
-      // If it's a 401 error, try to refresh token first
+      // If 401 error, try to refresh token first
       if (error?.response?.status === 401) {
         const refreshSuccess = await refreshToken();
         if (refreshSuccess) {
-          // Retry auth check with new token
           try {
             const retryResponse = await api.get('/auth/me');
             if (retryResponse.data) {
               setUser(retryResponse.data);
+              userRef.current = retryResponse.data;
+              await AsyncStorage.setItem('user', JSON.stringify(retryResponse.data));
               return;
             }
-          } catch (retryError) {
+          } catch {
             // Retry failed
           }
         }
+
+        // Only clear tokens and log out if refresh was definitively rejected
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('access_token');
+        await AsyncStorage.removeItem('refreshToken');
+        await AsyncStorage.removeItem('user');
+        setUser(null);
+        userRef.current = null;
+      } else {
+        // Network error / timeout / offline: DO NOT log out the user!
+        console.warn('checkAuth encountered non-auth error; preserving user session:', error?.message);
       }
-      
-      // Clear invalid tokens and logout user
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('access_token');
-      await AsyncStorage.removeItem('refreshToken');
-      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -116,35 +162,42 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     checkAuth();
-    
-    // Set up periodic token validation (every 5 minutes)
-    const tokenCheckInterval = setInterval(() => {
-      if (user) {
-        checkAuth();
-      }
-    }, 5 * 60 * 1000); // 5 minutes
-    
-    return () => clearInterval(tokenCheckInterval);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      // Use same login approach as web portal
       const response = await api.post('/auth/login', { email, password });
-      
-      // Store tokens if provided
-      if (response.data.token) {
-        await AsyncStorage.setItem('authToken', response.data.token);
-        await AsyncStorage.setItem('access_token', response.data.token);
+
+      // Store access tokens
+      const token =
+        response.data?.token ||
+        response.data?.accessToken ||
+        response.data?.data?.token ||
+        response.data?.data?.accessToken;
+
+      if (token) {
+        await AsyncStorage.setItem('authToken', token);
+        await AsyncStorage.setItem('access_token', token);
       }
-      if (response.data.refreshToken) {
-        await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+
+      // Extract refresh token from Set-Cookie header or response body
+      const cookieRt = extractCookieValue(response.headers?.['set-cookie'], 'refresh_token');
+      const bodyRt =
+        response.data?.refreshToken ||
+        response.data?.refresh_token ||
+        response.data?.data?.refreshToken;
+      const refreshTokenValue = cookieRt || bodyRt;
+
+      if (refreshTokenValue) {
+        await AsyncStorage.setItem('refreshToken', refreshTokenValue);
       }
-      
-      // After successful login, fetch user data like web portal
+
+      // Fetch user profile
       const userResponse = await api.get('/auth/me');
       if (userResponse.data) {
         setUser(userResponse.data);
+        userRef.current = userResponse.data;
+        await AsyncStorage.setItem('user', JSON.stringify(userResponse.data));
         return { success: true };
       } else {
         throw new Error('Login failed - no user data received');
@@ -157,48 +210,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshToken = async (): Promise<boolean> => {
     try {
-      const storedRefreshToken = await AsyncStorage.getItem('refreshToken');
-      
-      if (!storedRefreshToken) {
-        return false;
+      const newToken = await performTokenRefresh();
+      return !!newToken;
+    } catch (error: any) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('access_token');
+        await AsyncStorage.removeItem('refreshToken');
+        await AsyncStorage.removeItem('user');
       }
-      
-      const response = await api.post('/auth/refresh', { refreshToken: storedRefreshToken });
-      
-      if (response.data.token) {
-        // Store new tokens
-        await AsyncStorage.setItem('authToken', response.data.token);
-        await AsyncStorage.setItem('access_token', response.data.token);
-        
-        if (response.data.refreshToken) {
-          await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
-        }
-        
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      // Clear all tokens on refresh failure
-      await AsyncStorage.removeItem('authToken');
-      await AsyncStorage.removeItem('access_token');
-      await AsyncStorage.removeItem('refreshToken');
       return false;
     }
   };
 
   const logout = async () => {
     try {
-      // Call logout API to clear server-side session
       await api.post('/auth/logout');
-    } catch (error) {
+    } catch {
       // Logout API call failed, continue with local cleanup
     } finally {
-      // Clear all local data
       await AsyncStorage.removeItem('authToken');
       await AsyncStorage.removeItem('access_token');
       await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem('user');
       setUser(null);
+      userRef.current = null;
     }
   };
 

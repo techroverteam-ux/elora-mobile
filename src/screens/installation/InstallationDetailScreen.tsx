@@ -298,8 +298,8 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                 >
                   <Image
                     source={{ uri: imageService.getFullImageUrl(photo) }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
+                    style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                    resizeMode="contain"
                   />
                 </TouchableOpacity>
               ))}
@@ -343,8 +343,8 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                     >
                       <Image
                         source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
+                        style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                        resizeMode="contain"
                       />
                       <View style={{ 
                         position: 'absolute', 
@@ -432,8 +432,8 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                       >
                         <Image
                           source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
+                          style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                          resizeMode="contain"
                         />
                       </TouchableOpacity>
                       <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
@@ -459,8 +459,8 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                         >
                           <Image
                             source={{ uri: imageService.getFullImageUrl(installationPhoto.photo) }}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="cover"
+                            style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                            resizeMode="contain"
                           />
                         </TouchableOpacity>
                       <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>

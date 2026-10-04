@@ -1,6 +1,17 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 
+// Enable Google Play Services Fused Location Provider on Android for fast, reliable fixes
+try {
+  Geolocation.setRNConfiguration({
+    skipPermissionRequests: false,
+    authorizationLevel: 'whenInUse',
+    locationProvider: 'playServices',
+  });
+} catch (e) {
+  console.warn('Failed to set Geolocation configuration:', e);
+}
+
 export interface LocationData {
   latitude: number;
   longitude: number;
@@ -29,40 +40,21 @@ export interface LocationOverlayConfig {
 }
 
 class LocationService {
-  private googleMapsApiKey = 'AIzaSyBvOkBwgGlbUiuS-oSim-_hVautcHiOidc'; // Working Google Maps API key
-
   async requestLocationPermission(): Promise<boolean> {
     if (Platform.OS === 'android') {
       try {
-        const granted = await PermissionsAndroid.request(
+        // Android 12+ (API 31+) requires requesting both FINE and COARSE together
+        const results = await PermissionsAndroid.requestMultiple([
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: 'Location Access Required',
-            message: 'This app needs location access to embed GPS information in photos for accurate project documentation.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-        
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          return true;
-        } else {
-          // Try coarse location as fallback
-          const coarseGranted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-            {
-              title: 'Location Access Required',
-              message: 'This app needs location access to embed GPS information in photos. Approximate location is acceptable.',
-              buttonNeutral: 'Ask Me Later',
-              buttonNegative: 'Cancel',
-              buttonPositive: 'OK',
-            }
-          );
-          return coarseGranted === PermissionsAndroid.RESULTS.GRANTED;
-        }
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        ]);
+
+        const fineGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+        const coarseGranted = results[PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION] === PermissionsAndroid.RESULTS.GRANTED;
+
+        return fineGranted || coarseGranted;
       } catch (err) {
-        console.error('Location permission error:', err);
+        console.error('Location permission request error:', err);
         return false;
       }
     }
@@ -72,20 +64,15 @@ class LocationService {
   async checkLocationPermission(): Promise<boolean> {
     if (Platform.OS === 'android') {
       try {
-        const fineLocationGranted = await PermissionsAndroid.check(
+        const fineGranted = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
         );
-        
-        if (fineLocationGranted) {
-          return true;
-        }
-        
-        // Check coarse location as fallback
-        const coarseLocationGranted = await PermissionsAndroid.check(
+        if (fineGranted) return true;
+
+        const coarseGranted = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION
         );
-        
-        return coarseLocationGranted;
+        return coarseGranted;
       } catch (err) {
         console.error('Location permission check error:', err);
         return false;
@@ -94,23 +81,42 @@ class LocationService {
     return true;
   }
 
+  /**
+   * Get the current GPS position with high accuracy first, falling back to network/cell location if needed.
+   */
   async getCurrentLocation(): Promise<LocationData> {
-    // First check and request location permission
     const hasPermission = await this.checkLocationPermission();
     if (!hasPermission) {
       const granted = await this.requestLocationPermission();
       if (!granted) {
-        console.warn('Location permission denied, using fallback location');
-        // Return fallback location for development/testing
-        return {
-          latitude: 28.6139,
-          longitude: 77.2090,
-          accuracy: 10,
-          timestamp: Date.now(),
-        };
+        throw new Error('Location permission denied. Please grant location access in device settings.');
       }
     }
 
+    // Try high accuracy (Play Services / GPS) first
+    try {
+      return await this.fetchPosition({
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 10000,
+      });
+    } catch (highAccuracyError) {
+      console.warn('High accuracy location failed, trying standard accuracy fallback:', highAccuracyError);
+      // Fallback to standard/network accuracy
+      try {
+        return await this.fetchPosition({
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 60000,
+        });
+      } catch (fallbackError) {
+        console.error('All location attempts failed:', fallbackError);
+        throw new Error('Unable to retrieve GPS coordinates. Please ensure Location is enabled in phone settings.');
+      }
+    }
+  }
+
+  private fetchPosition(options: { enableHighAccuracy: boolean; timeout: number; maximumAge: number }): Promise<LocationData> {
     return new Promise((resolve, reject) => {
       Geolocation.getCurrentPosition(
         (position) => {
@@ -122,185 +128,133 @@ class LocationService {
           });
         },
         (error) => {
-          console.error('Location error:', error);
-          // Provide more specific error handling
-          if (error.code === 1) {
-            console.warn('Location permission denied, using fallback');
-          } else if (error.code === 2) {
-            console.warn('Location unavailable, using fallback');
-          } else if (error.code === 3) {
-            console.warn('Location timeout, using fallback');
-          }
-          
-          // Fallback to mock location for development
-          resolve({
-            latitude: 28.6139,
-            longitude: 77.2090,
-            accuracy: 10,
-            timestamp: Date.now(),
-          });
+          reject(error);
         },
-        {
-          enableHighAccuracy: false, // Changed to false for faster response
-          timeout: 10000, // Reduced timeout to 10 seconds
-          maximumAge: 30000, // Increased cache time to 30 seconds
-        }
+        options
       );
     });
   }
 
-  async reverseGeocode(latitude: number, longitude: number): Promise<AddressComponents> {
-    try {
-      // First try Google Maps Geocoding API for more accurate results
-      const googleResponse = await this.reverseGeocodeWithGoogle(latitude, longitude);
-      if (googleResponse.formattedAddress && googleResponse.formattedAddress !== `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`) {
-        return googleResponse;
-      }
-    } catch (error) {
-      console.warn('Google Maps geocoding failed, trying fallback:', error);
-    }
-
-    try {
-      // Fallback to BigDataCloud API
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-      );
-      const data = await response.json();
-      
-      return {
-        street: data.locality || data.localityInfo?.administrative?.[3]?.name || '',
-        city: data.city || data.localityInfo?.administrative?.[2]?.name || '',
-        state: data.principalSubdivision || data.localityInfo?.administrative?.[1]?.name || '',
-        country: data.countryName || data.localityInfo?.administrative?.[0]?.name || '',
-        postalCode: data.postcode || '',
-        formattedAddress: data.display_name || this.buildFormattedAddress({
-          street: data.locality || '',
-          city: data.city || '',
-          state: data.principalSubdivision || '',
-          country: data.countryName || '',
-          postalCode: data.postcode || ''
-        }) || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-      };
-    } catch (error) {
-      console.error('All reverse geocoding methods failed:', error);
-      return {
-        formattedAddress: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-      };
-    }
-  }
-
   /**
-   * Reverse geocode using Google Maps Geocoding API
+   * Reverse geocode coordinates to human-readable address.
+   * Uses OpenStreetMap Nominatim with fallback to BigDataCloud.
    */
-  private async reverseGeocodeWithGoogle(latitude: number, longitude: number): Promise<AddressComponents> {
-    if (!this.googleMapsApiKey || this.googleMapsApiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
-      throw new Error('Google Maps API key not configured');
-    }
+  async reverseGeocode(latitude: number, longitude: number): Promise<AddressComponents> {
+    // 1. Try OpenStreetMap Nominatim (rich street & neighborhood data)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-    const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${this.googleMapsApiKey}`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      throw new Error(`Geocoding failed: ${data.status} - ${data.error_message || 'No results'}`);
-    }
-
-    // Prefer the most precise result for the display name / formatted address:
-    // establishment > premise > street_address > route
-    const priority = ['establishment', 'point_of_interest', 'premise', 'street_address', 'route'];
-    const bestResult =
-      priority.reduce<any>((best, type) => {
-        if (best) return best;
-        return data.results.find((r: any) => r.types?.includes(type)) || null;
-      }, null) || data.results[0];
-
-    const addressComponents: AddressComponents = {
-      placeName: '',
-      street: '',
-      city: '',
-      state: '',
-      country: '',
-      postalCode: '',
-      formattedAddress: bestResult.formatted_address || '',
-    };
-
-    // Extract place/establishment name from the first result that has it
-    const establishmentResult = data.results.find((r: any) =>
-      r.types?.some((t: string) => ['establishment', 'point_of_interest', 'premise', 'natural_feature', 'airport'].includes(t))
-    );
-    if (establishmentResult) {
-      addressComponents.placeName = establishmentResult.address_components?.[0]?.long_name || '';
-    }
-
-    // Google splits one coordinate's address hierarchy across SEPARATE result
-    // entries (a precise street-level result, a plain route, a locality, an
-    // admin-area result, etc.) rather than always bundling everything into one
-    // result's address_components. Reading components from only the single
-    // "best" result above (picked by type priority) can silently drop the
-    // street: an `establishment`/`point_of_interest` result often carries the
-    // political hierarchy (district, state) but no `street_number`/`route` of
-    // its own, even though a different result in the very same response does.
-    // So scan every result's components instead, and keep the most specific
-    // value found for each field.
-    let streetNumber = '';
-    let route = '';
-    data.results.forEach((r: any) => {
-      (r.address_components || []).forEach((component: any) => {
-        const types = component.types || [];
-        if (types.includes('street_number') && !streetNumber) {
-          streetNumber = component.long_name;
-        } else if (types.includes('route') && !route) {
-          route = component.long_name;
-        } else if ((types.includes('locality') || types.includes('administrative_area_level_2')) && !addressComponents.city) {
-          addressComponents.city = component.long_name;
-        } else if (types.includes('administrative_area_level_1') && !addressComponents.state) {
-          addressComponents.state = component.long_name;
-        } else if (types.includes('country') && !addressComponents.country) {
-          addressComponents.country = component.long_name;
-        } else if (types.includes('postal_code') && !addressComponents.postalCode) {
-          addressComponents.postalCode = component.long_name;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'EloraMobileApp/1.0 (contact@elora.com)',
+            'Accept-Language': 'en',
+          },
+          signal: controller.signal,
         }
-      });
-    });
-    addressComponents.street = [streetNumber, route].filter(Boolean).join(' ');
+      );
+      clearTimeout(timeoutId);
 
-    if (!addressComponents.formattedAddress) {
-      addressComponents.formattedAddress = this.buildFormattedAddress(addressComponents);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.address) {
+          const addr = data.address;
+          const street = [addr.house_number, addr.road || addr.street || addr.pedestrian || addr.footway]
+            .filter(Boolean)
+            .join(' ');
+          const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || '';
+          const state = addr.state || addr.region || '';
+          const country = addr.country || '';
+          const postalCode = addr.postcode || '';
+          const placeName = addr.amenity || addr.shop || addr.building || addr.office || '';
+
+          const formattedParts = [placeName, street, city, state, postalCode, country].filter(Boolean);
+          const formattedAddress = data.display_name || formattedParts.join(', ');
+
+          return {
+            placeName,
+            street,
+            city,
+            state,
+            country,
+            postalCode,
+            formattedAddress,
+          };
+        }
+      }
+    } catch (osmError) {
+      console.warn('OSM reverse geocode error, trying BigDataCloud fallback:', osmError);
     }
 
-    return addressComponents;
+    // 2. Fallback to BigDataCloud API
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const street = data.locality || data.localityInfo?.administrative?.[3]?.name || '';
+        const city = data.city || data.localityInfo?.administrative?.[2]?.name || '';
+        const state = data.principalSubdivision || data.localityInfo?.administrative?.[1]?.name || '';
+        const country = data.countryName || data.localityInfo?.administrative?.[0]?.name || '';
+        const postalCode = data.postcode || '';
+
+        const formattedAddress = this.buildFormattedAddress({
+          street,
+          city,
+          state,
+          country,
+          postalCode,
+        }) || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+        return {
+          street,
+          city,
+          state,
+          country,
+          postalCode,
+          formattedAddress,
+        };
+      }
+    } catch (bdcError) {
+      console.warn('BigDataCloud reverse geocode error:', bdcError);
+    }
+
+    // 3. Fallback to raw formatted coordinates
+    return {
+      formattedAddress: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+    };
   }
 
   /**
-   * Build formatted address from components
+   * Build formatted address string from individual components
    */
   private buildFormattedAddress(components: AddressComponents): string {
     const parts: string[] = [];
-    
+    if (components.placeName) parts.push(components.placeName);
     if (components.street) parts.push(components.street);
     if (components.city) parts.push(components.city);
     if (components.state) parts.push(components.state);
     if (components.postalCode) parts.push(components.postalCode);
     if (components.country) parts.push(components.country);
-    
-    return parts.filter(part => part.trim().length > 0).join(', ');
-  }
-
-  async getStoreImageFromMaps(latitude: number, longitude: number): Promise<string> {
-    return `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${latitude},${longitude}&key=${this.googleMapsApiKey}`;
+    return parts.filter(p => p && p.trim().length > 0).join(', ');
   }
 
   /**
-   * Generate a static map URL for embedding in images
+   * Generate a reliable static map URL for embedding in photos without requiring paid API keys.
    */
-  getStaticMapUrl(latitude: number, longitude: number, size: number = 60, zoom: number = 15): string {
-    return `https://maps.googleapis.com/maps/api/staticmap?center=${latitude},${longitude}&zoom=${zoom}&size=${size}x${size}&maptype=roadmap&markers=color:red%7C${latitude},${longitude}&key=${this.googleMapsApiKey}`;
+  getStaticMapUrl(latitude: number, longitude: number, size: number = 80, zoom: number = 15): string {
+    // Yandex Static Maps provides free, reliable static map tiles with markers
+    const s = Math.min(Math.max(size, 60), 300);
+    return `https://static-maps.yandex.ru/1.x/?ll=${longitude.toFixed(6)},${latitude.toFixed(6)}&z=${zoom}&l=map&size=${s},${s}&pt=${longitude.toFixed(6)},${latitude.toFixed(6)},pm2rdm`;
   }
 
   async getLocationForImageEmbedding(): Promise<{
@@ -310,7 +264,7 @@ class LocationService {
   }> {
     const location = await this.getCurrentLocation();
     const address = await this.reverseGeocode(location.latitude, location.longitude);
-    const mapUrl = this.getStaticMapUrl(location.latitude, location.longitude);
+    const mapUrl = this.getStaticMapUrl(location.latitude, location.longitude, 120, 15);
 
     return {
       location,
@@ -327,14 +281,17 @@ class LocationService {
     address: string;
     timestamp: string;
   } {
-    if (!address.formattedAddress) {
-      throw new Error('Address information not available');
-    }
-    
     return {
       coordinates: `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
-      address: address.formattedAddress,
-      timestamp: new Date(location.timestamp || Date.now()).toLocaleString(),
+      address: address.formattedAddress || `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
+      timestamp: new Date(location.timestamp || Date.now()).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
     };
   }
 }

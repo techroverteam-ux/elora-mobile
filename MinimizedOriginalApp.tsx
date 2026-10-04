@@ -15,7 +15,8 @@ import LoadingScreen from './src/screens/LoadingScreen';
 import ScreenLayout from './src/components/ScreenLayout';
 import CustomDrawer from './src/components/CustomDrawer';
 import Toast from 'react-native-toast-message';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text, BackHandler } from 'react-native';
 
 // Setup crash handler immediately
 setupCrashHandler();
@@ -66,10 +67,96 @@ function AppContent() {
     setIsDrawerOpen(false);
   };
 
+  // Auto-restore active screen whenever app starts or user returns
+  useEffect(() => {
+    let isMounted = true;
+    const restoreActiveState = async () => {
+      try {
+        const savedScreen = await AsyncStorage.getItem('@active_screen');
+        const savedParamsStr = await AsyncStorage.getItem('@active_navigation_params');
+        if (isMounted && savedScreen && savedScreen !== 'Dashboard') {
+          const parsedParams = savedParamsStr ? JSON.parse(savedParamsStr) : null;
+          setCurrentScreen(savedScreen);
+          setNavigationParams(parsedParams);
+        }
+      } catch (e) {
+        console.warn('Failed to restore active screen state:', e);
+      }
+    };
+
+    if (isAuthenticated) {
+      restoreActiveState();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated]);
+
+  // Clear active screen on explicit logout
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      AsyncStorage.removeItem('@active_screen');
+      AsyncStorage.removeItem('@active_navigation_params');
+      setCurrentScreen('Dashboard');
+      setNavigationParams(null);
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Hardware back button support for Android
+  useEffect(() => {
+    const handleHardwareBack = () => {
+      if (isDrawerOpen) {
+        closeDrawer();
+        return true;
+      }
+      if (currentScreen !== 'Dashboard') {
+        if (currentScreen === 'StoreDetail') {
+          navigateToScreen('Stores');
+          return true;
+        }
+        if (currentScreen === 'RecceDetail' || currentScreen === 'RecceForm' || currentScreen === 'RecceReview') {
+          navigateToScreen('Recce');
+          return true;
+        }
+        if (currentScreen === 'InstallationDetail' || currentScreen === 'InstallationForm') {
+          navigateToScreen('Installation');
+          return true;
+        }
+        if (currentScreen === 'UserDetail') {
+          navigateToScreen('Users');
+          return true;
+        }
+        navigateToScreen('Dashboard');
+        return true;
+      }
+      return false; // On Dashboard, let Android minimize the app
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', handleHardwareBack);
+    return () => backSub.remove();
+  }, [currentScreen, isDrawerOpen]);
+
   const navigateToScreen = (screenName: string, params?: any) => {
     setCurrentScreen(screenName);
     setNavigationParams(params);
     closeDrawer();
+
+    // Persist screen state so app minimization/switching/calls never resets screen
+    try {
+      if (screenName && screenName !== 'Dashboard') {
+        AsyncStorage.setItem('@active_screen', screenName);
+        if (params) {
+          AsyncStorage.setItem('@active_navigation_params', JSON.stringify(params));
+        } else {
+          AsyncStorage.removeItem('@active_navigation_params');
+        }
+      } else {
+        AsyncStorage.removeItem('@active_screen');
+        AsyncStorage.removeItem('@active_navigation_params');
+      }
+    } catch (e) {
+      console.warn('Failed to save active screen state:', e);
+    }
   };
 
   const renderCurrentScreen = () => {
@@ -265,7 +352,10 @@ function AppContent() {
           >
             <RecceFormScreen 
               route={{ params: navigationParams }}
-              navigation={{ goBack: () => navigateToScreen('Recce') }}
+              navigation={{ 
+                goBack: () => navigateToScreen('Recce'),
+                navigate: navigateToScreen,
+              }}
             />
           </ScreenLayout>
         );
@@ -281,7 +371,10 @@ function AppContent() {
           >
             <RecceReviewScreen 
               route={{ params: navigationParams }}
-              navigation={{ goBack: () => navigateToScreen('Recce') }}
+              navigation={{ 
+                goBack: () => navigateToScreen('Recce'),
+                navigate: navigateToScreen,
+              }}
             />
           </ScreenLayout>
         );
@@ -324,7 +417,10 @@ function AppContent() {
           >
             <InstallationFormScreen 
               route={{ params: navigationParams }}
-              navigation={{ goBack: () => navigateToScreen('Installation') }}
+              navigation={{ 
+                goBack: () => navigateToScreen('Installation'),
+                navigate: navigateToScreen,
+              }}
             />
           </ScreenLayout>
         );

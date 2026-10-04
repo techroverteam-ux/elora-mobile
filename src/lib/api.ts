@@ -1,7 +1,90 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { DeviceEventEmitter } from 'react-native';
 
 const API_BASE_URL = 'https://elora-api-smoky.vercel.app/api/v1';
+
+// Dedicated unauthenticated client for token refresh to avoid sending expired Bearer tokens
+const refreshClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Helper to extract cookie values from Set-Cookie headers
+export const extractCookieValue = (cookies: string | string[] | undefined, name: string): string | null => {
+  if (!cookies) return null;
+  const cookieArray = Array.isArray(cookies) ? cookies : [cookies];
+  for (const c of cookieArray) {
+    const match = c.match(new RegExp(`${name}=([^;]+)`));
+    if (match && match[1]) {
+      return decodeURIComponent(match[1].trim());
+    }
+  }
+  return null;
+};
+
+// Activity tracker for continuous usage
+let lastActiveTimestamp = Date.now();
+export const recordUserActivity = () => {
+  lastActiveTimestamp = Date.now();
+};
+export const getLastUserActivity = () => lastActiveTimestamp;
+
+// Standalone function to perform token refresh using cookie and body fallback
+export const performTokenRefresh = async (): Promise<string | null> => {
+  const refreshToken = await AsyncStorage.getItem('refreshToken');
+  if (!refreshToken) {
+    return null;
+  }
+
+  try {
+    const response = await refreshClient.post(
+      '/auth/refresh',
+      { refreshToken, refresh_token: refreshToken },
+      {
+        headers: {
+          Cookie: `refresh_token=${refreshToken}`,
+        },
+      }
+    );
+
+    const newToken =
+      response.data?.token ||
+      response.data?.accessToken ||
+      response.data?.data?.token ||
+      response.data?.data?.accessToken;
+
+    if (newToken) {
+      await AsyncStorage.setItem('authToken', newToken);
+      await AsyncStorage.setItem('access_token', newToken);
+
+      // Check if server rotated the refresh token in Set-Cookie or body
+      const newRefreshTokenFromCookie = extractCookieValue(
+        response.headers?.['set-cookie'],
+        'refresh_token'
+      );
+      const newRefreshToken =
+        newRefreshTokenFromCookie ||
+        response.data?.refreshToken ||
+        response.data?.refresh_token ||
+        response.data?.data?.refreshToken;
+
+      if (newRefreshToken) {
+        await AsyncStorage.setItem('refreshToken', newRefreshToken);
+      }
+
+      recordUserActivity();
+      return newToken;
+    }
+    return null;
+  } catch (error: any) {
+    console.warn('performTokenRefresh failed:', error?.response?.status, error?.message);
+    throw error;
+  }
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,8 +94,10 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
+// Add token and session cookies to requests
 api.interceptors.request.use(async (config) => {
+  recordUserActivity();
+
   // Check both possible token storage keys for compatibility
   let token = await AsyncStorage.getItem('authToken');
   if (!token) {
@@ -21,17 +106,26 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const refreshToken = await AsyncStorage.getItem('refreshToken');
+  if (refreshToken && !config.headers.Cookie) {
+    config.headers.Cookie = `refresh_token=${refreshToken}`;
+  }
+
   return config;
 });
 
 let isRefreshing = false;
-let failedQueue: any[] = [];
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: any) => void;
+}> = [];
 
 const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
-    } else {
+    } else if (token) {
       prom.resolve(token);
     }
   });
@@ -40,17 +134,37 @@ const processQueue = (error: any, token: string | null = null) => {
 
 api.interceptors.response.use(
   (response) => {
+    recordUserActivity();
+
+    // If any response sets/updates refresh_token cookie, persist it
+    const rt = extractCookieValue(response.headers?.['set-cookie'], 'refresh_token');
+    if (rt) {
+      AsyncStorage.setItem('refreshToken', rt).catch(() => {});
+    }
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
+    // Never intercept auth endpoints (login, refresh, logout) to prevent loops
+    const requestUrl = originalRequest?.url || '';
+    if (
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/refresh') ||
+      requestUrl.includes('/auth/logout')
+    ) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(() => api(originalRequest))
+          .then((newToken) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          })
           .catch((err) => Promise.reject(err));
       }
 
@@ -58,34 +172,29 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await api.post('/auth/refresh', { refreshToken });
-          const newToken = response.data.token;
-          
-          // Store token with both keys for compatibility
-          await AsyncStorage.setItem('authToken', newToken);
-          await AsyncStorage.setItem('access_token', newToken);
-          
-          // Update refresh token if provided
-          if (response.data.refreshToken) {
-            await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
-          }
-          
+        const newToken = await performTokenRefresh();
+        if (newToken) {
           processQueue(null, newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return api(originalRequest);
+        } else {
+          processQueue(error, null);
+          return Promise.reject(error);
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         processQueue(refreshError, null);
-        // Clear all token storage keys
-        await AsyncStorage.removeItem('authToken');
-        await AsyncStorage.removeItem('access_token');
-        await AsyncStorage.removeItem('refreshToken');
-        
-        // Notify the app that user needs to re-authenticate using React Native events
-        const { DeviceEventEmitter } = require('react-native');
-        DeviceEventEmitter.emit('tokenExpired');
-        
+
+        // ONLY log out if the refresh token was explicitly rejected by the server (401 or 403)
+        // If it was a network timeout or offline connectivity issue, DO NOT log out the user!
+        if (refreshError?.response?.status === 401 || refreshError?.response?.status === 403) {
+          await AsyncStorage.removeItem('authToken');
+          await AsyncStorage.removeItem('access_token');
+          await AsyncStorage.removeItem('refreshToken');
+          await AsyncStorage.removeItem('user');
+
+          DeviceEventEmitter.emit('tokenExpired');
+        }
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -219,8 +328,8 @@ export const authAPI = {
   register: (userData: any) => api.post('/auth/register', userData),
 
   // Refresh token
-  refreshToken: (refreshToken: string) => 
-    api.post('/auth/refresh', { refreshToken }),
+  refreshToken: (refreshToken?: string) => 
+    performTokenRefresh(),
 
   // Logout
   logout: () => api.post('/auth/logout'),

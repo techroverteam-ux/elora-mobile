@@ -292,8 +292,8 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                     >
                       <Image
                         source={{ uri: imageUrl }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
+                        style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                        resizeMode="contain"
                         onError={() => console.log('Image load error:', imageUrl)}
                       />
                     </TouchableOpacity>
@@ -368,8 +368,8 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                     >
                       <Image
                         source={{ uri: imageUrl }}
-                        style={{ width: '100%', height: 200, borderRadius: 8 }}
-                        resizeMode="cover"
+                        style={{ width: '100%', height: 220, borderRadius: 8, backgroundColor: '#0F172A' }}
+                        resizeMode="contain"
                         onError={() => console.log('Recce image load error:', imageUrl)}
                       />
                     </TouchableOpacity>
@@ -441,8 +441,8 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                     >
                       <Image
                         source={{ uri: imageUrl }}
-                        style={{ width: '100%', height: '100%' }}
-                        resizeMode="cover"
+                        style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                        resizeMode="contain"
                         onError={() => console.log('Installation image load error:', imageUrl)}
                       />
                     </TouchableOpacity>

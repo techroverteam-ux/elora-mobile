@@ -153,8 +153,8 @@ export default function PhotoApproval({
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <Image
                 source={{ uri: photoUrl }}
-                style={{ width: 200, height: 150, borderRadius: 8 }}
-                resizeMode="cover"
+                style={{ width: '100%', height: 200, borderRadius: 8, backgroundColor: '#0F172A' }}
+                resizeMode="contain"
               />
             </View>
 

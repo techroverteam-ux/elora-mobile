@@ -1,0 +1,57 @@
+diff --git a/node_modules/react-native-image-picker/android/src/main/java/com/imagepicker/Utils.java b/node_modules/react-native-image-picker/android/src/main/java/com/imagepicker/Utils.java
+--- a/node_modules/react-native-image-picker/android/src/main/java/com/imagepicker/Utils.java
++++ b/node_modules/react-native-image-picker/android/src/main/java/com/imagepicker/Utils.java
+@@ -32,6 +32,8 @@
+ 
+ import java.io.ByteArrayOutputStream;
+ import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.OutputStream;
+@@ -98,8 +100,23 @@
+     public static void copyUri(Uri fromUri, Uri toUri, ContentResolver resolver) {
+-        try (OutputStream os = resolver.openOutputStream(toUri);
+-             InputStream is = resolver.openInputStream(fromUri)) {
++        OutputStream os = null;
++        InputStream is = null;
++        try {
++            if ("file".equalsIgnoreCase(toUri.getScheme())) {
++                os = new FileOutputStream(new File(toUri.getPath()));
++            } else {
++                os = resolver.openOutputStream(toUri);
++            }
++            if ("file".equalsIgnoreCase(fromUri.getScheme())) {
++                is = new FileInputStream(new File(fromUri.getPath()));
++            } else {
++                is = resolver.openInputStream(fromUri);
++            }
++
++            if (os == null || is == null) {
++                return;
++            }
+ 
+             byte[] buffer = new byte[8192];
+             int bytesRead;
+ 
+             while ((bytesRead = is.read(buffer)) != -1) {
+                 os.write(buffer, 0, bytesRead);
+             }
+         } catch (IOException e) {
+             e.printStackTrace();
++        } finally {
++            try {
++                if (os != null) os.close();
++                if (is != null) is.close();
++            } catch (IOException ignored) {}
+         }
+     }
+@@ -240,7 +257,7 @@
+ 
+                 File file = createFile(context, getFileTypeFromMime(mimeType));
+ 
+-                try (OutputStream os = context.getContentResolver().openOutputStream(Uri.fromFile(file))) {
++                try (OutputStream os = new FileOutputStream(file)) {
+                     b.compress(getBitmapCompressFormat(mimeType), targetQuality, os);
+                 }

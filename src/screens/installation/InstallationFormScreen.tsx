@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
-import { Camera, Upload, CheckCircle2, Loader2, Ruler, FileText, ImageIcon, X } from 'lucide-react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Modal, Platform, AppState, AppStateStatus, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReactNativeBlobUtil from 'react-native-blob-util';
+import { Camera, Upload, CheckCircle2, Loader2, Ruler, FileText, ImageIcon, X, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -23,18 +25,18 @@ interface InstallationFormProps {
 export default function InstallationFormScreen({ route, navigation }: InstallationFormProps) {
   const { theme } = useTheme();
   const { storeId } = route.params;
+  const draftKey = `@draft_installation_${storeId}`;
+
   const [loading, setLoading] = useState(false);
   const [storeData, setStoreData] = useState<any>(null);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number>(0);
   const [currentPhotoType, setCurrentPhotoType] = useState<'before' | 'after' | 'closeup'>('before');
   const [installationPhotos, setInstallationPhotos] = useState<{[key: number]: {before?: string, after?: string, closeup?: string}}>({});
-  // Real mime type/extension for each installationPhotos entry (camera photos are always JPEG after
-  // ViewShot recomposition, but gallery-picked "clean" photos like these before/after/closeup shots
-  // may be PNG/HEIC/WEBP/etc, so we must not hardcode image/jpeg when uploading them)
   const [installationPhotoMeta, setInstallationPhotoMeta] = useState<{[key: number]: {before?: {mimeType: string, fileExtension: string}, after?: {mimeType: string, fileExtension: string}, closeup?: {mimeType: string, fileExtension: string}}}>({});
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
   const [modalConfig, setModalConfig] = useState({
     title: '',
     message: '',
@@ -42,9 +44,61 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     buttons: [] as Array<{ text: string; onPress: () => void; style?: 'default' | 'cancel' | 'destructive' }>
   });
 
+  const stateRef = useRef({
+    installationPhotos,
+    installationPhotoMeta,
+  });
+
+  useEffect(() => {
+    stateRef.current = {
+      installationPhotos,
+      installationPhotoMeta,
+    };
+  }, [installationPhotos, installationPhotoMeta]);
+
+  const saveDraftToStorage = async () => {
+    if (!storeId) return;
+    try {
+      const current = stateRef.current;
+      const hasPhotos = Object.values(current.installationPhotos).some(
+        b => b && (b.before || b.after || b.closeup)
+      );
+      if (hasPhotos) {
+        const draft = {
+          installationPhotos: current.installationPhotos,
+          installationPhotoMeta: current.installationPhotoMeta,
+          savedAt: Date.now(),
+        };
+        await AsyncStorage.setItem(draftKey, JSON.stringify(draft));
+      }
+    } catch (err) {
+      console.warn('Failed to save installation draft:', err);
+    }
+  };
+
   useEffect(() => {
     loadStoreData();
-  }, []);
+  }, [storeId]);
+
+  // Auto-save draft on state change with debounce
+  useEffect(() => {
+    if (!draftLoaded) return;
+    const timer = setTimeout(() => {
+      saveDraftToStorage();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [installationPhotos, installationPhotoMeta, draftLoaded]);
+
+  // Flush-save draft immediately when phone call arrives, phone locks, or app backgrounded
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'inactive' || nextState === 'background') {
+        saveDraftToStorage();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [storeId]);
 
   const loadStoreData = async () => {
     try {
@@ -52,8 +106,32 @@ export default function InstallationFormScreen({ route, navigation }: Installati
       const store = response.store;
       setStoreData(store);
       
-      // Initialize installation photos object based on approved recce photos count only
-      if (store?.recce?.reccePhotos) {
+      // Check for existing saved draft first
+      let restoredFromDraft = false;
+      try {
+        const rawDraft = await AsyncStorage.getItem(draftKey);
+        if (rawDraft) {
+          const draft = JSON.parse(rawDraft);
+          if (draft && draft.installationPhotos && Object.keys(draft.installationPhotos).length > 0) {
+            setInstallationPhotos(draft.installationPhotos);
+            if (draft.installationPhotoMeta) {
+              setInstallationPhotoMeta(draft.installationPhotoMeta);
+            }
+            restoredFromDraft = true;
+            Toast.show({
+              type: 'info',
+              text1: 'Ongoing Installation Restored',
+              text2: 'Your captured installation photos were preserved intact.',
+              visibilityTime: 4000,
+            });
+          }
+        }
+      } catch (draftErr) {
+        console.warn('Draft load error:', draftErr);
+      }
+
+      // Initialize installation photos object if not restored from draft
+      if (!restoredFromDraft && store?.recce?.reccePhotos) {
         const approvedPhotos = store.recce.reccePhotos.filter(photo => photo.approvalStatus === 'APPROVED');
         const initialPhotos: {[key: number]: {before?: string, after?: string, closeup?: string}} = {};
         approvedPhotos.forEach((_, index: number) => {
@@ -61,6 +139,8 @@ export default function InstallationFormScreen({ route, navigation }: Installati
         });
         setInstallationPhotos(initialPhotos);
       }
+
+      setDraftLoaded(true);
     } catch (error) {
       Toast.show({
         type: 'error',
@@ -135,14 +215,31 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               }> = [];
               let fileIndex = 0;
 
+              // Helper to ensure photo URI is a local file before submission
+              const ensureLocalFileUri = async (uri: string): Promise<string> => {
+                if (!uri) return uri;
+                if (Platform.OS === 'android' && uri.startsWith('content://')) {
+                  try {
+                    const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/upload_${Date.now()}_${Math.floor(Math.random() * 10000)}.jpg`;
+                    await ReactNativeBlobUtil.fs.cp(uri, destPath);
+                    return `file://${destPath}`;
+                  } catch (err) {
+                    console.warn('Failed to convert content URI before upload:', err);
+                    return uri;
+                  }
+                }
+                return uri;
+              };
+
               for (let i = 0; i < reccePhotosCount; i++) {
                 const boardPhotos = installationPhotos[i] || {};
                 const boardPhotoMeta = installationPhotoMeta[i] || {};
                 const approvedReccePhoto = approvedReccePhotos[i];
 
                 // Add each photo type for this approved board
-                Object.entries(boardPhotos).forEach(([photoType, photoUri]) => {
-                  if (photoUri) {
+                for (const [photoType, rawPhotoUri] of Object.entries(boardPhotos)) {
+                  if (rawPhotoUri) {
+                    const photoUri = await ensureLocalFileUri(rawPhotoUri as string);
                     const meta = (boardPhotoMeta as any)[photoType];
                     const mimeType = meta?.mimeType || 'image/jpeg';
                     const fileExtension = meta?.fileExtension || 'jpg';
@@ -162,7 +259,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                     });
                     fileIndex++;
                   }
-                });
+                }
               }
               
               // Add metadata
@@ -170,7 +267,57 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               formData.append('totalBoards', reccePhotosCount.toString());
               formData.append('completedAt', new Date().toISOString());
               
+              // Pre-check total upload size to guarantee staying under Vercel 4.5MB serverless limit
+              let totalUploadBytes = 0;
+              for (let i = 0; i < reccePhotosCount; i++) {
+                const boardPhotos = installationPhotos[i] || {};
+                for (const rawUri of Object.values(boardPhotos)) {
+                  if (rawUri) {
+                    try {
+                      const cleanPath = (rawUri as string).replace('file://', '');
+                      const stat = await ReactNativeBlobUtil.fs.stat(cleanPath);
+                      totalUploadBytes += Number(stat.size) || 0;
+                    } catch {
+                      // ignore
+                    }
+                  }
+                }
+              }
+
+              if (totalUploadBytes > 4.2 * 1024 * 1024) {
+                Alert.alert(
+                  'Payload Too Large (Server Limit 4.5MB)',
+                  `The total size of the photos being submitted is ${(totalUploadBytes / (1024 * 1024)).toFixed(1)}MB, which exceeds the serverless limit of 4.5MB.\n\nThis occurs when high-resolution photos were restored from an older draft.\n\nWould you like to clear the draft photos so you can capture fresh, optimized photos?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Clear Draft Photos',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await AsyncStorage.removeItem(draftKey);
+                        setInstallationPhotos({});
+                        setInstallationPhotoMeta({});
+                        Toast.show({
+                          type: 'info',
+                          text1: 'Draft Photos Cleared',
+                          text2: 'Please capture new optimized photos.'
+                        });
+                      }
+                    }
+                  ]
+                );
+                setLoading(false);
+                return;
+              }
+
               await storeService.submitInstallation(storeId, formData);
+
+              // Clear saved draft on successful submission
+              try {
+                await AsyncStorage.removeItem(draftKey);
+              } catch (err) {
+                // ignore
+              }
               
               Toast.show({
                 type: 'success',
@@ -180,11 +327,40 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               
               navigation.goBack();
             } catch (error: any) {
-              Toast.show({
-                type: 'error',
-                text1: 'Submission Failed',
-                text2: error.response?.data?.message || error.message || 'Failed to complete installation'
-              });
+              if (error.response?.status === 413) {
+                Alert.alert(
+                  '413: Request Entity Too Large',
+                  'The server rejected the upload because total photo size exceeded the 4.5MB server limit (caused by older high-res draft photos).\n\nWould you like to clear the draft photos and take new optimized photos?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Clear Draft Photos',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await AsyncStorage.removeItem(draftKey);
+                        setInstallationPhotos({});
+                        setInstallationPhotoMeta({});
+                        Toast.show({
+                          type: 'info',
+                          text1: 'Draft Photos Cleared',
+                          text2: 'Please capture new lightweight photos.'
+                        });
+                      }
+                    }
+                  ]
+                );
+              } else {
+                const serverMsg =
+                  error.response?.data?.error ||
+                  error.response?.data?.message ||
+                  error.message ||
+                  'Failed to complete installation';
+                Toast.show({
+                  type: 'error',
+                  text1: 'Submission Failed',
+                  text2: typeof serverMsg === 'string' ? serverMsg : JSON.stringify(serverMsg)
+                });
+              }
             } finally {
               setLoading(false);
             }
@@ -234,6 +410,34 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     setCameraVisible(false);
   };
 
+  const handleClearDraft = () => {
+    Alert.alert(
+      'Clear Saved Draft?',
+      'This will remove all temporarily saved installation photos for this store so you can start fresh. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear Draft',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(draftKey);
+              setInstallationPhotos({});
+              setInstallationPhotoMeta({});
+              Toast.show({
+                type: 'info',
+                text1: 'Draft Cleared',
+                text2: 'Draft installation photos have been reset.'
+              });
+            } catch (err) {
+              console.warn('Failed to clear draft:', err);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleCameraClose = () => {
     setCameraVisible(false);
   };
@@ -258,6 +462,28 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+        {Object.values(installationPhotos).some(b => Object.keys(b || {}).length > 0) ? (
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <TouchableOpacity
+              onPress={handleClearDraft}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#EF444415',
+                paddingHorizontal: 8,
+                paddingVertical: 5,
+                borderRadius: 6,
+                borderWidth: 1,
+                borderColor: '#EF444440',
+              }}
+            >
+              <Trash2 size={13} color="#EF4444" />
+              <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                Clear Draft Photos
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {/* Assignment Info */}
         <View style={{ 
           backgroundColor: theme.colors.surface, 
@@ -371,11 +597,11 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {initialPhotos.slice(0, 4).map((photo: string, idx: number) => (
-                <TouchableOpacity key={idx} onPress={() => setSelectedImage(photo)} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610' }}>
+                <TouchableOpacity key={idx} onPress={() => setSelectedImage(photo)} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A' }}>
                   <Image
                     source={{ uri: photo.startsWith('http') ? photo : imageService.getFullImageUrl(photo) }}
                     style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
+                    resizeMode="contain"
                   />
                 </TouchableOpacity>
               ))}
@@ -437,11 +663,11 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
                         Recce Photo (Reference)
                       </Text>
-                      <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#3B82F610', borderWidth: 2, borderColor: '#3B82F6' }}>
+                      <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A', borderWidth: 2, borderColor: '#3B82F6' }}>
                         <Image
                           source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
                           style={{ width: '100%', height: '100%' }}
-                          resizeMode="cover"
+                          resizeMode="contain"
                         />
                       </TouchableOpacity>
                       <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
@@ -473,7 +699,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                           onPress={() => captureInstallationPhoto(index, 'before')}
                           style={{
                             aspectRatio: 1,
-                            backgroundColor: boardPhotos.before ? theme.colors.primary + '15' : theme.colors.background,
+                            backgroundColor: boardPhotos.before ? '#0F172A' : theme.colors.background,
                             borderWidth: 2,
                             borderColor: boardPhotos.before ? '#10B981' : theme.colors.border,
                             borderStyle: boardPhotos.before ? 'solid' : 'dashed',
@@ -485,7 +711,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                             <Image
                               source={{ uri: boardPhotos.before }}
                               style={{ width: '100%', height: '100%' }}
-                              resizeMode="cover"
+                              resizeMode="contain"
                             />
                           ) : (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -507,7 +733,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                           onPress={() => captureInstallationPhoto(index, 'after')}
                           style={{
                             aspectRatio: 1,
-                            backgroundColor: boardPhotos.after ? theme.colors.primary + '15' : theme.colors.background,
+                            backgroundColor: boardPhotos.after ? '#0F172A' : theme.colors.background,
                             borderWidth: 2,
                             borderColor: boardPhotos.after ? '#10B981' : theme.colors.border,
                             borderStyle: boardPhotos.after ? 'solid' : 'dashed',
@@ -519,7 +745,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                             <Image
                               source={{ uri: boardPhotos.after }}
                               style={{ width: '100%', height: '100%' }}
-                              resizeMode="cover"
+                              resizeMode="contain"
                             />
                           ) : (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -541,7 +767,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                           onPress={() => captureInstallationPhoto(index, 'closeup')}
                           style={{
                             aspectRatio: 1,
-                            backgroundColor: boardPhotos.closeup ? theme.colors.primary + '15' : theme.colors.background,
+                            backgroundColor: boardPhotos.closeup ? '#0F172A' : theme.colors.background,
                             borderWidth: 2,
                             borderColor: boardPhotos.closeup ? '#10B981' : theme.colors.border,
                             borderStyle: boardPhotos.closeup ? 'solid' : 'dashed',
@@ -553,7 +779,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                             <Image
                               source={{ uri: boardPhotos.closeup }}
                               style={{ width: '100%', height: '100%' }}
-                              resizeMode="cover"
+                              resizeMode="contain"
                             />
                           ) : (
                             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

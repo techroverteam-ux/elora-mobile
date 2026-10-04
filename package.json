@@ -14,6 +14,7 @@
     "test:api:all": "node test-mobile-apis.js --all",
     "pod_install": "cd ios && pod install && cd ..",
     "ios_icon": "npx rnvi-update-plist package.json ios/GeetaBalSanskar/Info.plist && cd ios && pod install && cd ..",
+    "build": "npm run build:android",
     "build:apk": "cd android && ./gradlew assembleRelease",
     "build:android": "npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res"
   },

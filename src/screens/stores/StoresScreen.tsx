@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight, MapPin } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
@@ -8,6 +8,7 @@ import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
 import { permissionService } from '../../services/permissionService';
+import { locationService } from '../../services/locationService';
 import { LinearGradient } from 'react-native-linear-gradient';
 import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
@@ -105,6 +106,50 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+
+  const handleGetCurrentLocation = async () => {
+    try {
+      setFetchingLocation(true);
+      Toast.show({ type: 'info', text1: 'Acquiring GPS location...' });
+      const loc = await locationService.getCurrentLocation();
+      if (!loc || !loc.latitude || !loc.longitude) {
+        Toast.show({ type: 'error', text1: 'Could not acquire GPS position' });
+        return;
+      }
+
+      let updatedData: any = {
+        ...newStoreData,
+        latitude: String(loc.latitude.toFixed(6)),
+        longitude: String(loc.longitude.toFixed(6))
+      };
+
+      try {
+        const geo = await locationService.reverseGeocode(loc.latitude, loc.longitude);
+        if (geo) {
+          if (geo.formattedAddress && !newStoreData.dealerAddress) {
+            updatedData.dealerAddress = geo.formattedAddress;
+          }
+          if (geo.city && !newStoreData.city) {
+            updatedData.city = geo.city;
+          }
+          if (geo.state && !newStoreData.state) {
+            updatedData.state = geo.state;
+          }
+        }
+      } catch (e) {
+        console.warn('Reverse geocode fallback:', e);
+      }
+
+      setNewStoreData(updatedData);
+      Toast.show({ type: 'success', text1: 'GPS Location Detected', text2: `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` });
+    } catch (err: any) {
+      console.error('GPS detection error:', err);
+      Toast.show({ type: 'error', text1: 'GPS Error', text2: err?.message || 'Failed to detect location' });
+    } finally {
+      setFetchingLocation(false);
+    }
+  };
 
   useEffect(() => {
     fetchClients();
@@ -1617,11 +1662,41 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                     />
                   </View>
                   
+                  <View style={{ marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>Store Geolocation (GPS)</Text>
+                      <TouchableOpacity
+                        onPress={handleGetCurrentLocation}
+                        disabled={fetchingLocation}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: theme.colors.primary + '18',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: theme.colors.primary + '40',
+                          gap: 6
+                        }}
+                      >
+                        {fetchingLocation ? (
+                          <ActivityIndicator size="small" color={theme.colors.primary} />
+                        ) : (
+                          <MapPin size={13} color={theme.colors.primary} />
+                        )}
+                        <Text style={{ color: theme.colors.primary, fontSize: 11, fontWeight: '700' }}>
+                          {fetchingLocation ? 'Locating...' : 'Use Current GPS'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  
                   <View style={{ flexDirection: 'row', gap: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Latitude</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>Latitude</Text>
                       <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 15 }}
                         value={newStoreData.latitude}
                         onChangeText={(text) => setNewStoreData({ ...newStoreData, latitude: text })}
                         placeholder="e.g. 28.7041"
@@ -1630,9 +1705,9 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Longitude</Text>
+                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>Longitude</Text>
                       <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
+                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 15 }}
                         value={newStoreData.longitude}
                         onChangeText={(text) => setNewStoreData({ ...newStoreData, longitude: text })}
                         placeholder="e.g. 77.1025"

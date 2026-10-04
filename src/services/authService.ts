@@ -1,4 +1,4 @@
-import api from '../lib/api';
+import api, { performTokenRefresh } from '../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const authService = {
@@ -8,10 +8,17 @@ export const authService = {
   },
 
   logout: async () => {
-    const { data } = await api.post('/auth/logout');
-    await AsyncStorage.removeItem('access_token');
-    await AsyncStorage.removeItem('user');
-    return data;
+    try {
+      const { data } = await api.post('/auth/logout');
+      return data;
+    } catch {
+      // ignore network errors on logout
+    } finally {
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('access_token');
+      await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem('user');
+    }
   },
 
   getMe: async () => {
@@ -20,7 +27,6 @@ export const authService = {
   },
 
   refresh: async () => {
-    const { data } = await api.post('/auth/refresh');
-    return data;
+    return await performTokenRefresh();
   },
 };

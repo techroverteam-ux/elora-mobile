@@ -89,6 +89,7 @@ export const storeService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 120000,
     });
     return data;
   },
@@ -109,6 +110,7 @@ export const storeService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 120000,
     });
     return data;
   },

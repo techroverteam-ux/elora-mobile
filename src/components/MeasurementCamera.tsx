@@ -5,11 +5,13 @@ import { useTheme } from '../context/ThemeContext';
 import { permissionService } from '../services/permissionService';
 import { cameraDetectionService, CameraOption } from '../services/cameraDetectionService';
 import Svg, { Line, Text as SvgText, G, Rect, Path } from 'react-native-svg';
-import { launchCamera, launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
-import ViewShot from 'react-native-view-shot';
+import { launchCamera, launchImageLibrary, ImagePickerResponse, MediaType, PhotoQuality } from 'react-native-image-picker';
+import ViewShot, { captureRef } from 'react-native-view-shot';
 import LocationOverlay from './LocationOverlay';
 import { imageLocationOverlay, LocationOverlayData, LocationOverlayConfig } from '../services/imageLocationOverlay';
 import { clientService } from '../services/clientService';
+import RNFS from 'react-native-fs';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 
 interface MeasurementCameraProps {
   visible: boolean;
@@ -121,6 +123,7 @@ export default function MeasurementCamera({
   const [showCameraSelector, setShowCameraSelector] = useState(false);
   const [availableCameras, setAvailableCameras] = useState<CameraOption[]>([]);
   const [isDetectingCameras, setIsDetectingCameras] = useState(false);
+  const [photoDimensions, setPhotoDimensions] = useState<{ width: number; height: number } | null>(null);
 
   // Create PanResponder for touch-based measurement adjustment
   const measurementPanResponder = useRef(
@@ -217,22 +220,38 @@ export default function MeasurementCamera({
   useEffect(() => { brushSizeRef.current = brushSize; }, [brushSize]);
   useEffect(() => { brushColorRef.current = brushColor; }, [brushColor]);
 
+  // Track intrinsic dimensions of captured/picked photo to prevent stretching
   useEffect(() => {
-    if (visible && width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
-      // Show measurement overlay only when valid measurements are provided
-      setShowMeasurement(true);
-      
-      // Initialize location overlay if client has it enabled
-      if (clientId) {
-        initializeLocationOverlay();
-      }
+    if (capturedPhoto) {
+      Image.getSize(
+        capturedPhoto,
+        (w, h) => {
+          if (w > 0 && h > 0) {
+            setPhotoDimensions({ width: w, height: h });
+          }
+        },
+        () => setPhotoDimensions(null)
+      );
     } else {
-      // No measurements provided - this is for clean photos (after installation, closeup, etc.)
+      setPhotoDimensions(null);
+    }
+  }, [capturedPhoto]);
+
+  useEffect(() => {
+    if (visible) {
+      if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
+        setShowMeasurement(true);
+      } else {
+        setShowMeasurement(false);
+      }
+      initializeLocationOverlay();
+    } else {
       setShowMeasurement(false);
       setCapturedPhoto(null);
       setLocationOverlayData(null);
       setLocationConfig(null);
       setMapImageUri('');
+      setPhotoDimensions(null);
     }
   }, [visible, width, height, clientId]);
 
@@ -253,53 +272,28 @@ export default function MeasurementCamera({
     try {
       setIsLoadingLocation(true);
       
-      if (!clientId) {
-        console.log('No clientId provided for location overlay');
-        setIsLoadingLocation(false);
-        return;
-      }
+      // Get location data and overlay configuration
+      const result = await imageLocationOverlay.processImageWithLocation('', clientId);
+      console.log('Location overlay result:', result);
       
-      // Check if location overlay should be enabled for this client
-      const locationConfig = await clientService.getLocationConfig(clientId);
-      console.log('Client location config:', locationConfig);
-      
-      if (locationConfig.enableLocationOverlay) {
-        // Get location data and process image
-        const result = await imageLocationOverlay.processImageWithLocation('', clientId);
-        console.log('Location overlay result:', result);
+      if (result.shouldAddOverlay && result.locationData && result.config) {
+        setLocationOverlayData(result.locationData);
+        setLocationConfig(result.config);
         
-        if (result.shouldAddOverlay && result.locationData && result.config) {
-          setLocationOverlayData(result.locationData);
-          setLocationConfig(result.config);
-          
-          // Download map image with better error handling
-          if (result.locationData.mapUrl) {
-            try {
-              console.log('Downloading map image from:', result.locationData.mapUrl);
-              const mapUri = await imageLocationOverlay.downloadMapImage(result.locationData.mapUrl);
-              if (mapUri) {
-                console.log('Map image downloaded successfully:', mapUri);
-                setMapImageUri(mapUri);
-              } else {
-                console.warn('Map image download returned empty URI');
-                // Continue without map image - will show placeholder
-              }
-            } catch (mapError) {
-              console.warn('Failed to download map image:', mapError);
-              // Continue without map image - will show placeholder
+        // Download map image for overlay
+        if (result.locationData.mapUrl) {
+          try {
+            const mapUri = await imageLocationOverlay.downloadMapImage(result.locationData.mapUrl);
+            if (mapUri) {
+              setMapImageUri(mapUri);
             }
-          } else {
-            console.warn('No map URL provided in location data');
+          } catch (mapError) {
+            console.warn('Failed to download map image:', mapError);
           }
-        } else {
-          console.log('Location overlay not enabled or data unavailable');
         }
-      } else {
-        console.log('Location overlay disabled for client:', clientId);
       }
     } catch (error) {
       console.error('Error initializing location overlay:', error);
-      // Don't show error to user, just continue without location overlay
     } finally {
       setIsLoadingLocation(false);
     }
@@ -386,9 +380,9 @@ export default function MeasurementCamera({
       const options = {
         mediaType: 'photo' as MediaType,
         includeBase64: false,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        quality: 0.8,
+        maxHeight: 1024,
+        maxWidth: 1024,
+        quality: 0.6 as PhotoQuality,
         saveToPhotos: false,
         cameraType: cameraType,
         storageOptions: {
@@ -494,9 +488,9 @@ export default function MeasurementCamera({
       const options = {
         mediaType: 'photo' as MediaType,
         includeBase64: false,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        quality: 0.8,
+        maxHeight: 1024,
+        maxWidth: 1024,
+        quality: 0.6 as PhotoQuality,
         selectionLimit: 1,
       };
 
@@ -527,13 +521,32 @@ export default function MeasurementCamera({
         }
 
         if (response.assets && response.assets[0]) {
-          const photoUri = response.assets[0].uri;
+          let photoUri = response.assets[0].uri;
           if (photoUri) {
             // Gallery picks aren't guaranteed to be JPEG (could be PNG, HEIC,
             // WEBP, etc.) — remember the real type so it isn't mislabeled at
             // upload time. See handleConfirm() for how this is used.
             pickedMimeTypeRef.current = response.assets[0].type;
             pickedSourceRef.current = 'gallery';
+
+            // On Android, gallery picks may return content:// URIs which have transient
+            // permissions that fail during subsequent multipart/form-data upload.
+            // Copy immediately to app cache so it becomes a stable file:// URI.
+            if (Platform.OS === 'android') {
+              if (photoUri.startsWith('content://')) {
+                try {
+                  const ext = extensionForMimeType(response.assets[0].type) || 'jpg';
+                  const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/gallery_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+                  await ReactNativeBlobUtil.fs.cp(photoUri, destPath);
+                  photoUri = `file://${destPath}`;
+                } catch (copyError) {
+                  console.warn('Failed to cache gallery image with ReactNativeBlobUtil:', copyError);
+                }
+              } else if (!photoUri.startsWith('file://')) {
+                photoUri = `file://${photoUri}`;
+              }
+            }
+
             setCapturedPhoto(photoUri);
             capturedPhotoRef.current = photoUri;
             setShowMeasurement(false);
@@ -565,44 +578,47 @@ export default function MeasurementCamera({
         let hasDrawings = false;
         let measurements = null;
         
-        // Always capture the view to include any overlays (measurements, drawings, location)
-        const shouldCaptureView =
-          (isDrawingMode && drawingPaths.length > 0) ||
-          (locationOverlayData && locationConfig) ||
-          hasValidMeasurements;
-
-        // Whether the final bytes going to onCapture are a fresh ViewShot
-        // render (always real JPEG) or the original picked/captured file
-        // passed through unmodified (only reliably JPEG for a device camera
-        // capture — a gallery pick can be PNG/HEIC/WEBP/etc).
+        // Capture the view with ViewShot to ensure:
+        // 1. Natural aspect ratio is preserved without stretching.
+        // 2. Overlays, drawings, and GPS stamps are embedded.
+        // 3. File size is web-safe (~300KB) to prevent exceeding server upload limits.
         let wasRecomposed = false;
 
-        if (shouldCaptureView) {
+        const shouldCaptureView =
+          (isDrawingMode && drawingPaths.length > 0) ||
+          (locationOverlayData && locationConfig);
+
+        if (shouldCaptureView && viewShotRef.current) {
           try {
-            const combinedImageUri = await viewShotRef.current?.capture?.({
+            const combinedImageUri = await captureRef(viewShotRef.current, {
               format: 'jpg',
-              quality: 1.0,
+              quality: 0.6,
               result: 'tmpfile',
-              width: cameraWidth,
-              height: cameraHeight
             });
             if (combinedImageUri) {
               finalImageUri = combinedImageUri;
               wasRecomposed = true;
               if (isDrawingMode && drawingPaths.length > 0) hasDrawings = true;
-              if (hasValidMeasurements) {
-                measurements = { width: measurementWidthInches, height: measurementHeightInches, unit: 'inches' };
-              }
             }
-          } catch {
+          } catch (captureErr) {
+            console.warn('captureRef failed, using capturedPhoto fallback:', captureErr);
             finalImageUri = capturedPhoto;
           }
+        } else {
+          // Photos are natively scaled to 1024px & compressed to ~100KB by image picker
+          finalImageUri = capturedPhoto;
+        }
+
+        if (hasValidMeasurements) {
+          measurements = { width: measurementWidthInches, height: measurementHeightInches, unit: 'inches' };
         }
 
         // ViewShot always outputs real JPEG regardless of source; a raw
         // pass-through keeps whatever type the camera/gallery actually gave us.
-        const mimeType = wasRecomposed ? 'image/jpeg' : (pickedMimeTypeRef.current || 'image/jpeg');
-        const fileExtension = wasRecomposed ? 'jpg' : extensionForMimeType(pickedMimeTypeRef.current);
+        const effectiveMimeType = wasRecomposed || finalImageUri.toLowerCase().endsWith('.jpg') || finalImageUri.toLowerCase().endsWith('.jpeg')
+          ? 'image/jpeg'
+          : (pickedMimeTypeRef.current || 'image/jpeg');
+        const effectiveFileExt = effectiveMimeType === 'image/jpeg' ? 'jpg' : (extensionForMimeType(effectiveMimeType) || 'jpg');
 
         // Pass the image with metadata
         onCapture(finalImageUri, {
@@ -611,8 +627,8 @@ export default function MeasurementCamera({
           photoType,
           capturedAt: new Date().toISOString(),
           locationData: locationOverlayData || undefined,
-          mimeType,
-          fileExtension,
+          mimeType: effectiveMimeType,
+          fileExtension: effectiveFileExt,
           source: pickedSourceRef.current
         });
         
@@ -779,8 +795,22 @@ export default function MeasurementCamera({
 
   if (!visible) return null;
 
-  const cameraWidth = screenWidth;
-  const cameraHeight = screenHeight * 0.75;
+  const maxCameraWidth = screenWidth;
+  const maxCameraHeight = screenHeight * 0.72;
+
+  let cameraWidth = maxCameraWidth;
+  let cameraHeight = maxCameraHeight;
+
+  if (capturedPhoto && photoDimensions && photoDimensions.width > 0 && photoDimensions.height > 0) {
+    const photoRatio = photoDimensions.width / photoDimensions.height;
+    cameraWidth = maxCameraWidth;
+    cameraHeight = maxCameraWidth / photoRatio;
+
+    if (cameraHeight > maxCameraHeight) {
+      cameraHeight = maxCameraHeight;
+      cameraWidth = maxCameraHeight * photoRatio;
+    }
+  }
   
   // Calculate measurement overlay positions - treat input as inches directly
   const measurementWidthInches = parseFloat(width) || 0;
@@ -849,14 +879,14 @@ export default function MeasurementCamera({
         {/* Camera View */}
         <View style={{ 
           flex: 1, 
-          backgroundColor: capturedPhoto ? 'transparent' : '#f5f5f5',
+          backgroundColor: '#000000',
           justifyContent: 'center',
           alignItems: 'center'
         }}>
           {/* Mock Camera Feed with captured state */}
           <ViewShot 
             ref={viewShotRef}
-            options={{ format: 'jpg', quality: 1.0, result: 'tmpfile' }}
+            options={{ format: 'jpg', quality: 0.6, result: 'tmpfile' }}
             style={{ 
               width: cameraWidth, 
               height: cameraHeight, 
@@ -864,12 +894,13 @@ export default function MeasurementCamera({
               justifyContent: 'center',
               alignItems: 'center',
               borderRadius: 8,
-              overflow: 'hidden'
+              overflow: 'hidden',
+              backgroundColor: '#000000'
             }}
           >
             {capturedPhoto ? (
               <>
-                {/* Show the actual captured photo */}
+                {/* Show the actual captured photo in natural aspect ratio */}
                 <Image 
                   source={{ uri: capturedPhoto }}
                   style={{ 
@@ -878,9 +909,9 @@ export default function MeasurementCamera({
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    backgroundColor: 'transparent'
+                    backgroundColor: '#000000'
                   }}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
                 
               </>

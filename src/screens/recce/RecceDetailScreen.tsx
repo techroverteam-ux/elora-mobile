@@ -279,8 +279,8 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                 >
                   <Image
                     source={{ uri: imageService.getFullImageUrl(photo) }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
+                    style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
+                    resizeMode="contain"
                     onError={() => {}}
                     onLoad={() => {}}
                   />
@@ -373,8 +373,8 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                     >
                       <Image
                         source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                        style={{ width: '100%', height: 200, borderRadius: 8 }}
-                        resizeMode="cover"
+                        style={{ width: '100%', height: 220, borderRadius: 8, backgroundColor: '#0F172A' }}
+                        resizeMode="contain"
                       />
                     </TouchableOpacity>
 
