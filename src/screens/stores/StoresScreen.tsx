@@ -118,34 +118,46 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         return;
       }
 
-      let updatedData: any = {
-        ...newStoreData,
-        latitude: String(loc.latitude.toFixed(6)),
-        longitude: String(loc.longitude.toFixed(6))
-      };
-
+      let geo: any = null;
       try {
-        const geo = await locationService.reverseGeocode(loc.latitude, loc.longitude);
-        if (geo) {
-          if (geo.formattedAddress && !newStoreData.dealerAddress) {
-            updatedData.dealerAddress = geo.formattedAddress;
-          }
-          if (geo.city && !newStoreData.city) {
-            updatedData.city = geo.city;
-          }
-          if (geo.state && !newStoreData.state) {
-            updatedData.state = geo.state;
-          }
-        }
+        geo = await locationService.reverseGeocode(loc.latitude, loc.longitude);
       } catch (e) {
         console.warn('Reverse geocode fallback:', e);
       }
 
-      setNewStoreData(updatedData);
-      Toast.show({ type: 'success', text1: 'GPS Location Detected', text2: `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}` });
+      setNewStoreData((prev) => {
+        const updated = {
+          ...prev,
+          latitude: String(loc.latitude.toFixed(6)),
+          longitude: String(loc.longitude.toFixed(6)),
+        };
+
+        if (geo) {
+          if (geo.formattedAddress && !prev.dealerAddress) {
+            updated.dealerAddress = geo.formattedAddress;
+          }
+          if (geo.city && !prev.city) {
+            updated.city = geo.city;
+          }
+          if (geo.state && !prev.state) {
+            updated.state = geo.state;
+          }
+        }
+
+        return updated;
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'GPS Location Detected',
+        text2: `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`
+      });
     } catch (err: any) {
       console.error('GPS detection error:', err);
-      Toast.show({ type: 'error', text1: 'GPS Error', text2: err?.message || 'Failed to detect location' });
+      Alert.alert(
+        'GPS Location Error',
+        err?.message || 'Failed to detect current location. Please verify that Location (GPS) is turned on in your device settings.'
+      );
     } finally {
       setFetchingLocation(false);
     }

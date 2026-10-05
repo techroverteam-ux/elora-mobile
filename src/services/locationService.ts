@@ -1,12 +1,12 @@
 import { PermissionsAndroid, Platform } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 
-// Enable Google Play Services Fused Location Provider on Android for fast, reliable fixes
+// Configure Geolocation safely for Android and iOS
 try {
   Geolocation.setRNConfiguration({
-    skipPermissionRequests: false,
+    skipPermissionRequests: true, // Manage permissions via PermissionsAndroid to avoid bridge collisions
     authorizationLevel: 'whenInUse',
-    locationProvider: 'playServices',
+    locationProvider: 'android', // Use stable Android LocationManager to eliminate PlayServices callback crashes
   });
 } catch (e) {
   console.warn('Failed to set Geolocation configuration:', e);
@@ -81,6 +81,20 @@ class LocationService {
     return true;
   }
 
+  async checkFineLocationPermission(): Promise<boolean> {
+    if (Platform.OS === 'android') {
+      try {
+        return await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+      } catch (err) {
+        console.error('Fine location permission check error:', err);
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Get the current GPS position with high accuracy first, falling back to network/cell location if needed.
    */
@@ -93,45 +107,81 @@ class LocationService {
       }
     }
 
-    // Try high accuracy (Play Services / GPS) first
-    try {
-      return await this.fetchPosition({
-        enableHighAccuracy: true,
-        timeout: 12000,
-        maximumAge: 10000,
-      });
-    } catch (highAccuracyError) {
-      console.warn('High accuracy location failed, trying standard accuracy fallback:', highAccuracyError);
-      // Fallback to standard/network accuracy
+    // Android 12+ Security check: only request high accuracy (GPS) if FINE location is granted
+    const hasFinePermission = await this.checkFineLocationPermission();
+
+    if (hasFinePermission) {
+      // Try high accuracy (GPS) first
       try {
         return await this.fetchPosition({
-          enableHighAccuracy: false,
+          enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000,
+          maximumAge: 10000,
         });
-      } catch (fallbackError) {
-        console.error('All location attempts failed:', fallbackError);
-        throw new Error('Unable to retrieve GPS coordinates. Please ensure Location is enabled in phone settings.');
+      } catch (highAccuracyError) {
+        console.warn('High accuracy location failed or timed out, trying standard accuracy fallback:', highAccuracyError);
       }
+    }
+
+    // Fallback to standard/network accuracy (safe for coarse-only permissions too)
+    try {
+      return await this.fetchPosition({
+        enableHighAccuracy: false,
+        timeout: 12000,
+        maximumAge: 60000,
+      });
+    } catch (fallbackError) {
+      console.error('All location attempts failed:', fallbackError);
+      throw new Error('Unable to retrieve GPS coordinates. Please ensure Location (GPS) is turned ON in your phone settings.');
     }
   }
 
   private fetchPosition(options: { enableHighAccuracy: boolean; timeout: number; maximumAge: number }): Promise<LocationData> {
     return new Promise((resolve, reject) => {
-      Geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            timestamp: position.timestamp,
-          });
-        },
-        (error) => {
-          reject(error);
-        },
-        options
-      );
+      let isSettled = false;
+
+      // Safety timeout guard in JS to prevent hanging or duplicate callback resolution
+      const timer = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          reject(new Error(`Location request timed out after ${options.timeout}ms`));
+        }
+      }, options.timeout + 1500);
+
+      try {
+        Geolocation.getCurrentPosition(
+          (position) => {
+            if (!isSettled) {
+              isSettled = true;
+              clearTimeout(timer);
+              if (position && position.coords) {
+                resolve({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy,
+                  timestamp: position.timestamp,
+                });
+              } else {
+                reject(new Error('Invalid location coordinates returned by device'));
+              }
+            }
+          },
+          (error) => {
+            if (!isSettled) {
+              isSettled = true;
+              clearTimeout(timer);
+              reject(error || new Error('Failed to acquire location'));
+            }
+          },
+          options
+        );
+      } catch (err) {
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timer);
+          reject(err);
+        }
+      }
     });
   }
 
