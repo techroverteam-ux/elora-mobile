@@ -1,26 +1,26 @@
 {
-  "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile",
-  "reactNativePath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native",
+  "root": "/Users/ashokverma/Documents/TechRover/elora-mobile",
+  "reactNativePath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native",
   "reactNativeVersion": "0.80",
   "dependencies": {
     "@react-native-async-storage/async-storage": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-async-storage\\async-storage",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-async-storage/async-storage",
       "name": "@react-native-async-storage/async-storage",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-async-storage\\async-storage\\RNCAsyncStorage.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-async-storage/async-storage/RNCAsyncStorage.podspec",
           "version": "2.2.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-async-storage\\async-storage\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-async-storage/async-storage/android",
           "packageImportPath": "import com.reactnativecommunity.asyncstorage.AsyncStoragePackage;",
           "packageInstance": "new AsyncStoragePackage()",
           "buildTypes": [],
           "libraryName": "rnasyncstorage",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -29,23 +29,23 @@
       }
     },
     "@react-native-community/geolocation": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\geolocation",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/geolocation",
       "name": "@react-native-community/geolocation",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\geolocation\\react-native-geolocation.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/geolocation/react-native-geolocation.podspec",
           "version": "3.4.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\geolocation\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/geolocation/android",
           "packageImportPath": "import com.reactnativecommunity.geolocation.GeolocationPackage;",
           "packageInstance": "new GeolocationPackage()",
           "buildTypes": [],
           "libraryName": "RNCGeolocationSpec",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-community/geolocation/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/geolocation/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -54,17 +54,17 @@
       }
     },
     "@react-native-community/slider": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\slider",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/slider",
       "name": "@react-native-community/slider",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\slider\\react-native-slider.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/slider/react-native-slider.podspec",
           "version": "4.5.7",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-community\\slider\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/slider/android",
           "packageImportPath": "import com.reactnativecommunity.slider.ReactSliderPackage;",
           "packageInstance": "new ReactSliderPackage()",
           "buildTypes": [],
@@ -72,7 +72,7 @@
           "componentDescriptors": [
             "RNCSliderComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-community/slider/android/src/main/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-community/slider/android/src/main/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -81,22 +81,22 @@
       }
     },
     "@react-native-cookies/cookies": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-cookies\\cookies",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-cookies/cookies",
       "name": "@react-native-cookies/cookies",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-cookies\\cookies\\react-native-cookies.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-cookies/cookies/react-native-cookies.podspec",
           "version": "6.2.1",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-cookies\\cookies\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-cookies/cookies/android",
           "packageImportPath": "import com.reactnativecommunity.cookies.CookieManagerPackage;",
           "packageInstance": "new CookieManagerPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-cookies/cookies/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-cookies/cookies/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -105,23 +105,23 @@
       }
     },
     "@react-native-documents/picker": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-documents\\picker",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker",
       "name": "@react-native-documents/picker",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-documents\\picker\\react-native-document-picker.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/react-native-document-picker.podspec",
           "version": "12.0.2",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-documents\\picker\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/android",
           "packageImportPath": "import com.reactnativedocumentpicker.RNDocumentPickerPackage;",
           "packageInstance": "new RNDocumentPickerPackage()",
           "buildTypes": [],
           "libraryName": "rndocumentpickerCGen",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-documents/picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-documents/picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -130,23 +130,23 @@
       }
     },
     "@react-native-vector-icons/material-design-icons": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-vector-icons\\material-design-icons",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons",
       "name": "@react-native-vector-icons/material-design-icons",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-vector-icons\\material-design-icons\\react-native-vector-icons-material-design-icons.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons/react-native-vector-icons-material-design-icons.podspec",
           "version": "12.4.1",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\@react-native-vector-icons\\material-design-icons\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons/android",
           "packageImportPath": "import com.reactnativevectoricons.material_design_icons.VectorIconsMaterialDesignIconsPackage;",
           "packageInstance": "new VectorIconsMaterialDesignIconsPackage()",
           "buildTypes": [],
           "libraryName": "VectorIconsMaterialDesignIcons",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/@react-native-vector-icons/material-design-icons/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -155,23 +155,23 @@
       }
     },
     "react-native-blob-util": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-blob-util",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-blob-util",
       "name": "react-native-blob-util",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-blob-util\\react-native-blob-util.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-blob-util/react-native-blob-util.podspec",
           "version": "0.22.2",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-blob-util\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-blob-util/android",
           "packageImportPath": "import com.ReactNativeBlobUtil.ReactNativeBlobUtilPackage;",
           "packageInstance": "new ReactNativeBlobUtilPackage()",
           "buildTypes": [],
           "libraryName": "ReactNativeBlobUtilSpec",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-blob-util/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-blob-util/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -180,22 +180,22 @@
       }
     },
     "react-native-fast-image": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fast-image",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fast-image",
       "name": "react-native-fast-image",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fast-image\\RNFastImage.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fast-image/RNFastImage.podspec",
           "version": "8.6.3",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fast-image\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fast-image/android",
           "packageImportPath": "import com.dylanvann.fastimage.FastImageViewPackage;",
           "packageInstance": "new FastImageViewPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-fast-image/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fast-image/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -204,22 +204,22 @@
       }
     },
     "react-native-fs": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fs",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fs",
       "name": "react-native-fs",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fs\\RNFS.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fs/RNFS.podspec",
           "version": "2.20.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-fs\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fs/android",
           "packageImportPath": "import com.rnfs.RNFSPackage;",
           "packageInstance": "new RNFSPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-fs/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-fs/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -228,17 +228,17 @@
       }
     },
     "react-native-gesture-handler": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-gesture-handler",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-gesture-handler",
       "name": "react-native-gesture-handler",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-gesture-handler\\RNGestureHandler.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-gesture-handler/RNGestureHandler.podspec",
           "version": "2.30.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-gesture-handler\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-gesture-handler/android",
           "packageImportPath": "import com.swmansion.gesturehandler.RNGestureHandlerPackage;",
           "packageInstance": "new RNGestureHandlerPackage()",
           "buildTypes": [],
@@ -247,7 +247,7 @@
             "RNGestureHandlerButtonComponentDescriptor",
             "RNGestureHandlerRootViewComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-gesture-handler/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -256,23 +256,23 @@
       }
     },
     "react-native-image-picker": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-image-picker",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-image-picker",
       "name": "react-native-image-picker",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-image-picker\\react-native-image-picker.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-image-picker/react-native-image-picker.podspec",
           "version": "8.2.1",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-image-picker\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-image-picker/android",
           "packageImportPath": "import com.imagepicker.ImagePickerPackage;",
           "packageInstance": "new ImagePickerPackage()",
           "buildTypes": [],
           "libraryName": "RNImagePickerSpec",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-image-picker/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -281,22 +281,22 @@
       }
     },
     "react-native-linear-gradient": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-linear-gradient",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-linear-gradient",
       "name": "react-native-linear-gradient",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-linear-gradient\\BVLinearGradient.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-linear-gradient/BVLinearGradient.podspec",
           "version": "2.8.3",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-linear-gradient\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-linear-gradient/android",
           "packageImportPath": "import com.BV.LinearGradient.LinearGradientPackage;",
           "packageInstance": "new LinearGradientPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-linear-gradient/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-linear-gradient/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -305,22 +305,22 @@
       }
     },
     "react-native-orientation-locker": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-orientation-locker",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-orientation-locker",
       "name": "react-native-orientation-locker",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-orientation-locker\\react-native-orientation-locker.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-orientation-locker/react-native-orientation-locker.podspec",
           "version": "1.7.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-orientation-locker\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-orientation-locker/android",
           "packageImportPath": "import org.wonday.orientation.OrientationPackage;",
           "packageInstance": "new OrientationPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-orientation-locker/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-orientation-locker/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -329,17 +329,17 @@
       }
     },
     "react-native-pager-view": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pager-view",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pager-view",
       "name": "react-native-pager-view",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pager-view\\react-native-pager-view.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pager-view/react-native-pager-view.podspec",
           "version": "6.9.1",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pager-view\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pager-view/android",
           "packageImportPath": "import com.reactnativepagerview.PagerViewPackage;",
           "packageInstance": "new PagerViewPackage()",
           "buildTypes": [],
@@ -347,7 +347,7 @@
           "componentDescriptors": [
             "RNCViewPagerComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-pager-view/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pager-view/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -356,17 +356,17 @@
       }
     },
     "react-native-pdf": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pdf",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pdf",
       "name": "react-native-pdf",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pdf\\react-native-pdf.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pdf/react-native-pdf.podspec",
           "version": "6.7.7",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-pdf\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pdf/android",
           "packageImportPath": "import org.wonday.pdf.RNPDFPackage;",
           "packageInstance": "new RNPDFPackage()",
           "buildTypes": [],
@@ -374,7 +374,7 @@
           "componentDescriptors": [
             "RNPDFPdfViewComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-pdf/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-pdf/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -383,17 +383,17 @@
       }
     },
     "react-native-push-notification": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-push-notification",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification",
       "name": "react-native-push-notification",
       "platforms": {
         "ios": null,
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-push-notification\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification/android",
           "packageImportPath": "import com.dieam.reactnativepushnotification.ReactNativePushNotificationPackage;",
           "packageInstance": "new ReactNativePushNotificationPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-push-notification/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-push-notification/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -402,17 +402,17 @@
       }
     },
     "react-native-safe-area-context": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-safe-area-context",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-safe-area-context",
       "name": "react-native-safe-area-context",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-safe-area-context\\react-native-safe-area-context.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-safe-area-context/react-native-safe-area-context.podspec",
           "version": "5.7.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-safe-area-context\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-safe-area-context/android",
           "packageImportPath": "import com.th3rdwave.safeareacontext.SafeAreaContextPackage;",
           "packageInstance": "new SafeAreaContextPackage()",
           "buildTypes": [],
@@ -421,7 +421,7 @@
             "RNCSafeAreaProviderComponentDescriptor",
             "RNCSafeAreaViewComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-safe-area-context/android/src/main/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -430,17 +430,17 @@
       }
     },
     "react-native-screens": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-screens",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-screens",
       "name": "react-native-screens",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-screens\\RNScreens.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-screens/RNScreens.podspec",
           "version": "4.24.0",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-screens\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-screens/android",
           "packageImportPath": "import com.swmansion.rnscreens.RNScreensPackage;",
           "packageInstance": "new RNScreensPackage()",
           "buildTypes": [],
@@ -460,7 +460,7 @@
             "RNSTabsHostComponentDescriptor",
             "RNSSafeAreaViewComponentDescriptor"
           ],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-screens/android/src/main/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -469,23 +469,23 @@
       }
     },
     "react-native-share": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-share",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-share",
       "name": "react-native-share",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-share\\RNShare.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-share/RNShare.podspec",
           "version": "12.2.5",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-share\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-share/android",
           "packageImportPath": "import cl.json.RNSharePackage;",
           "packageInstance": "new RNSharePackage()",
           "buildTypes": [],
           "libraryName": "RNShareSpec",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-share/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-share/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -494,22 +494,22 @@
       }
     },
     "react-native-svg": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-svg",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-svg",
       "name": "react-native-svg",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-svg\\RNSVG.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-svg/RNSVG.podspec",
           "version": "11.0.1",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-svg\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-svg/android",
           "packageImportPath": "import com.horcrux.svg.SvgPackage;",
           "packageInstance": "new SvgPackage()",
           "buildTypes": [],
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-svg/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-svg/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -518,23 +518,23 @@
       }
     },
     "react-native-view-shot": {
-      "root": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-view-shot",
+      "root": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-view-shot",
       "name": "react-native-view-shot",
       "platforms": {
         "ios": {
-          "podspecPath": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-view-shot\\react-native-view-shot.podspec",
+          "podspecPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-view-shot/react-native-view-shot.podspec",
           "version": "4.0.3",
           "configurations": [],
           "scriptPhases": []
         },
         "android": {
-          "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\node_modules\\react-native-view-shot\\android",
+          "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-view-shot/android",
           "packageImportPath": "import fr.greweb.reactnativeviewshot.RNViewShotPackage;",
           "packageInstance": "new RNViewShotPackage()",
           "buildTypes": [],
           "libraryName": "rnviewshot",
           "componentDescriptors": [],
-          "cmakeListsPath": "D:/WORK/akshay-dev/Elora-Mobile-App/elora-mobile/node_modules/react-native-view-shot/android/build/generated/source/codegen/jni/CMakeLists.txt",
+          "cmakeListsPath": "/Users/ashokverma/Documents/TechRover/elora-mobile/node_modules/react-native-view-shot/android/build/generated/source/codegen/jni/CMakeLists.txt",
           "cxxModuleCMakeListsModuleName": null,
           "cxxModuleCMakeListsPath": null,
           "cxxModuleHeaderName": null,
@@ -705,7 +705,7 @@
         {
           "name": "--path <path>",
           "description": "Path to the React Native project root.",
-          "default": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile"
+          "default": "/Users/ashokverma/Documents/TechRover/elora-mobile"
         },
         {
           "name": "--platform <string>",
@@ -762,7 +762,7 @@
         {
           "name": "--terminal <string>",
           "description": "Launches the Metro Bundler in a new window using the specified terminal path.",
-          "default": "cmd.exe"
+          "default": "Apple_Terminal"
         },
         {
           "name": "--binary-path <string>",
@@ -930,7 +930,7 @@
         {
           "name": "--terminal <string>",
           "description": "Launches the Metro Bundler in a new window using the specified terminal path.",
-          "default": "cmd.exe"
+          "default": "Apple_Terminal"
         },
         {
           "name": "--appId <string>",
@@ -1007,12 +1007,12 @@
   ],
   "project": {
     "ios": {
-      "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\ios",
+      "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/ios",
       "xcodeProject": null,
       "assets": []
     },
     "android": {
-      "sourceDir": "D:\\WORK\\akshay-dev\\Elora-Mobile-App\\elora-mobile\\android",
+      "sourceDir": "/Users/ashokverma/Documents/TechRover/elora-mobile/android",
       "appName": "app",
       "packageName": "com.eloramob",
       "applicationId": "com.eloramob",

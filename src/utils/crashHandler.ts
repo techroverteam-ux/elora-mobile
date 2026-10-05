@@ -1,34 +1,21 @@
-import { Alert } from 'react-native';
-
-// Global error handler to prevent app crashes
+// Global error handler.
+//
+// Previously this monkey-patched Promise.prototype.catch (which silently
+// swallowed rejections and logged every *handled* error as "Unhandled promise
+// rejection") and wrapped console.error (which made every error in DevTools
+// point at this file instead of the real source). Both removed.
+//
+// Now: log uncaught JS errors to the console, then hand them to React
+// Native's default handler so the red-box / LogBox still shows in dev.
 export const setupCrashHandler = () => {
-  // Handle unhandled promise rejections
-  const originalHandler = global.Promise.prototype.catch;
-  global.Promise.prototype.catch = function(onRejected) {
-    return originalHandler.call(this, (error) => {
-      console.warn('Unhandled promise rejection:', error);
-      if (onRejected) {
-        return onRejected(error);
-      }
-      // Don't crash the app
-      return Promise.resolve();
-    });
-  };
+  const ErrorUtilsRef = (globalThis as any).ErrorUtils;
+  if (!ErrorUtilsRef?.getGlobalHandler) return;
 
-  // Handle React Native errors
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    // Log the error but don't crash
-    originalConsoleError(...args);
-    
-    // Check if it's a critical error that might crash the app
-    const errorMessage = args.join(' ');
-    if (errorMessage.includes('Permission') || 
-        errorMessage.includes('Camera') || 
-        errorMessage.includes('Storage')) {
-      console.warn('Permission-related error caught and handled');
-    }
-  };
+  const defaultHandler = ErrorUtilsRef.getGlobalHandler();
+  ErrorUtilsRef.setGlobalHandler((error: any, isFatal?: boolean) => {
+    console.error(`[GlobalError]${isFatal ? ' (fatal)' : ''}`, error);
+    defaultHandler?.(error, isFatal);
+  });
 };
 
 // Safe wrapper for async operations

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X, UserPlus } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X, UserPlus, CheckCircle2, ClipboardCheck } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { recceService } from '../../services/recceService';
@@ -11,6 +11,11 @@ import { userService } from '../../services/userService';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import {
+  Card, StatusBadge, Button, Chip, Checkbox, Avatar, MetaGrid,
+  ScreenHeader, SearchBar, SelectionBar, Pagination, EmptyState, BottomSheet,
+  tone, statusMeta,
+} from '../../components/ui';
 import { testRecceAPI, debugStorage } from '../../utils/testRecceAPI';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RecceStackParamList } from '../../navigation/types';
@@ -353,516 +358,257 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     });
   };
 
+  // ---------------------------------------------------------------------------
+  // UI-only helpers (same logic that used to be inline in the JSX).
+  // ---------------------------------------------------------------------------
+  const REPORT_STATUSES = ['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'];
+
+  const STATUS_FILTERS = [
+    { value: 'ALL', label: 'All' },
+    { value: 'RECCE_ASSIGNED', label: 'Pending' },
+    { value: 'RECCE_SUBMITTED', label: 'Submitted' },
+    { value: 'RECCE_APPROVED', label: 'Approved' },
+  ];
+
+  const handleCardDownload = async (item: RecceAssignment, format: 'pdf' | 'ppt') => {
+    const assignmentId = item._id;
+    setCardDownloadStates(prev => ({
+      ...prev,
+      [assignmentId]: { ...prev[assignmentId], [format]: true }
+    }));
+
+    try {
+      if (format === 'pdf') {
+        const blob = await recceService.getPdf(item.store._id);
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `recce_${item.store.dealerCode}.pdf`
+        });
+      } else {
+        const blob = await recceService.getPpt(item.store._id);
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `recce_${item.store.dealerCode}.pptx`
+        });
+      }
+    } catch (error) {
+      Toast.show({ type: 'error', text1: format === 'pdf' ? 'PDF Download Failed' : 'PPT Download Failed' });
+    } finally {
+      setCardDownloadStates(prev => ({
+        ...prev,
+        [assignmentId]: { ...prev[assignmentId], [format]: false }
+      }));
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Recce card
+  // ---------------------------------------------------------------------------
   const renderAssignment = ({ item }: { item: RecceAssignment }) => {
     const isSelected = selectedAssignments.has(item._id);
     // Allow selection for all stores that have completed recce (same as web portal)
     const canSelect = ['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'].includes(item.status);
-    
-    // Debug logging for admin users
-    if (__DEV__ && isAdminUser) {
-      console.log(`Store ${item.store.storeName}: Admin=${isAdminUser}, Status=${item.status}, ShowReview=${isAdminUser && item.status === 'RECCE_SUBMITTED'}`);
-    }
-    
+    const hasReports = REPORT_STATUSES.includes(item.status);
+    const isComplete = item.status === 'RECCE_APPROVED' || (item.status === 'RECCE_SUBMITTED' && !isAdminUser);
+    const personLabel = isAdminUser ? 'Assigned to' : 'Assigned by';
+    const personName = isAdminUser ? item.assignedTo?.name || 'Unassigned' : item.assignedBy?.name || 'System';
+    const locationText = `${item.store.location.city}${item.store.location.state ? `, ${item.store.location.state}` : ''}`;
+
     return (
-      <View style={{ 
-        backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
-        padding: 16, 
-        marginBottom: 12, 
-        borderRadius: 12, 
-        borderWidth: 1, 
-        borderColor: isSelected ? theme.colors.primary : theme.colors.border 
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1 }}>
-            {canSelect && (
-              <TouchableOpacity onPress={() => toggleSelection(item._id)} style={{ marginRight: 12, marginTop: 2 }}>
-                {isSelected ? 
-                  <CheckSquare size={20} color={theme.colors.primary} /> : 
-                  <Square size={20} color={theme.colors.textSecondary} />
-                }
-              </TouchableOpacity>
-            )}
-            
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
-                {item.store.dealerCode}
-              </Text>
-              <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
-                {item.store.storeName}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MapPin size={12} color={theme.colors.textSecondary} />
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
-                  {item.store.location.city}{item.store.location.state ? `, ${item.store.location.state}` : ''}
+      <Card
+        selected={isSelected}
+        onPress={() => navigation.navigate('RecceDetail', { storeId: item.store._id })}
+        style={{ marginBottom: 12 }}
+      >
+        {/* Identity + status */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          {canSelect && (
+            <View style={{ paddingTop: 2 }}>
+              <Checkbox checked={isSelected} onPress={() => toggleSelection(item._id)} />
+            </View>
+          )}
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }} numberOfLines={1}>
+              {item.store.dealerCode}
+            </Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }} numberOfLines={2}>
+              {item.store.storeName}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <MapPin size={12} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, flex: 1 }} numberOfLines={1}>{locationText}</Text>
+            </View>
+          </View>
+          <StatusBadge status={item.status} />
+        </View>
+
+        {/* Who + when */}
+        <View style={{ marginTop: 12 }}>
+          <MetaGrid
+            items={[
+              { label: personLabel, value: personName },
+              { label: 'Assigned', value: formatDate(item.assignedAt) },
+              !!item.submittedAt && { label: 'Updated', value: formatDate(item.submittedAt!), color: tone.success },
+            ]}
+          />
+        </View>
+
+        {/* Photos + remarks */}
+        {(item.images && item.images.length > 0) || item.remarks ? (
+          <View style={{ marginTop: 10, gap: 8 }}>
+            {item.images && item.images.length > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Camera size={14} color={tone.success} />
+                <Text style={{ color: tone.success, fontSize: 12, fontWeight: '700' }}>
+                  {item.images.length} photo{item.images.length > 1 ? 's' : ''} attached
                 </Text>
               </View>
-            </View>
+            )}
+            {!!item.remarks && (
+              <View style={{ padding: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceSecondary, borderLeftWidth: 3, borderLeftColor: theme.colors.primary }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 }}>REMARKS</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 13 }}>{item.remarks}</Text>
+              </View>
+            )}
           </View>
-          
-          <View style={{ backgroundColor: getStatusColor(item.status) + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ color: getStatusColor(item.status), fontSize: 10, fontWeight: '600' }}>
-              {item.status.replace(/_/g, ' ')}
-            </Text>
-          </View>
-        </View>
+        ) : null}
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {isAdminUser ? 'Assigned To' : 'Assigned By'}
-            </Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {isAdminUser ? item.assignedTo?.name || 'Unassigned' : item.assignedBy?.name || 'System'}
-            </Text>
-          </View>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Assigned Date</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Clock size={12} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
-                {formatDate(item.assignedAt)}
-              </Text>
-            </View>
-          </View>
-          {item.submittedAt && (
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Submitted</Text>
-              <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
-                {formatDate(item.submittedAt)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {item.images && item.images.length > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <Camera size={16} color="#10B981" />
-            <Text style={{ color: '#10B981', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
-              {item.images.length} images attached
-            </Text>
-          </View>
-        )}
-
-        {item.remarks && (
-          <View style={{ marginBottom: 12, padding: 8, backgroundColor: theme.colors.background, borderRadius: 8 }}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: 4 }}>Remarks</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14 }}>{item.remarks}</Text>
-          </View>
-        )}
-
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <TouchableOpacity 
-            onPress={() => navigation.navigate('RecceDetail', { storeId: item.store._id })} 
-            style={{ flex: 1, backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Eye size={16} color="#3B82F6" />
-            <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View Details</Text>
-          </TouchableOpacity>
-          
+        {/* Actions */}
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {item.status === 'RECCE_ASSIGNED' && (
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('RecceForm', { storeId: item.store._id })} 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <Upload size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Start Recce</Text>
-            </TouchableOpacity>
+            <Button
+              label="Start recce"
+              variant="primary"
+              size="sm"
+              icon={(col) => <Upload size={15} color={col} />}
+              onPress={() => navigation.navigate('RecceForm', { storeId: item.store._id })}
+            />
           )}
-          
+
           {isAdminUser && item.status === 'RECCE_SUBMITTED' && (
-            <TouchableOpacity 
-              onPress={() => {
-                console.log('Review Photos clicked for store:', item.store._id, 'Admin:', isAdminUser);
-                navigation.navigate('RecceReview', { storeId: item.store._id });
-              }} 
-              style={{ backgroundColor: '#8B5CF620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <CheckSquare size={16} color="#8B5CF6" />
-              <Text style={{ color: '#8B5CF6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Review Photos</Text>
-            </TouchableOpacity>
+            <Button
+              label="Review photos"
+              variant="soft"
+              color={tone.violet}
+              size="sm"
+              icon={(col) => <CheckSquare size={15} color={col} />}
+              onPress={() => navigation.navigate('RecceReview', { storeId: item.store._id })}
+            />
           )}
-          
-          {(item.status === 'RECCE_APPROVED' || (item.status === 'RECCE_SUBMITTED' && !isAdminUser)) && (
-            <TouchableOpacity 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <CheckSquare size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Recce Complete</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Individual Download Buttons */}
-          {['RECCE_SUBMITTED', 'RECCE_APPROVED', 'INSTALLATION_ASSIGNED', 'INSTALLATION_SUBMITTED', 'INSTALLATION_APPROVED', 'COMPLETED'].includes(item.status) && (
-            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, width: '100%' }}>
-              {/* PDF Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const assignmentId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [assignmentId]: { ...prev[assignmentId], pdf: true }
-                  }));
-                  
-                  try {
-                    const blob = await recceService.getPdf(item.store._id);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `recce_${item.store.dealerCode}.pdf`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [assignmentId]: { ...prev[assignmentId], pdf: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.pdf}
-                style={{ 
-                  flex: 1,
-                  backgroundColor: '#EF4444', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#EF4444',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.pdf ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileText size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              
-              {/* PPT Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const assignmentId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [assignmentId]: { ...prev[assignmentId], ppt: true }
-                  }));
-                  
-                  try {
-                    const blob = await recceService.getPpt(item.store._id);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `recce_${item.store.dealerCode}.pptx`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [assignmentId]: { ...prev[assignmentId], ppt: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.ppt}
-                style={{ 
-                  flex: 1,
-                  backgroundColor: '#F59E0B', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#F59E0B',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.ppt ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileSpreadsheet size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+
+          <Button
+            label="Details"
+            variant="soft"
+            color={tone.info}
+            size="sm"
+            icon={(col) => <Eye size={15} color={col} />}
+            onPress={() => navigation.navigate('RecceDetail', { storeId: item.store._id })}
+          />
+
+          {isComplete && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <CheckCircle2 size={15} color={tone.success} />
+              <Text style={{ color: tone.success, fontSize: 12, fontWeight: '800' }}>Recce complete</Text>
             </View>
           )}
+
+          <View style={{ flex: 1 }} />
+
+          {hasReports && (
+            <>
+              <Button
+                label="PDF"
+                variant="outline"
+                color={tone.danger}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.pdf}
+                icon={(col) => <FileText size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'pdf')}
+              />
+              <Button
+                label="PPT"
+                variant="outline"
+                color={tone.warning}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.ppt}
+                icon={(col) => <FileSpreadsheet size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'ppt')}
+              />
+            </>
+          )}
         </View>
-      </View>
+      </Card>
     );
   };
 
+  // ---------------------------------------------------------------------------
+  // Screen
+  // ---------------------------------------------------------------------------
+  const eligibleInstallCount = getEligibleInstallStoreIds().length;
+  const hasActiveFilters = !!debouncedSearch || filterStatus !== 'ALL';
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Recce Inspection</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your recce assignments</Text>
-            {__DEV__ && (
-              <Text style={{ fontSize: 12, color: theme.colors.primary, marginTop: 4 }}>
-                Debug: User is {isAdminUser ? 'Admin' : 'Not Admin'} | Roles: {user?.roles?.map(r => r.name).join(', ') || 'None'}
-              </Text>
-            )}
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity
-              onPress={handleExport}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader
+          title="Recce"
+          subtitle={isAdminUser ? 'Inspections across all stores' : 'Your recce assignments'}
+          count={totalStores}
+          actions={
+            <Button
+              variant="outline"
+              loading={isExporting}
               disabled={isExporting}
-              style={{ 
-                backgroundColor: isExporting ? '#10B98180' : '#10B981', 
-                paddingHorizontal: 12, 
-                paddingVertical: 8, 
-                borderRadius: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center',
-                shadowColor: '#10B981',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.2,
-                shadowRadius: 2,
-                elevation: 2
-              }}
-            >
-              {isExporting ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <ActivityIndicator size="small" color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Exporting...</Text>
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Download size={16} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Export</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            <Search size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search store name, city..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
+              icon={(col) => <Download size={18} color={col} />}
+              onPress={handleExport}
             />
-          </View>
-          
-          {/* Status Filter Dropdown */}
-          <TouchableOpacity 
-            onPress={() => setShowStatusFilter(!showStatusFilter)}
-            style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <Text style={{ color: theme.colors.text, fontSize: 14 }}>
-              {filterStatus === 'ALL' ? 'All Status' : 
-               filterStatus === 'RECCE_ASSIGNED' ? 'Pending' :
-               filterStatus === 'RECCE_SUBMITTED' ? 'Submitted' :
-               filterStatus === 'RECCE_APPROVED' ? 'Approved' : filterStatus.replace(/_/g, ' ')}
-            </Text>
-            <ChevronDown size={16} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
-          
-          {showStatusFilter && (
-            <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, overflow: 'hidden' }}>
-              {[
-                { value: 'ALL', label: 'All Status' },
-                { value: 'RECCE_ASSIGNED', label: 'Pending' },
-                { value: 'RECCE_SUBMITTED', label: 'Submitted' },
-                { value: 'RECCE_APPROVED', label: 'Approved' }
-              ].map((status) => (
-                <TouchableOpacity
-                  key={status.value}
-                  onPress={() => {
-                    setFilterStatus(status.value);
-                    setShowStatusFilter(false);
-                  }}
-                  style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                >
-                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{status.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          
-          {selectedAssignments.size > 0 && (
-            <View style={{ marginBottom: 12 }}>
-              {/* Selection Count Header */}
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                backgroundColor: theme.colors.primary + '10',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: theme.colors.primary + '20'
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <CheckSquare size={16} color={theme.colors.primary} />
-                  <Text style={{ 
-                    color: theme.colors.primary, 
-                    fontSize: 14, 
-                    fontWeight: '600', 
-                    marginLeft: 6 
-                  }}>
-                    {selectedAssignments.size} recce{selectedAssignments.size > 1 ? 's' : ''} selected
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  onPress={() => setSelectedAssignments(new Set())}
-                  style={{ padding: 4 }}
-                >
-                  <X size={16} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              
-              {/* Enhanced Download Buttons */}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={handleBulkPPTDownload}
-                  disabled={isDownloadingPPT}
-                  style={{ 
-                    flex: 1, 
-                    backgroundColor: '#F59E0B', 
-                    paddingVertical: 14, 
-                    paddingHorizontal: 16, 
-                    borderRadius: 10, 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    shadowColor: '#F59E0B',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3
-                  }}
-                >
-                  {isDownloadingPPT ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color="#FFF" />
-                      <View style={{ 
-                        marginLeft: 8, 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 8, 
-                        paddingVertical: 2, 
-                        borderRadius: 4 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <FileSpreadsheet size={18} color="#FFF" />
-                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
-                      <View style={{ 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 6, 
-                        paddingVertical: 2, 
-                        borderRadius: 10, 
-                        marginLeft: 6 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
-                      </View>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={handleBulkPDFDownload}
-                  disabled={isDownloadingPDF}
-                  style={{ 
-                    flex: 1, 
-                    backgroundColor: '#EF4444', 
-                    paddingVertical: 14, 
-                    paddingHorizontal: 16, 
-                    borderRadius: 10, 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    shadowColor: '#EF4444',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3
-                  }}
-                >
-                  {isDownloadingPDF ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color="#FFF" />
-                      <View style={{ 
-                        marginLeft: 8, 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 8, 
-                        paddingVertical: 2, 
-                        borderRadius: 4 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <FileText size={18} color="#FFF" />
-                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
-                      <View style={{ 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 6, 
-                        paddingVertical: 2, 
-                        borderRadius: 10, 
-                        marginLeft: 6 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
-                      </View>
-                    </View>
-                  )}
-                </TouchableOpacity>
+          }
+        />
 
-                {isAdminUser && (
-                  <TouchableOpacity
-                    onPress={openInstallAssignModal}
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#3B82F6',
-                      paddingVertical: 14,
-                      paddingHorizontal: 16,
-                      borderRadius: 10,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      shadowColor: '#3B82F6',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.2,
-                      shadowRadius: 4,
-                      elevation: 3
-                    }}
-                  >
-                    <UserPlus size={18} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '600', marginLeft: 6 }}>Assign</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+        <SearchBar value={searchTerm} onChangeText={setSearchTerm} placeholder="Search store name, city…" />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 2 }}>
+          {STATUS_FILTERS.map((s) => (
+            <Chip
+              key={s.value}
+              label={s.label}
+              color={s.value === 'ALL' ? undefined : statusMeta(s.value).color}
+              active={filterStatus === s.value}
+              onPress={() => setFilterStatus(s.value)}
+            />
+          ))}
+        </ScrollView>
+
+        <SelectionBar count={selectedAssignments.size} noun="recce" onClear={() => setSelectedAssignments(new Set())}>
+          <Button
+            label="PPT"
+            variant="solid"
+            color={tone.warning}
+            size="sm"
+            loading={isDownloadingPPT}
+            icon={(col) => <FileSpreadsheet size={14} color={col} />}
+            onPress={handleBulkPPTDownload}
+          />
+          <Button
+            label="PDF"
+            variant="solid"
+            color={tone.danger}
+            size="sm"
+            loading={isDownloadingPDF}
+            icon={(col) => <FileText size={14} color={col} />}
+            onPress={handleBulkPDFDownload}
+          />
+          {isAdminUser && (
+            <Button
+              label="Assign"
+              variant="primary"
+              size="sm"
+              icon={(col) => <UserPlus size={14} color={col} />}
+              onPress={openInstallAssignModal}
+            />
           )}
-        </View>
+        </SelectionBar>
       </View>
 
       {loading ? (
@@ -872,7 +618,8 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
           data={assignments}
           renderItem={renderAssignment}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -881,162 +628,95 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                 fetchAssignments();
               }}
               colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Search size={48} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
-              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, marginBottom: 8 }}>
-                {debouncedSearch ? 'No stores found' : filterStatus !== 'ALL' ? 'No stores with this status' : 'No recce tasks available'}
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 16 }}>
-                {debouncedSearch 
-                  ? `No stores match "${debouncedSearch}". Try a different search term.`
+            <EmptyState
+              title={debouncedSearch ? 'No stores found' : filterStatus !== 'ALL' ? 'No stores with this status' : 'No recce tasks yet'}
+              message={
+                debouncedSearch
+                  ? `Nothing matches "${debouncedSearch}". Try a different search.`
                   : filterStatus !== 'ALL'
-                    ? `No stores found with this status. Try selecting a different status.`
-                    : 'There are no recce tasks assigned yet.'}
-              </Text>
-              {(debouncedSearch || filterStatus !== 'ALL') && (
-                <TouchableOpacity 
-                  onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }}
-                  style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: '600' }}>Clear Filters</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                    ? 'Try a different status.'
+                    : 'Recce tasks will appear here once stores are assigned.'
+              }
+              icon={<ClipboardCheck size={28} color={theme.colors.textTertiary} />}
+              action={hasActiveFilters ? (
+                <Button label="Clear filters" variant="outline" onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }} />
+              ) : undefined}
+            />
           }
           ListFooterComponent={
-            totalPages > 1 ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, backgroundColor: theme.colors.surface, marginTop: 16, borderRadius: 8 }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                  Showing {(page-1)*limit + 1}-{Math.min(page*limit, totalStores)} of {totalStores}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.max(1, p-1))} 
-                    disabled={page === 1}
-                    style={{ padding: 8, borderRadius: 4, backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary }}
-                  >
-                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFF'} />
-                  </TouchableOpacity>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', minWidth: 20, textAlign: 'center' }}>
-                    {page}
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.min(totalPages, p+1))} 
-                    disabled={page === totalPages}
-                    style={{ padding: 8, borderRadius: 4, backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary }}
-                  >
-                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFF'} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+            assignments.length > 0 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={totalStores}
+                noun="stores"
+                onPrev={() => setPage(p => Math.max(1, p - 1))}
+                onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+              />
             ) : null
           }
         />
       )}
 
-      {/* Bulk Assign Installation Modal (admin-only) */}
-      <Modal
+      {/* Bulk Assign Installation (admin-only) */}
+      <BottomSheet
         visible={isInstallAssignModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsInstallAssignModalOpen(false)}
+        onClose={() => setIsInstallAssignModalOpen(false)}
+        title="Assign installation"
+        subtitle={`${eligibleInstallCount} recce-approved store${eligibleInstallCount === 1 ? '' : 's'} will be assigned`}
+        icon={<UserPlus size={18} color={theme.colors.text} />}
+        maxHeight="85%"
+        footer={
+          <>
+            <Button label="Cancel" variant="outline" size="lg" flex onPress={() => setIsInstallAssignModalOpen(false)} />
+            <Button
+              label="Assign"
+              variant="primary"
+              size="lg"
+              flex
+              loading={isAssigningInstallation}
+              disabled={!selectedInstallUserId || isAssigningInstallation}
+              onPress={handleAssignInstallation}
+            />
+          </>
+        }
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{
-            backgroundColor: theme.colors.background,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            maxHeight: '80%',
-            paddingBottom: 20
-          }}>
-            <View style={{ padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 4 }}>
-                Assign Installation
-              </Text>
-              <Text style={{ fontSize: 13, color: theme.colors.textSecondary, marginBottom: 16 }}>
-                {getEligibleInstallStoreIds().length} store{getEligibleInstallStoreIds().length > 1 ? 's' : ''} will be assigned
-              </Text>
-
-              <ScrollView style={{ maxHeight: 320 }}>
-                {availableInstallUsers.length === 0 && (
-                  <Text style={{ color: theme.colors.textSecondary, textAlign: 'center', paddingVertical: 24 }}>
-                    No installation users found
-                  </Text>
-                )}
-                {availableInstallUsers.map((u: any) => (
-                  <TouchableOpacity
-                    key={u._id}
-                    onPress={() => setSelectedInstallUserId(u._id)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 12,
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      backgroundColor: selectedInstallUserId === u._id ? theme.colors.primary + '20' : theme.colors.surface,
-                      borderWidth: 1,
-                      borderColor: selectedInstallUserId === u._id ? theme.colors.primary : theme.colors.border
-                    }}
-                  >
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: selectedInstallUserId === u._id ? theme.colors.primary : theme.colors.border,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12
-                    }}>
-                      <Text style={{
-                        color: selectedInstallUserId === u._id ? '#FFF' : theme.colors.text,
-                        fontWeight: 'bold'
-                      }}>
-                        {u.name?.charAt(0)?.toUpperCase() || 'U'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{u.name}</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{u.email}</Text>
-                    </View>
-                    {selectedInstallUserId === u._id && (
-                      <CheckSquare size={20} color={theme.colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                <TouchableOpacity
-                  onPress={() => setIsInstallAssignModalOpen(false)}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
-                >
-                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAssignInstallation}
-                  disabled={!selectedInstallUserId || isAssigningInstallation}
-                  style={{
-                    flex: 1,
-                    padding: 12,
-                    borderRadius: 8,
-                    backgroundColor: selectedInstallUserId ? theme.colors.primary : theme.colors.border,
-                    alignItems: 'center'
-                  }}
-                >
-                  {isAssigningInstallation ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={{ color: '#FFF', fontWeight: '600' }}>Assign</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+        <View style={{ gap: 8 }}>
+          {availableInstallUsers.length === 0 ? (
+            <EmptyState title="No installation users found" />
+          ) : availableInstallUsers.map((u: any) => {
+            const sel = selectedInstallUserId === u._id;
+            return (
+              <TouchableOpacity
+                key={u._id}
+                onPress={() => setSelectedInstallUserId(u._id)}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: sel ? theme.colors.primary + '18' : theme.colors.surface,
+                  borderWidth: sel ? 1.5 : 1,
+                  borderColor: sel ? theme.colors.primary : theme.colors.border,
+                }}
+              >
+                <Avatar name={u.name} size={40} filled={sel} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 14 }} numberOfLines={1}>{u.name}</Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>{u.email}</Text>
+                </View>
+                <Checkbox checked={sel} onPress={() => setSelectedInstallUserId(u._id)} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </Modal>
+      </BottomSheet>
     </View>
   );
 }

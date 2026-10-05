@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight, MapPin } from 'lucide-react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight, MapPin, Phone, Store as StoreIcon, Navigation, Layers } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
@@ -14,6 +14,13 @@ import Toast from 'react-native-toast-message';
 import { useNavigation } from '@react-navigation/native';
 import PageSkeleton from '../../components/PageSkeleton';
 import BulkUpload from '../../components/BulkUpload';
+import {
+  Card, StatusBadge, Button, Chip, Checkbox, Avatar, MetaGrid, AssigneeRow,
+  ScreenHeader, SearchBar, ActiveFilters, SelectionBar, Pagination, EmptyState,
+  BottomSheet, ConfirmDialog,
+  FormSection, FieldRow, TextField, SelectField, ToggleCard, SegmentedControl,
+  tone, statusMeta,
+} from '../../components/ui';
 
 interface Store {
   _id: string;
@@ -639,7 +646,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         ...(newStoreData.directInstallation && { boards: newStoreData.boards })
       };
       const response = await storeService.create(payload);
-      Toast.show({ type: 'success', text1: 'Store added successfully!' });
+      Toast.show({
+        type: 'success',
+        text1: response?.autoAssigned ? 'Store added' : 'Store added successfully!',
+        text2: response?.autoAssigned ? (response.message || undefined) : undefined,
+      });
       setIsAddStoreModalOpen(false);
       setOpenBoardElementIndex(null);
       setNewStoreData({
@@ -653,7 +664,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       fetchStores();
       
       // Show assign recce option after successful store creation
-      if (response.store) {
+      if (response.store && !response.autoAssigned) {
         setTimeout(() => {
           Toast.show({
             type: 'info',
@@ -691,691 +702,381 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // UI-only helpers (no new behaviour — these are the same handlers that were
+  // previously written inline in the JSX, moved here so the JSX stays readable).
+  // ---------------------------------------------------------------------------
+  const REPORT_STATUSES = [StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED];
+
+  // Filters are applied after state settles, so fetchStores() always sees the
+  // new values (previously Reset could re-fetch with the old city/client).
+  const [filterRefetchToken, setFilterRefetchToken] = useState(0);
+  useEffect(() => {
+    if (filterRefetchToken > 0) fetchStores(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterRefetchToken]);
+
+  const sheetFilterCount = (filterCity ? 1 : 0) + (filterClientCode ? 1 : 0);
+
+  const resetSheetFilters = () => {
+    setFilterCity('');
+    setFilterClientCode('');
+    setFilterClientName('');
+    setFilterStatus('ALL');
+    setFilterRefetchToken(t => t + 1);
+  };
+
+  const applySheetFilters = () => {
+    setShowFilterPanel(false);
+    setShowCityDropdown(false);
+    setShowFilterClientDropdown(false);
+    setFilterRefetchToken(t => t + 1);
+  };
+
+  const resetNewStoreForm = () => {
+    setNewStoreData({
+      zone: '', state: '', district: '', city: '',
+      vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
+      clientCode: '',
+      latitude: '', longitude: '',
+      directInstallation: false,
+      boards: []
+    });
+  };
+
+  const closeAddStore = () => {
+    setIsAddStoreModalOpen(false);
+    setOpenBoardElementIndex(null);
+    setShowClientDropdown(false);
+    resetNewStoreForm();
+  };
+
+  const updateBoard = (index: number, patch: any) => {
+    const newBoards = [...newStoreData.boards];
+    newBoards[index] = { ...newBoards[index], ...patch };
+    setNewStoreData({ ...newStoreData, boards: newBoards });
+  };
+
+  const handleHeaderExport = async () => {
+    try {
+      const params = {
+        status: filterStatus !== 'ALL' ? filterStatus : undefined,
+        search: searchTerm || undefined,
+        city: filterCity || undefined,
+        clientCode: filterClientCode || undefined,
+        clientName: filterClientName || undefined,
+      };
+      const blob = await storeService.exportStores(params);
+      await modernDownloadService.downloadExcel({
+        blob,
+        filename: `Stores_Export_${new Date().toISOString().split('T')[0]}`
+      });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Export Failed' });
+    }
+  };
+
+  const handleSelectionPPT = async () => {
+    try {
+      const selectedIds = Array.from(selectedStoreIds);
+      const reportType = 'recce';
+      const blob = await storeService.bulkPpt(selectedIds, reportType);
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Store_Report_${selectedStoreIds.size}_Stores.pptx`
+      });
+      setSelectedStoreIds(new Set());
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'PPT Download Failed' });
+    }
+  };
+
+  const handleSelectionPDF = async () => {
+    try {
+      const selectedIds = Array.from(selectedStoreIds);
+      const reportType = 'recce';
+      const blob = await storeService.bulkPdf(selectedIds, reportType);
+      await modernDownloadService.downloadFile({
+        blob,
+        filename: `Store_Report_${selectedStoreIds.size}_Stores.pdf`
+      });
+      setSelectedStoreIds(new Set());
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'PDF Download Failed' });
+    }
+  };
+
+  const handleCardDownload = async (item: Store, format: 'pdf' | 'ppt') => {
+    const storeId = item._id;
+    setCardDownloadStates(prev => ({
+      ...prev,
+      [storeId]: { ...prev[storeId], [format]: true }
+    }));
+
+    try {
+      const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
+      if (format === 'pdf') {
+        const blob = await storeService.getPdf(item._id, reportType);
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `${reportType}_${item.dealerCode}.pdf`
+        });
+      } else {
+        const blob = await storeService.getPpt(item._id, reportType);
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `${reportType}_${item.dealerCode}.pptx`
+        });
+      }
+    } catch (error) {
+      Toast.show({ type: 'error', text1: format === 'pdf' ? 'PDF Download Failed' : 'PPT Download Failed' });
+    } finally {
+      setCardDownloadStates(prev => ({
+        ...prev,
+        [storeId]: { ...prev[storeId], [format]: false }
+      }));
+    }
+  };
+
+  const addStoreDisabled = !newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode || isDirectInstallBoardsInvalid();
+  const selectedClientForForm = clients.find(c => c.clientCode === newStoreData.clientCode);
+
+  // ---------------------------------------------------------------------------
+  // Store card
+  // ---------------------------------------------------------------------------
   const renderStore = ({ item }: { item: Store }) => {
     const isSelected = selectedStoreIds.has(item._id);
     // Allow selection for stores with completed recce data (same as web portal)
     const canSelect = [StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED].includes(item.currentStatus as StoreStatus);
-    
+    const hasReports = REPORT_STATUSES.includes(item.currentStatus as StoreStatus);
+    const locationText = [item.location?.city, item.location?.state].filter(Boolean).join(', ');
+
+    const recceStatus =
+      item.currentStatus === 'RECCE_SUBMITTED' ? { label: 'Submitted', color: tone.warning }
+      : item.currentStatus === 'RECCE_APPROVED' ? { label: 'Approved', color: tone.success }
+      : null;
+    const installStatus =
+      item.currentStatus === 'INSTALLATION_SUBMITTED' ? { label: 'Submitted', color: tone.teal }
+      : item.currentStatus === 'COMPLETED' ? { label: 'Completed', color: tone.success }
+      : null;
+
     return (
-      <View style={{ 
-        backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
-        padding: 16, 
-        marginBottom: 12, 
-        borderRadius: 12, 
-        borderWidth: 1, 
-        borderColor: isSelected ? theme.colors.primary : theme.colors.border 
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+      <Card
+        selected={isSelected}
+        onPress={() => nav?.navigate('StoreDetail', { storeId: item._id })}
+        style={{ marginBottom: 12 }}
+      >
+        {/* Top: select · identity · status */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
           {canSelect && (
-            <TouchableOpacity onPress={() => toggleStoreSelection(item._id)} style={{ marginRight: 12 }}>
-              {isSelected ? 
-                <CheckSquare size={20} color={theme.colors.primary} /> : 
-                <Square size={20} color={theme.colors.textSecondary} />
-              }
-            </TouchableOpacity>
+            <View style={{ paddingTop: 2 }}>
+              <Checkbox checked={isSelected} onPress={() => toggleStoreSelection(item._id)} />
+            </View>
           )}
-          
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }} numberOfLines={1}>
               {item.storeId || item.dealerCode}
             </Text>
-            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }} numberOfLines={2}>
               {item.storeName}
             </Text>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {item.location.city}, {item.location.state}
-            </Text>
+            {!!locationText && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MapPin size={12} color={theme.colors.textSecondary} />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, flex: 1 }} numberOfLines={1}>{locationText}</Text>
+              </View>
+            )}
             {item.contact?.mobile && (
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-                📱 {item.contact.mobile}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Phone size={12} color={theme.colors.textSecondary} />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{item.contact.mobile}</Text>
+              </View>
             )}
           </View>
-          
-          <View style={{ backgroundColor: getStatusColor(item.currentStatus) + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ color: getStatusColor(item.currentStatus), fontSize: 10, fontWeight: '600' }}>
-              {item.currentStatus.replace(/_/g, ' ')}
-            </Text>
-          </View>
+          <StatusBadge status={item.currentStatus} />
         </View>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Dealer Code</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.dealerCode}</Text>
-          </View>
-          {item.specs && (
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Dimensions</Text>
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                {item.specs.width}x{item.specs.height} ft
-              </Text>
-            </View>
-          )}
-          {canViewCosts && (
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Total Cost</Text>
-              <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
-                ₹{item.commercials?.totalCost?.toLocaleString() || '0'}
-              </Text>
-            </View>
-          )}
+        {/* Key facts */}
+        <View style={{ marginTop: 12 }}>
+          <MetaGrid
+            items={[
+              { label: 'Dealer code', value: item.dealerCode || '—' },
+              !!item.specs && { label: 'Size', value: `${item.specs!.width}×${item.specs!.height} ft` },
+              canViewCosts && { label: 'Total cost', value: `₹${item.commercials?.totalCost?.toLocaleString() || '0'}`, color: tone.success },
+            ]}
+          />
         </View>
 
-        {/* Show Recce Assignment Info */}
-        {item.workflow?.recceAssignedTo && (
-          <View style={{ 
-            backgroundColor: '#3B82F610', 
-            borderRadius: 8, 
-            padding: 8, 
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: '#3B82F620'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <User size={14} color="#3B82F6" />
-                <Text style={{ color: '#3B82F6', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Recce By:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
-                  {item.workflow.recceAssignedTo.name}
-                </Text>
-              </View>
-              {item.currentStatus === 'RECCE_SUBMITTED' && (
-                <View style={{ backgroundColor: '#F59E0B20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ color: '#F59E0B', fontSize: 10, fontWeight: '600' }}>SUBMITTED</Text>
-                </View>
-              )}
-              {item.currentStatus === 'RECCE_APPROVED' && (
-                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>APPROVED</Text>
-                </View>
-              )}
-            </View>
+        {/* Who's on it */}
+        {(item.workflow?.recceAssignedTo || item.workflow?.installationAssignedTo) && (
+          <View style={{ marginTop: 10, gap: 2 }}>
+            {item.workflow?.recceAssignedTo && (
+              <AssigneeRow role="Recce ·" name={item.workflow.recceAssignedTo.name} color={tone.info} status={recceStatus} />
+            )}
+            {item.workflow?.installationAssignedTo && (
+              <AssigneeRow role="Install ·" name={item.workflow.installationAssignedTo.name} color={tone.success} status={installStatus} />
+            )}
           </View>
         )}
 
-        {/* Show Installation Assignment Info */}
-        {item.workflow?.installationAssignedTo && (
-          <View style={{ 
-            backgroundColor: '#10B98110', 
-            borderRadius: 8, 
-            padding: 8, 
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: '#10B98120'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Wrench size={14} color="#10B981" />
-                <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>Installation By:</Text>
-                <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
-                  {item.workflow.installationAssignedTo.name}
-                </Text>
-              </View>
-              {item.currentStatus === 'INSTALLATION_SUBMITTED' && (
-                <View style={{ backgroundColor: '#14B8A620', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ color: '#14B8A6', fontSize: 10, fontWeight: '600' }}>SUBMITTED</Text>
-                </View>
-              )}
-              {item.currentStatus === 'COMPLETED' && (
-                <View style={{ backgroundColor: '#10B98120', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 }}>
-                  <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }}>COMPLETED</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+        {/* Actions */}
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button
+            label="View"
+            variant="soft"
+            color={tone.info}
+            size="sm"
+            icon={(col) => <Eye size={15} color={col} />}
+            onPress={() => nav?.navigate('StoreDetail', { storeId: item._id })}
+          />
 
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <TouchableOpacity 
-            onPress={() => nav?.navigate('StoreDetail', { storeId: item._id })} 
-            style={{ flex: 1, backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Eye size={16} color="#3B82F6" />
-            <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View</Text>
-          </TouchableOpacity>
-          
           {(item.currentStatus === StoreStatus.UPLOADED || !item.workflow.recceAssignedTo) && (
-            <TouchableOpacity 
-              onPress={() => openAssignModal('RECCE', item)} 
-              style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'center' }}
-            >
-              <UserPlus size={16} color="#3B82F6" />
-              <Text style={{ color: '#3B82F6', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>Assign</Text>
-            </TouchableOpacity>
+            <Button
+              label="Assign recce"
+              variant="soft"
+              color={tone.info}
+              size="sm"
+              icon={(col) => <UserPlus size={15} color={col} />}
+              onPress={() => openAssignModal('RECCE', item)}
+            />
           )}
-          
+
           {isAdminUser && item.currentStatus === StoreStatus.RECCE_SUBMITTED && (
             <>
-              <TouchableOpacity 
-                onPress={() => handleApproveRecce(item._id)} 
-                style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8 }}
-              >
-                <Check size={16} color="#10B981" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => handleRejectRecce(item._id)} 
-                style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8 }}
-              >
-                <XCircle size={16} color="#EF4444" />
-              </TouchableOpacity>
+              <Button label="Approve" variant="soft" color={tone.success} size="sm" icon={(col) => <Check size={15} color={col} />} onPress={() => handleApproveRecce(item._id)} />
+              <Button label="Reject" variant="soft" color={tone.danger} size="sm" icon={(col) => <XCircle size={15} color={col} />} onPress={() => handleRejectRecce(item._id)} />
             </>
           )}
-          
+
           {item.currentStatus === StoreStatus.RECCE_APPROVED && (
-            <TouchableOpacity 
-              onPress={() => openAssignModal('INSTALLATION', item)} 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', minWidth: 80, justifyContent: 'center' }}
-            >
-              <UserPlus size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 4, fontWeight: '600', fontSize: 11 }}>Install</Text>
-            </TouchableOpacity>
+            <Button
+              label="Assign install"
+              variant="soft"
+              color={tone.success}
+              size="sm"
+              icon={(col) => <Wrench size={15} color={col} />}
+              onPress={() => openAssignModal('INSTALLATION', item)}
+            />
           )}
-          
-          <TouchableOpacity 
-            onPress={() => handleDelete(item)} 
-            style={{ backgroundColor: '#EF444420', padding: 10, borderRadius: 8 }}
-          >
-            <Trash2 size={16} color="#EF4444" />
-          </TouchableOpacity>
-          
-          {[StoreStatus.RECCE_SUBMITTED, StoreStatus.RECCE_APPROVED, StoreStatus.INSTALLATION_ASSIGNED, StoreStatus.INSTALLATION_SUBMITTED, StoreStatus.COMPLETED].includes(item.currentStatus as StoreStatus) && (
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              {/* PDF Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const storeId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [storeId]: { ...prev[storeId], pdf: true }
-                  }));
-                  
-                  try {
-                    const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
-                    const blob = await storeService.getPdf(item._id, reportType);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `${reportType}_${item.dealerCode}.pdf`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [storeId]: { ...prev[storeId], pdf: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.pdf}
-                style={{ 
-                  backgroundColor: '#EF4444', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  minWidth: 60,
-                  shadowColor: '#EF4444',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.pdf ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileText size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              
-              {/* PPT Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const storeId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [storeId]: { ...prev[storeId], ppt: true }
-                  }));
-                  
-                  try {
-                    const reportType = item.currentStatus === StoreStatus.COMPLETED ? 'installation' : 'recce';
-                    const blob = await storeService.getPpt(item._id, reportType);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `${reportType}_${item.dealerCode}.pptx`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [storeId]: { ...prev[storeId], ppt: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.ppt}
-                style={{ 
-                  backgroundColor: '#F59E0B', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  minWidth: 60,
-                  shadowColor: '#F59E0B',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.ppt ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileSpreadsheet size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
+
+          <View style={{ flex: 1 }} />
+
+          {hasReports && (
+            <>
+              <Button
+                label="PDF"
+                variant="outline"
+                color={tone.danger}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.pdf}
+                icon={(col) => <FileText size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'pdf')}
+              />
+              <Button
+                label="PPT"
+                variant="outline"
+                color={tone.warning}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.ppt}
+                icon={(col) => <FileSpreadsheet size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'ppt')}
+              />
+            </>
           )}
+
+          <Button
+            variant="soft"
+            color={tone.danger}
+            size="sm"
+            icon={(col) => <Trash2 size={15} color={col} />}
+            onPress={() => handleDelete(item)}
+          />
         </View>
-      </View>
+      </Card>
     );
   };
 
+  // ---------------------------------------------------------------------------
+  // Screen
+  // ---------------------------------------------------------------------------
+  const statusChips = ['ALL', ...Object.values(StoreStatus)];
+  const activeFilterItems = [
+    filterCity ? { key: 'city', label: `City: ${filterCity}`, onRemove: () => { setFilterCity(''); setFilterRefetchToken(t => t + 1); } } : null,
+    filterClientCode ? { key: 'client', label: `Client: ${filterClientName || filterClientCode}`, onRemove: () => { setFilterClientCode(''); setFilterClientName(''); setFilterRefetchToken(t => t + 1); } } : null,
+  ].filter(Boolean) as Array<{ key: string; label: string; onRemove: () => void }>;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Simple Header */}
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Store Operations</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage store activities</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* Hide BulkUpload component in mobile - users should use web portal */}
-            {/* <BulkUpload onUploadComplete={fetchStores} /> */}
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  const params = {
-                    status: filterStatus !== 'ALL' ? filterStatus : undefined,
-                    search: searchTerm || undefined,
-                    city: filterCity || undefined,
-                    clientCode: filterClientCode || undefined,
-                    clientName: filterClientName || undefined,
-                  };
-                  const blob = await storeService.exportStores(params);
-                  await modernDownloadService.downloadExcel({
-                    blob,
-                    filename: `Stores_Export_${new Date().toISOString().split('T')[0]}`
-                  });
-                } catch (error) {
-                  Toast.show({ type: 'error', text1: 'Export Failed' });
-                }
-              }}
-              disabled={isExporting}
-              style={{ 
-                backgroundColor: '#10B981', 
-                paddingHorizontal: 12, 
-                paddingVertical: 8, 
-                borderRadius: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center',
-                opacity: isExporting ? 0.6 : 1
-              }}
-            >
-              {isExporting ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Download size={16} color="#FFF" />
-              )}
-              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
-                {isExporting ? 'Exporting...' : 'Export'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => setIsAddStoreModalOpen(true)} 
-              style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
-            >
-              <Plus size={16} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Fixed header: title, search, status chips, selection bar */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader
+          title="Stores"
+          subtitle="Manage store activities"
+          count={totalStores}
+          actions={
+            <>
+              {/* Hide BulkUpload component in mobile - users should use web portal */}
+              {/* <BulkUpload onUploadComplete={fetchStores} /> */}
+              <Button
+                variant="outline"
+                loading={isExporting}
+                disabled={isExporting}
+                icon={(col) => <Download size={18} color={col} />}
+                onPress={handleHeaderExport}
+              />
+              <Button
+                label="Add"
+                variant="primary"
+                icon={(col) => <Plus size={18} color={col} strokeWidth={2.5} />}
+                onPress={() => setIsAddStoreModalOpen(true)}
+              />
+            </>
+          }
+        />
 
-        {/* Simple Search */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            <Search size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search stores..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Search store, dealer code, city…"
+          onFilterPress={() => setShowFilterPanel(true)}
+          activeFilters={sheetFilterCount}
+        />
+
+        <ActiveFilters items={activeFilterItems} onClearAll={resetSheetFilters} />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 2 }}>
+          {statusChips.map((status) => (
+            <Chip
+              key={status}
+              label={status === 'ALL' ? 'All' : statusMeta(status).label}
+              color={status === 'ALL' ? undefined : statusMeta(status).color}
+              active={filterStatus === status}
+              onPress={() => setFilterStatus(status)}
             />
-          </View>
-          <TouchableOpacity
-            onPress={() => setShowFilterPanel(!showFilterPanel)}
-            style={{
-              width: 44,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: (filterCity || filterClientCode || filterClientName) ? theme.colors.primary : theme.colors.surface,
-              borderRadius: 8,
-              borderWidth: 1,
-              borderColor: (filterCity || filterClientCode || filterClientName) ? theme.colors.primary : theme.colors.border,
-            }}
-          >
-            <Filter size={20} color={(filterCity || filterClientCode || filterClientName) ? '#FFF' : theme.colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+          ))}
+        </ScrollView>
 
-        {/* Filter Panel: Status / City / Client */}
-        {showFilterPanel && (
-          <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, padding: 12, marginBottom: 12, gap: 10 }}>
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>STATUS</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {['ALL', ...Object.values(StoreStatus)].map((status) => (
-                    <TouchableOpacity
-                      key={status}
-                      onPress={() => setFilterStatus(status)}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 6,
-                        borderRadius: 14,
-                        backgroundColor: filterStatus === status ? theme.colors.primary : theme.colors.background,
-                        borderWidth: 1,
-                        borderColor: filterStatus === status ? theme.colors.primary : theme.colors.border,
-                      }}
-                    >
-                      <Text style={{ color: filterStatus === status ? '#FFF' : theme.colors.text, fontSize: 11, fontWeight: '600' }}>
-                        {status.replace(/_/g, ' ')}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>CITY</Text>
-              <TouchableOpacity
-                onPress={() => setShowCityDropdown(!showCityDropdown)}
-                style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Text style={{ color: filterCity ? theme.colors.text : theme.colors.textSecondary, fontSize: 13 }}>
-                  {filterCity || 'All cities'}
-                </Text>
-                <ChevronDown size={14} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-              {showCityDropdown && (
-                <View style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 160 }}>
-                  <ScrollView nestedScrollEnabled>
-                    <TouchableOpacity
-                      onPress={() => { setFilterCity(''); setShowCityDropdown(false); }}
-                      style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                    >
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>All cities</Text>
-                    </TouchableOpacity>
-                    {availableCities.map((city) => (
-                      <TouchableOpacity
-                        key={city}
-                        onPress={() => { setFilterCity(city); setShowCityDropdown(false); }}
-                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                      >
-                        <Text style={{ color: theme.colors.text, fontSize: 13 }}>{city}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 6 }}>CLIENT</Text>
-              <TouchableOpacity
-                onPress={() => setShowFilterClientDropdown(!showFilterClientDropdown)}
-                style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Text style={{ color: filterClientCode ? theme.colors.text : theme.colors.textSecondary, fontSize: 13 }} numberOfLines={1}>
-                  {filterClientCode ? `${filterClientName || filterClientCode}` : 'All clients'}
-                </Text>
-                <ChevronDown size={14} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-              {showFilterClientDropdown && (
-                <View style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 160 }}>
-                  <ScrollView nestedScrollEnabled>
-                    <TouchableOpacity
-                      onPress={() => { setFilterClientCode(''); setFilterClientName(''); setShowFilterClientDropdown(false); }}
-                      style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                    >
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>All clients</Text>
-                    </TouchableOpacity>
-                    {clients.map((client) => (
-                      <TouchableOpacity
-                        key={client._id || client.clientCode}
-                        onPress={() => {
-                          setFilterClientCode(client.clientCode);
-                          setFilterClientName(client.clientName);
-                          setShowFilterClientDropdown(false);
-                        }}
-                        style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                      >
-                        <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>{client.clientName}</Text>
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>{client.clientCode}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setFilterCity('');
-                  setFilterClientCode('');
-                  setFilterClientName('');
-                  setFilterStatus('ALL');
-                  fetchStores(1);
-                }}
-                style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
-              >
-                <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 13 }}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowFilterPanel(false);
-                  fetchStores(1);
-                }}
-                style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: theme.colors.primary, alignItems: 'center' }}
-              >
-                <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 13 }}>Apply Filters</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Enhanced Bulk Download Buttons with Count */}
-        {selectedStoreIds.size > 0 && (
-          <View style={{ marginBottom: 12 }}>
-            {/* Selection Count Header */}
-            <View style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              backgroundColor: theme.colors.primary + '10',
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 8,
-              marginBottom: 8,
-              borderWidth: 1,
-              borderColor: theme.colors.primary + '20'
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <CheckSquare size={16} color={theme.colors.primary} />
-                <Text style={{ 
-                  color: theme.colors.primary, 
-                  fontSize: 14, 
-                  fontWeight: '600', 
-                  marginLeft: 6 
-                }}>
-                  {selectedStoreIds.size} store{selectedStoreIds.size > 1 ? 's' : ''} selected
-                </Text>
-              </View>
-              <TouchableOpacity 
-                onPress={() => setSelectedStoreIds(new Set())}
-                style={{ padding: 4 }}
-              >
-                <X size={16} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Download Buttons */}
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={async () => {
-                  try {
-                    const selectedIds = Array.from(selectedStoreIds);
-                    const reportType = 'recce';
-                    const blob = await storeService.bulkPpt(selectedIds, reportType);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `Store_Report_${selectedStoreIds.size}_Stores.pptx`
-                    });
-                    setSelectedStoreIds(new Set());
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                  }
-                }}
-                disabled={isDownloadingPPT}
-                style={{ 
-                  flex: 1, 
-                  backgroundColor: '#F59E0B', 
-                  paddingVertical: 14, 
-                  paddingHorizontal: 16, 
-                  borderRadius: 10, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#F59E0B',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3
-                }}
-              >
-                {isDownloadingPPT ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <View style={{ 
-                      marginLeft: 8, 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      paddingHorizontal: 8, 
-                      paddingVertical: 2, 
-                      borderRadius: 4 
-                    }}>
-                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileSpreadsheet size={18} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
-                    <View style={{ 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      paddingHorizontal: 6, 
-                      paddingVertical: 2, 
-                      borderRadius: 10, 
-                      marginLeft: 6 
-                    }}>
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedStoreIds.size}</Text>
-                    </View>
-                  </View>
-                )}
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={async () => {
-                  try {
-                    const selectedIds = Array.from(selectedStoreIds);
-                    const reportType = 'recce';
-                    const blob = await storeService.bulkPdf(selectedIds, reportType);
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `Store_Report_${selectedStoreIds.size}_Stores.pdf`
-                    });
-                    setSelectedStoreIds(new Set());
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                  }
-                }}
-                disabled={isDownloadingPDF}
-                style={{ 
-                  flex: 1, 
-                  backgroundColor: '#EF4444', 
-                  paddingVertical: 14, 
-                  paddingHorizontal: 16, 
-                  borderRadius: 10, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#EF4444',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3
-                }}
-              >
-                {isDownloadingPDF ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <View style={{ 
-                      marginLeft: 8, 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      paddingHorizontal: 8, 
-                      paddingVertical: 2, 
-                      borderRadius: 4 
-                    }}>
-                      <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileText size={18} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
-                    <View style={{ 
-                      backgroundColor: 'rgba(255,255,255,0.2)', 
-                      paddingHorizontal: 6, 
-                      paddingVertical: 2, 
-                      borderRadius: 10, 
-                      marginLeft: 6 
-                    }}>
-                      <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedStoreIds.size}</Text>
-                    </View>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        <SelectionBar count={selectedStoreIds.size} noun="store" onClear={() => setSelectedStoreIds(new Set())}>
+          <Button
+            label="PPT"
+            variant="solid"
+            color={tone.warning}
+            size="sm"
+            loading={isDownloadingPPT}
+            icon={(col) => <FileSpreadsheet size={14} color={col} />}
+            onPress={handleSelectionPPT}
+          />
+          <Button
+            label="PDF"
+            variant="solid"
+            color={tone.danger}
+            size="sm"
+            loading={isDownloadingPDF}
+            icon={(col) => <FileText size={14} color={col} />}
+            onPress={handleSelectionPDF}
+          />
+        </SelectionBar>
       </View>
 
       {loading ? (
@@ -1385,7 +1086,8 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           data={stores}
           renderItem={renderStore}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1394,633 +1096,393 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                 fetchStores();
               }}
               colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                No stores found
-              </Text>
-            </View>
+            <EmptyState
+              title="No stores found"
+              message={searchTerm || filterStatus !== 'ALL' || sheetFilterCount ? 'Try a different search or clear the filters.' : 'Add your first store to get started.'}
+              icon={<StoreIcon size={28} color={theme.colors.textTertiary} />}
+              action={
+                searchTerm || filterStatus !== 'ALL' || sheetFilterCount ? (
+                  <Button label="Clear filters" variant="outline" onPress={() => { setSearchTerm(''); resetSheetFilters(); }} />
+                ) : (
+                  <Button label="Add store" variant="primary" icon={(col) => <Plus size={16} color={col} />} onPress={() => setIsAddStoreModalOpen(true)} />
+                )
+              }
+            />
           }
           ListFooterComponent={
-            stores.length > 0 && totalPages > 1 ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8, marginBottom: 8, gap: 12 }}>
-                <TouchableOpacity
-                  onPress={() => page > 1 && fetchStores(page - 1)}
-                  disabled={page === 1}
-                  style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, opacity: page === 1 ? 0.5 : 1 }}
-                >
-                  <ChevronLeft size={18} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 13 }}>
-                  Page {page} of {totalPages} ({totalStores} stores)
-                </Text>
-                <TouchableOpacity
-                  onPress={() => page < totalPages && fetchStores(page + 1)}
-                  disabled={page === totalPages}
-                  style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, opacity: page === totalPages ? 0.5 : 1 }}
-                >
-                  <ChevronRight size={18} color={theme.colors.text} />
-                </TouchableOpacity>
-              </View>
+            stores.length > 0 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={totalStores}
+                noun="stores"
+                onPrev={() => page > 1 && fetchStores(page - 1)}
+                onNext={() => page < totalPages && fetchStores(page + 1)}
+              />
             ) : null
           }
         />
       )}
 
-      <Modal
-        visible={isAssignModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsAssignModalOpen(false)}
+      {/* ---------------- Filter sheet (City / Client) ---------------- */}
+      <BottomSheet
+        visible={showFilterPanel}
+        onClose={() => setShowFilterPanel(false)}
+        title="Filter stores"
+        subtitle="Narrow the list by city or client"
+        icon={<Filter size={18} color={theme.colors.text} />}
+        footer={
+          <>
+            <Button label="Reset" variant="outline" size="lg" flex onPress={() => { resetSheetFilters(); setShowFilterPanel(false); }} />
+            <Button label="Apply filters" variant="primary" size="lg" flex onPress={applySheetFilters} />
+          </>
+        }
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: theme.colors.background, 
-            borderTopLeftRadius: 20, 
-            borderTopRightRadius: 20, 
-            maxHeight: '80%',
-            paddingBottom: 20
-          }}>
-            <View style={{ padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-                Assign {assignStage}
-              </Text>
-              
-              {/* User Search */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 16 }}>
-                <Search size={16} color={theme.colors.textSecondary} />
-                <TextInput
-                  style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, color: theme.colors.text, fontSize: 14 }}
-                  placeholder="Search by name or email..."
-                  placeholderTextColor={theme.colors.textSecondary}
-                  value={userSearchTerm}
-                  onChangeText={setUserSearchTerm}
-                />
-              </View>
-              
-              <ScrollView style={{ maxHeight: 300 }}>
-                {filteredUsers.map(user => (
-                  <TouchableOpacity
-                    key={user._id}
-                    onPress={() => setSelectedUserId(user._id)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      padding: 12,
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      backgroundColor: selectedUserId === user._id ? theme.colors.primary + '20' : theme.colors.surface,
-                      borderWidth: 1,
-                      borderColor: selectedUserId === user._id ? theme.colors.primary : theme.colors.border
-                    }}
-                  >
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: selectedUserId === user._id ? theme.colors.primary : theme.colors.border,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12
-                    }}>
-                      <Text style={{
-                        color: selectedUserId === user._id ? '#FFF' : theme.colors.text,
-                        fontWeight: 'bold'
-                      }}>
-                        {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontWeight: '600' }}>{user.name}</Text>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{user.email}</Text>
-                    </View>
-                    {selectedUserId === user._id && (
-                      <CheckSquare size={20} color={theme.colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                <TouchableOpacity
-                  onPress={() => setIsAssignModalOpen(false)}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
-                >
-                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAssign}
-                  disabled={!selectedUserId}
-                  style={{
-                    flex: 1,
-                    padding: 12,
-                    borderRadius: 8,
-                    backgroundColor: selectedUserId ? theme.colors.primary : theme.colors.border,
-                    alignItems: 'center'
-                  }}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: '600' }}>Assign</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        <SelectField
+          label="City"
+          placeholder="All cities"
+          valueText={filterCity || undefined}
+          selectedKey={filterCity}
+          open={showCityDropdown}
+          onToggle={() => setShowCityDropdown(!showCityDropdown)}
+          searchable={availableCities.length > 8}
+          options={[{ key: '', label: 'All cities', muted: true }, ...availableCities.map((city) => ({ key: city, label: city }))]}
+          onSelect={(o) => { setFilterCity(o.key); setShowCityDropdown(false); }}
+        />
+        <SelectField
+          label="Client"
+          placeholder="All clients"
+          valueText={filterClientCode ? `${filterClientName || filterClientCode}` : undefined}
+          selectedKey={filterClientCode}
+          open={showFilterClientDropdown}
+          onToggle={() => setShowFilterClientDropdown(!showFilterClientDropdown)}
+          searchable={clients.length > 8}
+          options={[
+            { key: '', label: 'All clients', muted: true },
+            ...clients.map((client) => ({ key: client.clientCode, label: client.clientName, sublabel: client.clientCode })),
+          ]}
+          onSelect={(o) => {
+            if (!o.key) {
+              setFilterClientCode('');
+              setFilterClientName('');
+            } else {
+              setFilterClientCode(o.key);
+              setFilterClientName(o.label);
+            }
+            setShowFilterClientDropdown(false);
+          }}
+        />
+      </BottomSheet>
 
-      {/* Add Store Modal */}
-      <Modal
-        visible={isAddStoreModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsAddStoreModalOpen(false)}
+      {/* ---------------- Assign sheet ---------------- */}
+      <BottomSheet
+        visible={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        title={assignStage === 'RECCE' ? 'Assign recce' : 'Assign installation'}
+        subtitle={singleAssignTarget ? singleAssignTarget.storeName : `${selectedStoreIds.size} store${selectedStoreIds.size === 1 ? '' : 's'} selected`}
+        icon={<UserPlus size={18} color={theme.colors.text} />}
+        maxHeight="85%"
+        footer={
+          <>
+            <Button label="Cancel" variant="outline" size="lg" flex onPress={() => setIsAssignModalOpen(false)} />
+            <Button label="Assign" variant="primary" size="lg" flex disabled={!selectedUserId} onPress={handleAssign} />
+          </>
+        }
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
-            <View style={{ padding: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>Add New Store</Text>
-              
-              <ScrollView style={{ maxHeight: 400 }}>
-                <View style={{ gap: 16 }}>
-                  {/* Basic Details */}
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8 }}>BASIC DETAILS</Text>
-                  
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Dealer Code *</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.dealerCode}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerCode: text })}
-                        placeholder="Enter dealer code"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
+        <SearchBar value={userSearchTerm} onChangeText={setUserSearchTerm} placeholder="Search by name or email…" />
+        <View style={{ gap: 8 }}>
+          {filteredUsers.length === 0 ? (
+            <EmptyState title="No users found" message={`No ${assignStage === 'RECCE' ? 'recce' : 'installation'} users match your search.`} />
+          ) : filteredUsers.map(user => {
+            const sel = selectedUserId === user._id;
+            return (
+              <TouchableOpacity
+                key={user._id}
+                onPress={() => setSelectedUserId(user._id)}
+                activeOpacity={0.8}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 14,
+                  backgroundColor: sel ? theme.colors.primary + '18' : theme.colors.surface,
+                  borderWidth: sel ? 1.5 : 1,
+                  borderColor: sel ? theme.colors.primary : theme.colors.border,
+                }}
+              >
+                <Avatar name={user.name} size={40} filled={sel} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: theme.colors.text, fontWeight: '800', fontSize: 14 }} numberOfLines={1}>{user.name}</Text>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }} numberOfLines={1}>{user.email}</Text>
+                </View>
+                <Checkbox checked={sel} onPress={() => setSelectedUserId(user._id)} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BottomSheet>
+
+      {/* ---------------- Add Store sheet ---------------- */}
+      <BottomSheet
+        visible={isAddStoreModalOpen}
+        onClose={closeAddStore}
+        title="Add new store"
+        subtitle="Fields marked * are required"
+        icon={<StoreIcon size={18} color={theme.colors.text} />}
+        footer={
+          <>
+            <Button label="Cancel" variant="outline" size="lg" flex onPress={closeAddStore} />
+            <Button label="Add store" variant="primary" size="lg" flex disabled={addStoreDisabled} onPress={handleAddStore} />
+          </>
+        }
+      >
+        {/* 1 · Store details */}
+        <FormSection step={1} title="Store details" description="Pick the client first, then the dealer">
+          <SelectField
+            label="Client"
+            required
+            placeholder="Select client"
+            valueText={newStoreData.clientCode ? `${selectedClientForForm?.clientName || newStoreData.clientCode} (${newStoreData.clientCode})` : undefined}
+            selectedKey={newStoreData.clientCode}
+            open={showClientDropdown}
+            onToggle={() => setShowClientDropdown(!showClientDropdown)}
+            searchable
+            emptyText="No clients found"
+            options={clients.map((client) => ({ key: client.clientCode, label: client.clientName, sublabel: client.clientCode }))}
+            onSelect={(o) => {
+              setNewStoreData({ ...newStoreData, clientCode: o.key });
+              setShowClientDropdown(false);
+            }}
+          />
+          <FieldRow>
+            <TextField
+              label="Dealer code"
+              required
+              value={newStoreData.dealerCode}
+              onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerCode: text })}
+              placeholder="e.g. DL1023"
+              autoCapitalize="characters"
+            />
+            <TextField
+              label="Vendor code"
+              value={newStoreData.vendorCode}
+              onChangeText={(text) => setNewStoreData({ ...newStoreData, vendorCode: text })}
+              placeholder="Optional"
+              autoCapitalize="characters"
+            />
+          </FieldRow>
+          <TextField
+            label="Dealer / store name"
+            required
+            value={newStoreData.dealerName}
+            onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerName: text })}
+            placeholder="Enter dealer name"
+          />
+        </FormSection>
+
+        {/* 2 · Location */}
+        <FormSection
+          step={2}
+          title="Location"
+          description="Where the store is"
+          right={
+            <Button
+              label={fetchingLocation ? 'Locating…' : 'Use GPS'}
+              variant="soft"
+              color={tone.info}
+              size="sm"
+              loading={fetchingLocation}
+              icon={(col) => <Navigation size={14} color={col} />}
+              onPress={handleGetCurrentLocation}
+            />
+          }
+        >
+          <FieldRow>
+            <TextField label="Zone" value={newStoreData.zone} onChangeText={(text) => setNewStoreData({ ...newStoreData, zone: text })} placeholder="Zone" />
+            <TextField label="State" value={newStoreData.state} onChangeText={(text) => setNewStoreData({ ...newStoreData, state: text })} placeholder="State" />
+          </FieldRow>
+          <FieldRow>
+            <TextField label="District" required value={newStoreData.district} onChangeText={(text) => setNewStoreData({ ...newStoreData, district: text })} placeholder="District" />
+            <TextField label="City" required value={newStoreData.city} onChangeText={(text) => setNewStoreData({ ...newStoreData, city: text })} placeholder="City" />
+          </FieldRow>
+          <TextField
+            label="Address"
+            value={newStoreData.dealerAddress}
+            onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerAddress: text })}
+            placeholder="Full address"
+            multiline
+          />
+          <FieldRow>
+            <TextField
+              label="Latitude"
+              value={newStoreData.latitude}
+              onChangeText={(text) => setNewStoreData({ ...newStoreData, latitude: text })}
+              placeholder="28.7041"
+              keyboardType="numeric"
+            />
+            <TextField
+              label="Longitude"
+              value={newStoreData.longitude}
+              onChangeText={(text) => setNewStoreData({ ...newStoreData, longitude: text })}
+              placeholder="77.1025"
+              keyboardType="numeric"
+            />
+          </FieldRow>
+        </FormSection>
+
+        {/* 3 · Workflow */}
+        <FormSection step={3} title="Workflow" description="Normal flow starts with a recce">
+          <ToggleCard
+            value={newStoreData.directInstallation}
+            onToggle={() => setNewStoreData({
+              ...newStoreData,
+              directInstallation: !newStoreData.directInstallation,
+              boards: !newStoreData.directInstallation ? newStoreData.boards : []
+            })}
+            icon={<Layers size={20} color={newStoreData.directInstallation ? theme.colors.text : theme.colors.textSecondary} />}
+            title="Direct installation"
+            description="Skip recce and add the boards now"
+          />
+
+          {newStoreData.directInstallation && (
+            <View style={{ gap: 12 }}>
+              {newStoreData.boards.length === 0 && (
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', paddingVertical: 6 }}>
+                  No boards yet — add at least one board.
+                </Text>
+              )}
+
+              {newStoreData.boards.map((board, index) => (
+                <View key={index} style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, padding: 12, gap: 12, backgroundColor: theme.colors.background }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: theme.colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: theme.colors.text, fontSize: 11, fontWeight: '900' }}>{index + 1}</Text>
+                      </View>
+                      <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '800' }}>Board {index + 1}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Dealer Name *</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.dealerName}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerName: text })}
-                        placeholder="Enter dealer name"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                  </View>
-                  
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Vendor Code</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.vendorCode}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, vendorCode: text })}
-                        placeholder="Enter vendor code"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Client Code *</Text>
-                      <TouchableOpacity
-                        onPress={() => setShowClientDropdown(!showClientDropdown)}
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                      >
-                        <Text style={{ color: newStoreData.clientCode ? theme.colors.text : theme.colors.textSecondary, fontSize: 16 }}>
-                          {newStoreData.clientCode ? `${clients.find(c => c.clientCode === newStoreData.clientCode)?.clientName || newStoreData.clientCode} (${newStoreData.clientCode})` : 'Select Client'}
-                        </Text>
-                        <ChevronDown size={16} color={theme.colors.textSecondary} />
-                      </TouchableOpacity>
-                      {showClientDropdown && (
-                        <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, marginTop: 4, maxHeight: 150 }}>
-                          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                            {clients.map((client) => (
-                              <TouchableOpacity
-                                key={client._id}
-                                onPress={() => {
-                                  setNewStoreData({ ...newStoreData, clientCode: client.clientCode });
-                                  setShowClientDropdown(false);
-                                }}
-                                style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                              >
-                                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{client.clientName}</Text>
-                                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>{client.clientCode}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  
-                  {/* Location */}
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8, marginTop: 16 }}>LOCATION</Text>
-                  
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Zone</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.zone}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, zone: text })}
-                        placeholder="Enter zone"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>State</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.state}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, state: text })}
-                        placeholder="Enter state"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                  </View>
-                  
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>District *</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.district}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, district: text })}
-                        placeholder="Enter district"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>City *</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16 }}
-                        value={newStoreData.city}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, city: text })}
-                        placeholder="Enter city"
-                        placeholderTextColor={theme.colors.textSecondary}
-                      />
-                    </View>
-                  </View>
-                  
-                  <View>
-                    <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Address</Text>
-                    <TextInput
-                      style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 16, minHeight: 80, textAlignVertical: 'top' }}
-                      value={newStoreData.dealerAddress}
-                      onChangeText={(text) => setNewStoreData({ ...newStoreData, dealerAddress: text })}
-                      placeholder="Enter full address"
-                      placeholderTextColor={theme.colors.textSecondary}
-                      multiline
+                    <Button
+                      variant="ghost"
+                      color={tone.danger}
+                      size="sm"
+                      icon={(col) => <Trash2 size={15} color={col} />}
+                      onPress={() => {
+                        const newBoards = newStoreData.boards.filter((_, i) => i !== index);
+                        setNewStoreData({ ...newStoreData, boards: newBoards });
+                        if (openBoardElementIndex === index) setOpenBoardElementIndex(null);
+                      }}
                     />
                   </View>
-                  
-                  <View style={{ marginTop: 4 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>Store Geolocation (GPS)</Text>
-                      <TouchableOpacity
-                        onPress={handleGetCurrentLocation}
-                        disabled={fetchingLocation}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          backgroundColor: theme.colors.primary + '18',
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          borderRadius: 8,
-                          borderWidth: 1,
-                          borderColor: theme.colors.primary + '40',
-                          gap: 6
-                        }}
-                      >
-                        {fetchingLocation ? (
-                          <ActivityIndicator size="small" color={theme.colors.primary} />
-                        ) : (
-                          <MapPin size={13} color={theme.colors.primary} />
-                        )}
-                        <Text style={{ color: theme.colors.primary, fontSize: 11, fontWeight: '700' }}>
-                          {fetchingLocation ? 'Locating...' : 'Use Current GPS'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
+
+                  <FieldRow>
+                    <TextField label="Width" required value={board.width} onChangeText={(text) => updateBoard(index, { width: text })} placeholder="W" keyboardType="numeric" />
+                    <TextField label="Height" required value={board.height} onChangeText={(text) => updateBoard(index, { height: text })} placeholder="H" keyboardType="numeric" />
+                    <SegmentedControl
+                      label="Unit"
+                      options={[{ key: 'ft', label: 'ft' }, { key: 'in', label: 'in' }]}
+                      value={board.unit}
+                      onChange={(k) => updateBoard(index, { unit: k })}
+                    />
+                  </FieldRow>
+
+                  <SelectField
+                    label="Element"
+                    required
+                    placeholder={newStoreData.clientCode ? 'Select element' : 'Select a client first'}
+                    valueText={board.elementId ? `${board.elementName} (₹${board.customRate}/sq.unit)` : undefined}
+                    selectedKey={board.elementId}
+                    open={openBoardElementIndex === index}
+                    onToggle={() => setOpenBoardElementIndex(openBoardElementIndex === index ? null : index)}
+                    emptyText="No elements configured for this client"
+                    options={(selectedClientForForm?.elements || []).map((el: any) => ({ key: el.elementId, label: el.elementName, sublabel: `₹${el.customRate}/sq.unit` }))}
+                    onSelect={(o) => {
+                      const el = (selectedClientForForm?.elements || []).find((e: any) => e.elementId === o.key);
+                      if (el) updateBoard(index, { elementId: el.elementId, elementName: el.elementName, customRate: el.customRate });
+                      setOpenBoardElementIndex(null);
+                    }}
+                  />
+
+                  <View style={{ width: 110 }}>
+                    <TextField
+                      label="Quantity"
+                      value={String(board.quantity)}
+                      onChangeText={(text) => updateBoard(index, { quantity: Number(text) || 1 })}
+                      placeholder="1"
+                      keyboardType="numeric"
+                    />
                   </View>
-                  
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>Latitude</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 15 }}
-                        value={newStoreData.latitude}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, latitude: text })}
-                        placeholder="e.g. 28.7041"
-                        placeholderTextColor={theme.colors.textSecondary}
-                        keyboardType="numeric"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '500', marginBottom: 6 }}>Longitude</Text>
-                      <TextInput
-                        style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, color: theme.colors.text, fontSize: 15 }}
-                        value={newStoreData.longitude}
-                        onChangeText={(text) => setNewStoreData({ ...newStoreData, longitude: text })}
-                        placeholder="e.g. 77.1025"
-                        placeholderTextColor={theme.colors.textSecondary}
-                        keyboardType="numeric"
-                      />
-                    </View>
-                  </View>
-
-                  {/* Direct Installation */}
-                  <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primary, marginBottom: 8, marginTop: 16 }}>DIRECT INSTALLATION</Text>
-                  <TouchableOpacity
-                    onPress={() => setNewStoreData({
-                      ...newStoreData,
-                      directInstallation: !newStoreData.directInstallation,
-                      boards: !newStoreData.directInstallation ? newStoreData.boards : []
-                    })}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                  >
-                    {newStoreData.directInstallation ? (
-                      <CheckSquare size={20} color={theme.colors.primary} />
-                    ) : (
-                      <Square size={20} color={theme.colors.textSecondary} />
-                    )}
-                    <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>Direct Installation (Skip Recce)</Text>
-                  </TouchableOpacity>
-
-                  {newStoreData.directInstallation && (
-                    <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, gap: 12 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '600' }}>Boards (Required)</Text>
-                        <TouchableOpacity
-                          onPress={() => setNewStoreData({
-                            ...newStoreData,
-                            boards: [...newStoreData.boards, { elementId: '', elementName: '', quantity: 1, customRate: 0, width: '', height: '', unit: 'ft' }]
-                          })}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                        >
-                          <Plus size={14} color={theme.colors.primary} />
-                          <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600' }}>Add Board</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {newStoreData.boards.length === 0 && (
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontStyle: 'italic' }}>
-                          No boards added. Please add at least one board.
-                        </Text>
-                      )}
-
-                      {newStoreData.boards.map((board, index) => {
-                        const selectedClient = clients.find(c => c.clientCode === newStoreData.clientCode);
-                        return (
-                          <View key={index} style={{ backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 10, gap: 8 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600' }}>Board {index + 1}</Text>
-                              <TouchableOpacity
-                                onPress={() => {
-                                  const newBoards = newStoreData.boards.filter((_, i) => i !== index);
-                                  setNewStoreData({ ...newStoreData, boards: newBoards });
-                                  if (openBoardElementIndex === index) setOpenBoardElementIndex(null);
-                                }}
-                              >
-                                <X size={16} color="#EF4444" />
-                              </TouchableOpacity>
-                            </View>
-
-                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>WIDTH *</Text>
-                                <TextInput
-                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14 }}
-                                  value={board.width}
-                                  onChangeText={(text) => {
-                                    const newBoards = [...newStoreData.boards];
-                                    newBoards[index] = { ...newBoards[index], width: text };
-                                    setNewStoreData({ ...newStoreData, boards: newBoards });
-                                  }}
-                                  placeholder="W"
-                                  placeholderTextColor={theme.colors.textSecondary}
-                                  keyboardType="numeric"
-                                />
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>HEIGHT *</Text>
-                                <TextInput
-                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14 }}
-                                  value={board.height}
-                                  onChangeText={(text) => {
-                                    const newBoards = [...newStoreData.boards];
-                                    newBoards[index] = { ...newBoards[index], height: text };
-                                    setNewStoreData({ ...newStoreData, boards: newBoards });
-                                  }}
-                                  placeholder="H"
-                                  placeholderTextColor={theme.colors.textSecondary}
-                                  keyboardType="numeric"
-                                />
-                              </View>
-                              <View style={{ flex: 1 }}>
-                                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>UNIT</Text>
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    const newBoards = [...newStoreData.boards];
-                                    newBoards[index] = { ...newBoards[index], unit: newBoards[index].unit === 'ft' ? 'in' : 'ft' };
-                                    setNewStoreData({ ...newStoreData, boards: newBoards });
-                                  }}
-                                  style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, alignItems: 'center' }}
-                                >
-                                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{board.unit}</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-
-                            <View>
-                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>ELEMENT *</Text>
-                              <TouchableOpacity
-                                onPress={() => setOpenBoardElementIndex(openBoardElementIndex === index ? null : index)}
-                                style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-                              >
-                                <Text style={{ color: board.elementId ? theme.colors.text : theme.colors.textSecondary, fontSize: 13, flex: 1 }} numberOfLines={1}>
-                                  {board.elementId ? `${board.elementName} (₹${board.customRate}/sq.unit)` : (newStoreData.clientCode ? 'Select element' : 'Select a client first')}
-                                </Text>
-                                <ChevronDown size={14} color={theme.colors.textSecondary} />
-                              </TouchableOpacity>
-                              {openBoardElementIndex === index && (
-                                <View style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, marginTop: 4, maxHeight: 140 }}>
-                                  <ScrollView nestedScrollEnabled>
-                                    {(selectedClient?.elements || []).length === 0 ? (
-                                      <Text style={{ color: theme.colors.textSecondary, fontSize: 12, padding: 10 }}>
-                                        No elements configured for this client
-                                      </Text>
-                                    ) : (
-                                      selectedClient.elements.map((el: any) => (
-                                        <TouchableOpacity
-                                          key={el.elementId}
-                                          onPress={() => {
-                                            const newBoards = [...newStoreData.boards];
-                                            newBoards[index] = { ...newBoards[index], elementId: el.elementId, elementName: el.elementName, customRate: el.customRate };
-                                            setNewStoreData({ ...newStoreData, boards: newBoards });
-                                            setOpenBoardElementIndex(null);
-                                          }}
-                                          style={{ padding: 10, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
-                                        >
-                                          <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '600' }}>{el.elementName}</Text>
-                                          <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>₹{el.customRate}/sq.unit</Text>
-                                        </TouchableOpacity>
-                                      ))
-                                    )}
-                                  </ScrollView>
-                                </View>
-                              )}
-                            </View>
-
-                            <View>
-                              <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>QUANTITY</Text>
-                              <TextInput
-                                style={{ backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, padding: 8, color: theme.colors.text, fontSize: 14, width: 80 }}
-                                value={String(board.quantity)}
-                                onChangeText={(text) => {
-                                  const newBoards = [...newStoreData.boards];
-                                  newBoards[index] = { ...newBoards[index], quantity: Number(text) || 1 };
-                                  setNewStoreData({ ...newStoreData, boards: newBoards });
-                                }}
-                                placeholder="1"
-                                placeholderTextColor={theme.colors.textSecondary}
-                                keyboardType="numeric"
-                              />
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
                 </View>
-              </ScrollView>
+              ))}
 
-              <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsAddStoreModalOpen(false);
-                    setOpenBoardElementIndex(null);
-                    setNewStoreData({
-                      zone: '', state: '', district: '', city: '',
-                      vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
-                      clientCode: '',
-                      latitude: '', longitude: '',
-                      directInstallation: false,
-                      boards: []
-                    });
-                  }}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: theme.colors.surface, alignItems: 'center' }}
-                >
-                  <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddStore}
-                  disabled={!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode || isDirectInstallBoardsInvalid()}
-                  style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: (!newStoreData.dealerCode || !newStoreData.dealerName || !newStoreData.clientCode || isDirectInstallBoardsInvalid()) ? theme.colors.border : theme.colors.primary, alignItems: 'center' }}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: '600' }}>Add Store</Text>
-                </TouchableOpacity>
-              </View>
+              <Button
+                label="Add board"
+                variant="outline"
+                icon={(col) => <Plus size={16} color={col} />}
+                onPress={() => setNewStoreData({
+                  ...newStoreData,
+                  boards: [...newStoreData.boards, { elementId: '', elementName: '', quantity: 1, customRate: 0, width: '', height: '', unit: 'ft' }]
+                })}
+              />
             </View>
-          </View>
-        </View>
-      </Modal>
+          )}
+        </FormSection>
+      </BottomSheet>
 
-      {/* Upload Modal */}
-      <Modal
+      {/* ---------------- Upload sheet (web-portal notice, unchanged behaviour) ---------------- */}
+      <BottomSheet
         visible={uploadModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setUploadModalVisible(false)}
+        onClose={() => setUploadModalVisible(false)}
+        title="Bulk upload stores"
+        icon={<Upload size={18} color={theme.colors.text} />}
+        footer={
+          <Button
+            label="Close"
+            variant="primary"
+            size="lg"
+            flex
+            onPress={() => { setUploadModalVisible(false); if (uploadStats) setUploadStats(null); }}
+          />
+        }
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' }}>
-            <View style={{ padding: 20 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Bulk Upload Stores</Text>
-                <TouchableOpacity onPress={() => setUploadModalVisible(false)}>
-                  <X size={24} color={theme.colors.text} />
-                </TouchableOpacity>
-              </View>
-              
-              {uploadStats ? (
-                <View style={{ alignItems: 'center', padding: 20 }}>
-                  <Text style={{ fontSize: 32, fontWeight: 'bold', color: uploadStats.errorCount === 0 ? '#10B981' : '#F59E0B' }}>
-                    {uploadStats.successCount} / {uploadStats.totalProcessed}
-                  </Text>
-                  <Text style={{ color: theme.colors.textSecondary, marginBottom: 20 }}>Records Processed</Text>
-                  <TouchableOpacity onPress={() => { setUploadModalVisible(false); setUploadStats(null); }} style={{ backgroundColor: theme.colors.primary, padding: 16, borderRadius: 8, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <ScrollView>
-                  <TouchableOpacity 
-                    onPress={downloadTemplate} 
-                    style={{ backgroundColor: '#10B981', padding: 16, borderRadius: 8, alignItems: 'center', marginBottom: 16 }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Download size={20} color="#FFF" />
-                      <Text style={{ color: '#FFF', marginLeft: 8, fontWeight: 'bold' }}>Download Template</Text>
-                    </View>
-                  </TouchableOpacity>
-                  
-                  <View style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.border, padding: 32, borderRadius: 8, alignItems: 'center', marginBottom: 16 }}>
-                    <Upload size={32} color={theme.colors.textSecondary} />
-                    <Text style={{ color: theme.colors.text, marginTop: 8, fontWeight: '600' }}>File Upload</Text>
-                    <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 }}>
-                      Please use the web portal for bulk Excel file upload
-                    </Text>
-                  </View>
-                  
-                  <TouchableOpacity 
-                    onPress={() => setUploadModalVisible(false)}
-                    style={{ backgroundColor: theme.colors.primary, padding: 16, borderRadius: 8, alignItems: 'center' }}
-                  >
-                    <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Close</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-              )}
-            </View>
+        {uploadStats ? (
+          <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+            <Text style={{ fontSize: 34, fontWeight: '900', color: uploadStats.errorCount === 0 ? tone.success : tone.warning }}>
+              {uploadStats.successCount} / {uploadStats.totalProcessed}
+            </Text>
+            <Text style={{ color: theme.colors.textSecondary }}>Records processed</Text>
           </View>
-        </View>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal visible={deleteModalVisible} animationType="fade" transparent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <Trash2 size={32} color="#EF4444" />
-              </View>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete Store</Text>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
-                Are you sure you want to delete "{storeToDelete?.storeName}"? This action cannot be undone and will permanently remove all store data including recce and installation records.
+        ) : (
+          <>
+            <Button label="Download template" variant="solid" color={tone.success} size="lg" icon={(col) => <Download size={18} color={col} />} onPress={downloadTemplate} />
+            <View style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.border, padding: 28, borderRadius: 16, alignItems: 'center' }}>
+              <Upload size={30} color={theme.colors.textSecondary} />
+              <Text style={{ color: theme.colors.text, marginTop: 8, fontWeight: '800' }}>File upload</Text>
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                Please use the web portal for bulk Excel file upload
               </Text>
             </View>
-            
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setDeleteModalVisible(false);
-                  setStoreToDelete(null);
-                }}
-                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
-              >
-                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmDelete}
-                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* ---------------- Delete confirmation ---------------- */}
+      <ConfirmDialog
+        visible={deleteModalVisible}
+        title="Delete store?"
+        message={`"${storeToDelete?.storeName || ''}" and all its recce and installation records will be permanently removed. This can't be undone.`}
+        icon={<Trash2 size={28} color={tone.danger} />}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setStoreToDelete(null);
+        }}
+      />
     </View>
   );
 }
-

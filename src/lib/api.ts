@@ -146,6 +146,16 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Dev-only: surface every failed API call in the DevTools console.
+    // (Most screens catch errors and only show a Toast, so without this
+    // nothing ever reached the console.)
+    if (__DEV__) {
+      const method = (originalRequest?.method || 'GET').toUpperCase();
+      const url = `${originalRequest?.baseURL || ''}${originalRequest?.url || ''}`;
+      const status = error?.response?.status ?? 'NETWORK';
+      console.error(`[API] ${method} ${url} → ${status}`, error?.response?.data ?? error?.message);
+    }
+
     // Never intercept auth endpoints (login, refresh, logout) to prevent loops
     const requestUrl = originalRequest?.url || '';
     if (

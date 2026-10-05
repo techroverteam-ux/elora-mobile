@@ -162,7 +162,7 @@ function AppContent() {
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'Dashboard':
-        return <DashboardScreen onMenuPress={openDrawer} onProfilePress={() => navigateToScreen('Profile')} />;
+        return <DashboardScreen onMenuPress={openDrawer} onProfilePress={() => navigateToScreen('Profile')} onNavigate={navigateToScreen} />;
       
       case 'Profile':
         return (
@@ -426,7 +426,7 @@ function AppContent() {
         );
       
       default:
-        return <DashboardScreen onMenuPress={openDrawer} onProfilePress={() => navigateToScreen('Profile')} />;
+        return <DashboardScreen onMenuPress={openDrawer} onProfilePress={() => navigateToScreen('Profile')} onNavigate={navigateToScreen} />;
     }
   };
 
