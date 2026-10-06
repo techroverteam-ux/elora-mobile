@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
-import { MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle, Clock, X } from 'lucide-react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle2, Hash, User, Phone, Workflow, Ruler } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  Card, StatusBadge, Button, EmptyState,
+  SectionTitle, StatStrip, Timeline, PhotoTile, PhotoStrip, ImageViewer,
+  FactGrid, ContactCard, LocationCard, SpecsCard, CommercialCard,
+  tone, alpha,
+} from '../../components/ui';
 
 interface InstallationDetailProps {
   route: {
@@ -18,6 +23,18 @@ interface InstallationDetailProps {
     navigate?: (screen: string, params?: any) => void;
   };
 }
+
+const APPROVAL_COLOR: Record<string, string> = {
+  APPROVED: tone.success,
+  REJECTED: tone.danger,
+};
+
+const fmtDate = (d?: string) => (d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : undefined);
+
+// The API stores each installation image under `installationPhoto`
+// (store.model.ts → installation.photos[].installationPhoto). The old screen
+// read `.photo`, which never exists, so installation photos never showed.
+const installationImage = (p: any): string | undefined => p?.installationPhoto || p?.photo || undefined;
 
 export default function InstallationDetailScreen({ route, navigation }: InstallationDetailProps) {
   const { theme } = useTheme();
@@ -34,8 +51,6 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
     try {
       setLoading(true);
       const response = await storeService.getById(storeId);
-      console.log('Installation Screen - Store data:', JSON.stringify(response.store?.contact, null, 2));
-      console.log('Installation Screen - Full store:', JSON.stringify(response.store, null, 2));
       setStore(response.store);
     } catch (error) {
       Toast.show({
@@ -49,493 +64,269 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'INSTALLATION_ASSIGNED': return '#F59E0B';
-      case 'INSTALLATION_SUBMITTED': return '#3B82F6';
-      case 'COMPLETED': return '#10B981';
-      default: return '#6B7280';
-    }
-  };
+  const c = theme.colors;
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.textSecondary }}>Loading...</Text>
+      <View style={{ flex: 1, backgroundColor: c.background, justifyContent: 'center', alignItems: 'center', gap: 10 }}>
+        <ActivityIndicator size="large" color={c.primary} />
+        <Text style={{ color: c.textSecondary, fontSize: 13 }}>Loading installation details…</Text>
       </View>
     );
   }
 
   if (!store) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: theme.colors.text }}>Store not found</Text>
+      <View style={{ flex: 1, backgroundColor: c.background, justifyContent: 'center' }}>
+        <EmptyState title="Store not found" message="It may have been deleted or you no longer have access." />
       </View>
     );
   }
 
+  const img = (path?: string) => (path ? imageService.getFullImageUrl(path) : undefined);
+  const reccePhotos: any[] = store.recce?.reccePhotos || [];
+  const initialPhotos: string[] = store.recce?.initialPhotos || [];
+  const installPhotos: any[] = store.installation?.photos || [];
+  const approvedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'APPROVED').length;
+  const rejectedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'REJECTED').length;
+  const mobile = store.contact?.mobile || store.contact?.phone || store.mobile || store.phone || store.contactMobile || store.dealerMobile;
+  const locationLine = [store.location?.city, store.location?.district, store.location?.state].filter(Boolean).join(', ');
+
+  // Group installation photos by board, only for approved recce boards (same rule as before).
+  const boardsWithInstallPhotos = Object.entries(
+    installPhotos.reduce((acc: Record<number, any[]>, p: any) => {
+      const idx = p.reccePhotoIndex;
+      const recce = reccePhotos[idx];
+      if (!recce || recce.approvalStatus !== 'APPROVED') return acc;
+      (acc[idx] = acc[idx] || []).push(p);
+      return acc;
+    }, {}),
+  ).map(([idx, photos]) => ({ index: Number(idx), recce: reccePhotos[Number(idx)], photos: photos as any[] }))
+    .sort((a, b) => a.index - b.index);
+
+  const status = store.currentStatus;
+  const installDone = status === 'INSTALLATION_SUBMITTED' || status === 'COMPLETED';
+  const canStart = status === 'INSTALLATION_ASSIGNED' && !!navigation.navigate;
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-        {/* Status Card */}
-        <View style={{ 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 12, 
-          padding: 16, 
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border
-        }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
-              Installation Status
-            </Text>
-            <View style={{ 
-              backgroundColor: getStatusColor(store.currentStatus) + '20', 
-              paddingHorizontal: 12, 
-              paddingVertical: 6, 
-              borderRadius: 16 
-            }}>
-              <Text style={{ 
-                color: getStatusColor(store.currentStatus), 
-                fontSize: 12, 
-                fontWeight: 'bold' 
-              }}>
-                {store.currentStatus?.replace(/_/g, ' ')}
-              </Text>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: canStart ? 100 : 32 }}>
+        {/* ---------- Hero ---------- */}
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+            <View style={[styles.heroIcon, { backgroundColor: alpha(tone.success, 0.14) }]}>
+              <Wrench size={22} color={tone.success} />
             </View>
-          </View>
-          
-          {store.workflow?.installationAssignedAt && (
-            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 8 }}>
-              Assigned: {new Date(store.workflow.installationAssignedAt).toLocaleDateString()}
-            </Text>
-          )}
-          
-          {store.workflow?.installationSubmittedAt && (
-            <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginTop: 4 }}>
-              Submitted: {new Date(store.workflow.installationSubmittedAt).toLocaleDateString()}
-            </Text>
-          )}
-        </View>
-
-        {/* Assignment Info */}
-        <View style={{ 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 12, 
-          padding: 16, 
-          marginBottom: 16,
-          borderWidth: 1,
-          borderColor: theme.colors.border
-        }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text, marginBottom: 16 }}>
-            Assignment Details
-          </Text>
-          
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Recce Completed By</Text>
-              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
-                {store.workflow?.recceAssignedTo?.name || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                {store.workflow?.recceSubmittedAt ? new Date(store.workflow.recceSubmittedAt).toLocaleDateString() : '-'}
-              </Text>
-            </View>
-            <View style={{ flex: 1, backgroundColor: theme.colors.background, borderRadius: 8, padding: 12 }}>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>Installation Assigned To</Text>
-              <Text style={{ fontSize: 14, color: theme.colors.text, fontWeight: '600', marginBottom: 2 }}>
-                {store.workflow?.installationAssignedTo?.name || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                {store.workflow?.installationAssignedAt ? new Date(store.workflow.installationAssignedAt).toLocaleDateString() : '-'}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View style={{ marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
-            {/* Location Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <MapPin size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Location</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Zone: {store.location?.zone || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                State: {store.location?.state || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                City: {store.location?.city || '-'}
-              </Text>
-              <Text style={{ fontSize: 11, color: theme.colors.textSecondary, marginTop: 4 }}>
-                {store.location?.address || '-'}
-              </Text>
-            </View>
-
-            {/* Dealer Info Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Building2 size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Dealer</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Store ID: {store.storeId || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Client Code: {store.clientCode || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Code: {store.dealerCode}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Vendor: {store.vendorCode || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Contact: {store.contact?.personName || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                Mobile: {store.contact?.mobile || store.contact?.phone || store.mobile || store.phone || store.contactMobile || store.dealerMobile || '-'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* Board Specs Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <Package size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Board Specs</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Type: {store.specs?.type || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Qty: {store.specs?.qty || 1}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Size: {store.specs?.width} × {store.specs?.height} ft
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary }}>
-                Area: {store.specs?.boardSize || '-'} sq.ft
-              </Text>
-            </View>
-
-            {/* Commercial Card */}
-            <View style={{ 
-              flex: 1, 
-              backgroundColor: theme.colors.surface, 
-              borderRadius: 12, 
-              padding: 12,
-              borderWidth: 1,
-              borderColor: theme.colors.border
-            }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                <IndianRupee size={16} color="#F59E0B" />
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginLeft: 6 }}>Commercial</Text>
-              </View>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                PO: {store.commercials?.poNumber || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Month: {store.commercials?.poMonth || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 2 }}>
-                Invoice: {store.commercials?.invoiceNumber || '-'}
-              </Text>
-              <Text style={{ fontSize: 12, color: '#10B981', fontWeight: 'bold' }}>
-                Total: ₹{store.commercials?.totalCost?.toLocaleString() || 0}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Initial Photos Reference */}
-        {store.recce?.initialPhotos && store.recce.initialPhotos.length > 0 && (
-          <View style={{ 
-            backgroundColor: '#3B82F620', 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: '#3B82F650'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Camera size={20} color="#3B82F6" />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
-                Initial Photos ({store.recce.initialPhotos.length})
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {store.recce.initialPhotos.slice(0, 6).map((photo: string, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => setSelectedImage(imageService.getFullImageUrl(photo))}
-                  style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#3B82F6' }}
-                >
-                  <Image
-                    source={{ uri: imageService.getFullImageUrl(photo) }}
-                    style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Recce Photos Reference - Show all for context */}
-        {store.recce?.reccePhotos && store.recce.reccePhotos.length > 0 && (
-          <View style={{ 
-            backgroundColor: '#3B82F620', 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: '#3B82F650'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Camera size={20} color="#3B82F6" />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#3B82F6', marginLeft: 8 }}>
-                Recce Photos (Reference) - {store.recce.reccePhotos.filter(p => p.approvalStatus === 'APPROVED').length} Approved, {store.recce.reccePhotos.filter(p => p.approvalStatus === 'REJECTED').length} Rejected
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {store.recce.reccePhotos.map((reccePhoto: any, index: number) => {
-                const isApproved = reccePhoto.approvalStatus === 'APPROVED';
-                const isRejected = reccePhoto.approvalStatus === 'REJECTED';
-                
-                return (
-                  <View key={index} style={{ position: 'relative' }}>
-                    <TouchableOpacity
-                      onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))}
-                      style={{ 
-                        width: 80, 
-                        height: 80, 
-                        borderRadius: 8, 
-                        overflow: 'hidden', 
-                        borderWidth: 2, 
-                        borderColor: isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B'
-                      }}
-                    >
-                      <Image
-                        source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                        style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
-                        resizeMode="contain"
-                      />
-                      <View style={{ 
-                        position: 'absolute', 
-                        bottom: 0, 
-                        left: 0, 
-                        right: 0, 
-                        backgroundColor: isApproved ? 'rgba(16,185,129,0.9)' : isRejected ? 'rgba(239,68,68,0.9)' : 'rgba(245,158,11,0.9)', 
-                        padding: 2 
-                      }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 8, fontWeight: 'bold', textAlign: 'center' }}>
-                          {reccePhoto.measurements.width}×{reccePhoto.measurements.height}
-                        </Text>
-                      </View>
-                      {/* Status indicator */}
-                      <View style={{
-                        position: 'absolute',
-                        top: 2,
-                        right: 2,
-                        width: 12,
-                        height: 12,
-                        borderRadius: 6,
-                        backgroundColor: isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B'
-                      }} />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
-              <Text style={{ fontSize: 10, color: '#3B82F6', textAlign: 'center' }}>
-                🟢 Approved  🔴 Rejected  🟡 Pending/On-Hold
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Installation Photos - Only show for approved recce photos */}
-        {store.installation?.photos && store.installation.photos.length > 0 ? (
-          <View style={{ 
-            backgroundColor: theme.colors.surface, 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: theme.colors.border
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <Wrench size={20} color="#10B981" />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginLeft: 8 }}>
-                Installation Photos ({store.installation.photos.length})
-              </Text>
-            </View>
-            
-            {store.installation.photos.map((installationPhoto: any, index: number) => {
-              // Find the corresponding recce photo
-              const reccePhoto = store.recce?.reccePhotos?.[installationPhoto.reccePhotoIndex];
-              
-              // Only show if the recce photo is approved
-              if (!reccePhoto || reccePhoto.approvalStatus !== 'APPROVED') {
-                return null;
-              }
-              
-              return (
-                <View key={index} style={{ 
-                  backgroundColor: theme.colors.background, 
-                  borderRadius: 12, 
-                  padding: 16, 
-                  marginBottom: 12,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border
-                }}>
-                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginBottom: 12 }}>
-                    Installation Photo {index + 1} (Board {installationPhoto.reccePhotoIndex + 1})
-                  </Text>
-
-                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                    {/* Recce Photo Reference */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
-                        Recce Photo (Reference)
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))}
-                        style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#10B981' }}
-                      >
-                        <Image
-                          source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                          style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
-                          resizeMode="contain"
-                        />
-                      </TouchableOpacity>
-                      <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
-                        <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600' }}>
-                          {reccePhoto.measurements.width} × {reccePhoto.measurements.height} {reccePhoto.measurements.unit} (APPROVED)
-                        </Text>
-                        {reccePhoto.elements && reccePhoto.elements.length > 0 && (
-                          <Text style={{ fontSize: 10, color: '#10B981', marginTop: 2 }}>
-                            Element: {reccePhoto.elements[0].elementName}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                    
-                    {/* Installation Photo */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
-                        Installation Photo
-                      </Text>
-                        <TouchableOpacity
-                          onPress={() => setSelectedImage(imageService.getFullImageUrl(installationPhoto.photo))}
-                          style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: '#10B981' }}
-                        >
-                          <Image
-                            source={{ uri: imageService.getFullImageUrl(installationPhoto.photo) }}
-                            style={{ width: '100%', height: '100%', backgroundColor: '#0F172A' }}
-                            resizeMode="contain"
-                          />
-                        </TouchableOpacity>
-                      <View style={{ marginTop: 8, padding: 8, backgroundColor: '#10B98110', borderRadius: 6 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <CheckCircle size={12} color="#10B981" />
-                          <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '600', marginLeft: 4 }}>
-                            Installation Complete
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={{ color: c.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }}>{store.storeId || store.dealerCode}</Text>
+              <Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>{store.storeName}</Text>
+              {!!locationLine && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <MapPin size={12} color={c.textSecondary} />
+                  <Text style={{ color: c.textSecondary, fontSize: 12, flex: 1 }} numberOfLines={1}>{locationLine}</Text>
                 </View>
-              );
-            }).filter(Boolean)}
+              )}
+            </View>
           </View>
-        ) : (
-          <View style={{ 
-            backgroundColor: theme.colors.surface, 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 16,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            alignItems: 'center'
-          }}>
-            <Wrench size={48} color={theme.colors.textSecondary} />
-            <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginTop: 12, marginBottom: 4 }}>
-              No Installation Photos
-            </Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center' }}>
-              Installation photos will appear here once the installation is completed.
-            </Text>
+          <View style={{ marginTop: 12 }}>
+            <StatusBadge status={status} />
           </View>
+          <StatStrip
+            items={[
+              { label: 'Boards', value: reccePhotos.length },
+              { label: 'Approved', value: approvedBoards, color: tone.success },
+              { label: 'Installed', value: boardsWithInstallPhotos.length, color: tone.info },
+              { label: 'Photos', value: installPhotos.length },
+            ]}
+          />
+        </Card>
+
+        {/* ---------- Workflow ---------- */}
+        <Card>
+          <SectionTitle icon={<Workflow size={16} color={c.textSecondary} />} title="Progress" />
+          <Timeline
+            steps={[
+              {
+                title: 'Recce completed',
+                subtitle: store.workflow?.recceAssignedTo?.name ? `by ${store.workflow.recceAssignedTo.name}` : 'Recce user not recorded',
+                meta: fmtDate(store.workflow?.recceSubmittedAt),
+                done: true,
+              },
+              {
+                title: 'Installation assigned',
+                subtitle: store.workflow?.installationAssignedTo?.name ? `to ${store.workflow.installationAssignedTo.name}` : 'Not assigned yet',
+                meta: fmtDate(store.workflow?.installationAssignedAt),
+                done: !!store.workflow?.installationAssignedTo,
+                active: !store.workflow?.installationAssignedTo,
+              },
+              {
+                title: 'Installation submitted',
+                subtitle: installDone ? `${installPhotos.length} photo${installPhotos.length === 1 ? '' : 's'} uploaded` : 'Waiting for installer',
+                meta: fmtDate(store.workflow?.installationSubmittedAt),
+                done: installDone,
+                active: status === 'INSTALLATION_ASSIGNED',
+              },
+              {
+                title: 'Completed',
+                subtitle: status === 'COMPLETED' ? 'Installation approved' : 'Pending review',
+                done: status === 'COMPLETED',
+                active: status === 'INSTALLATION_SUBMITTED',
+              },
+            ]}
+          />
+        </Card>
+
+        {/* ---------- Contact ---------- */}
+        <ContactCard name={store.contact?.personName} mobile={mobile} />
+
+        {/* ---------- Identifiers ---------- */}
+        <FactGrid
+          items={[
+            { label: 'Store ID', value: store.storeId },
+            { label: 'Client code', value: store.clientCode },
+            { label: 'Dealer code', value: store.dealerCode },
+            { label: 'Vendor code', value: store.vendorCode },
+          ]}
+        />
+
+        {/* ---------- Location ---------- */}
+        <LocationCard location={store.location} />
+
+        {/* ---------- Specs + commercial ---------- */}
+        <SpecsCard specs={store.specs} />
+        <CommercialCard commercials={store.commercials} />
+
+        {/* ---------- Recce reference ---------- */}
+        {(initialPhotos.length > 0 || reccePhotos.length > 0) && (
+          <Card>
+            <SectionTitle
+              icon={<Camera size={16} color={c.textSecondary} />}
+              title="Recce reference"
+              right={
+                <Text style={{ color: c.textSecondary, fontSize: 11 }}>
+                  <Text style={{ color: tone.success, fontWeight: '800' }}>{approvedBoards} approved</Text>
+                  {rejectedBoards ? <Text style={{ color: tone.danger, fontWeight: '800' }}>  {rejectedBoards} rejected</Text> : null}
+                </Text>
+              }
+            />
+            {initialPhotos.length > 0 && (
+              <View style={{ marginBottom: reccePhotos.length ? 14 : 0 }}>
+                <Text style={styles.subLabel(c)}>STORE PHOTOS</Text>
+                <PhotoStrip>
+                  {initialPhotos.map((photo: string, index: number) => (
+                    <PhotoTile key={index} uri={img(photo)} size={84} onPress={() => setSelectedImage(img(photo) || null)} />
+                  ))}
+                </PhotoStrip>
+              </View>
+            )}
+            {reccePhotos.length > 0 && (
+              <View>
+                <Text style={styles.subLabel(c)}>BOARDS</Text>
+                <PhotoStrip>
+                  {reccePhotos.map((rp: any, index: number) => (
+                    <PhotoTile
+                      key={index}
+                      uri={img(rp.photo)}
+                      size={84}
+                      label={`B${index + 1}`}
+                      caption={rp.measurements ? `${rp.measurements.width}×${rp.measurements.height} ${rp.measurements.unit || ''}` : undefined}
+                      statusColor={APPROVAL_COLOR[rp.approvalStatus] || tone.warning}
+                      onPress={() => setSelectedImage(img(rp.photo) || null)}
+                    />
+                  ))}
+                </PhotoStrip>
+              </View>
+            )}
+          </Card>
         )}
 
-        {/* Action Buttons */}
-        {store.currentStatus === 'INSTALLATION_ASSIGNED' && navigation.navigate && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate!('InstallationForm', { storeId: store._id })}
-            style={{
-              backgroundColor: '#10B981',
-              padding: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              flexDirection: 'row',
-              justifyContent: 'center'
-            }}
-          >
-            <Wrench size={20} color="#FFFFFF" />
-            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginLeft: 8 }}>
-              Start Installation
-            </Text>
-          </TouchableOpacity>
-        )}
+        {/* ---------- Installation photos, per board ---------- */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2, marginTop: 2 }}>
+          <Wrench size={16} color={c.textSecondary} />
+          <Text style={{ color: c.text, fontSize: 16, fontWeight: '900', flex: 1 }}>
+            Installation photos <Text style={{ color: c.textSecondary, fontWeight: '700' }}>({installPhotos.length})</Text>
+          </Text>
+        </View>
+
+        {boardsWithInstallPhotos.length === 0 ? (
+          <Card>
+            <EmptyState
+              title="No installation photos yet"
+              message="Photos will appear here once the installer submits the installation."
+              icon={<Camera size={28} color={c.textTertiary} />}
+            />
+          </Card>
+        ) : boardsWithInstallPhotos.map(({ index, recce, photos }) => (
+          <Card key={index}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <View style={[styles.boardChip, { backgroundColor: c.surfaceSecondary }]}>
+                <Text style={{ color: c.text, fontSize: 12, fontWeight: '900' }}>Board {index + 1}</Text>
+              </View>
+              {recce?.measurements && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ruler size={12} color={c.textSecondary} />
+                  <Text style={{ color: c.textSecondary, fontSize: 12 }}>{recce.measurements.width} × {recce.measurements.height} {recce.measurements.unit}</Text>
+                </View>
+              )}
+              <View style={{ flex: 1 }} />
+              <StatusBadge label="Installed" color={tone.success} size="sm" />
+            </View>
+
+            {recce?.elements?.[0]?.elementName ? (
+              <Text style={{ color: c.textSecondary, fontSize: 12, marginBottom: 10 }}>
+                Element <Text style={{ color: c.text, fontWeight: '800' }}>{recce.elements[0].elementName}</Text>
+              </Text>
+            ) : null}
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.subLabel(c)}>RECCE</Text>
+                <PhotoTile uri={img(recce?.photo)} size="100%" onPress={() => setSelectedImage(img(recce?.photo) || null)} />
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={[styles.subLabel(c), { color: tone.success }]}>INSTALLED</Text>
+                <PhotoTile uri={img(installationImage(photos[0]))} size="100%" onPress={() => setSelectedImage(img(installationImage(photos[0])) || null)} />
+              </View>
+            </View>
+
+            {photos.length > 1 && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.subLabel(c)}>MORE PHOTOS ({photos.length - 1})</Text>
+                <PhotoStrip>
+                  {photos.slice(1).map((p: any, i: number) => (
+                    <PhotoTile key={i} uri={img(installationImage(p))} size={72} onPress={() => setSelectedImage(img(installationImage(p)) || null)} />
+                  ))}
+                </PhotoStrip>
+              </View>
+            )}
+          </Card>
+        ))}
       </ScrollView>
 
-      {/* Image Viewer Modal */}
-      <Modal visible={!!selectedImage} transparent={true} onRequestClose={() => setSelectedImage(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => setSelectedImage(null)}
-            style={{ position: 'absolute', top: 40, right: 20, zIndex: 1 }}
-          >
-            <X size={30} color="#FFFFFF" />
-          </TouchableOpacity>
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={{ width: '90%', height: '80%' }}
-              resizeMode="contain"
-            />
-          )}
+      {/* Sticky primary action */}
+      {canStart && (
+        <View style={[styles.sticky, { backgroundColor: c.background, borderTopColor: c.border }]}>
+          <Button
+            label="Start installation"
+            variant="primary"
+            size="lg"
+            flex
+            icon={(col) => <CheckCircle2 size={18} color={col} />}
+            onPress={() => navigation.navigate!('InstallationForm', { storeId: store._id })}
+          />
         </View>
-      </Modal>
+      )}
+
+      <ImageViewer uri={selectedImage} onClose={() => setSelectedImage(null)} />
     </View>
   );
 }
+
+const styles = {
+  ...StyleSheet.create({
+    heroIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    boardChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+    sticky: { position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', padding: 16, borderTopWidth: StyleSheet.hairlineWidth },
+  }),
+  subLabel: (c: any) => ({ color: c.textSecondary, fontSize: 10, fontWeight: '800' as const, letterSpacing: 0.6, marginBottom: 6 }),
+};

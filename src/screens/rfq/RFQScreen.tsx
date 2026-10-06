@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal, Alert } from 'react-native';
-import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, ActivityIndicator, Modal, Alert, ScrollView } from 'react-native';
+import { Search, FileSpreadsheet, Eye, CheckSquare, Square, Filter, ChevronLeft, ChevronRight, X, MapPin } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
@@ -9,6 +9,8 @@ import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
 import DownloadButton from '../../components/DownloadButton';
 import Toast from 'react-native-toast-message';
+import PageSkeleton from '../../components/PageSkeleton';
+import { Card, StatusBadge, Button, Chip, Checkbox, MetaGrid, ScreenHeader, SearchBar, ActiveFilters, Pagination, EmptyState, BottomSheet, FormSection, FieldRow, TextField, tone, statusMeta } from '../../components/ui';
 
 interface RFQScreenProps {
   navigation?: {
@@ -253,163 +255,140 @@ export default function RFQScreen({ navigation }: RFQScreenProps = {}) {
     }
   };
 
+  // UI helpers -------------------------------------------------------------
+  const textFilters = [
+    { key: 'zone', label: 'Zone', value: filterZone, setValue: setFilterZone },
+    { key: 'state', label: 'State', value: filterState, setValue: setFilterState },
+    { key: 'district', label: 'District', value: filterDistrict, setValue: setFilterDistrict },
+    { key: 'city', label: 'City', value: filterCity, setValue: setFilterCity },
+    { key: 'vendor', label: 'Vendor code', value: filterVendorCode, setValue: setFilterVendorCode },
+    { key: 'dealer', label: 'Dealer code', value: filterDealerCode, setValue: setFilterDealerCode },
+    { key: 'client', label: 'Client code', value: filterClientCode, setValue: setFilterClientCode },
+    { key: 'po', label: 'PO number', value: filterPONumber, setValue: setFilterPONumber },
+    { key: 'invoice', label: 'Invoice no', value: filterInvoiceNo, setValue: setFilterInvoiceNo },
+  ];
+  const activeTextFilters = textFilters.filter(f => f.value);
+
+  const clearAllFilters = () => {
+    setFilterStatus('ALL');
+    setFilterZone('');
+    setFilterState('');
+    setFilterDistrict('');
+    setFilterCity('');
+    setFilterVendorCode('');
+    setFilterDealerCode('');
+    setFilterClientCode('');
+    setFilterPONumber('');
+    setFilterInvoiceNo('');
+    setPage(1);
+  };
+
+  const openStoreDetail = (item: Store) => {
+    try {
+      if (navigation && navigation.navigate) {
+        navigation.navigate('StoreDetail', { storeId: item._id, fromScreen: 'RFQ' });
+      } else {
+        Toast.show({
+          type: 'info',
+          text1: 'Navigation not available',
+          text2: 'Please use the main stores section to view details'
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Navigation failed',
+        text2: 'Unable to open store details'
+      });
+    }
+  };
+
   const renderStore = ({ item }: { item: Store }) => {
     const isSelected = selectedStoreIds.has(item._id);
-    
+    const locationText = [item.location?.city, item.location?.state].filter(Boolean).join(', ');
     return (
-      <View style={{ 
-        backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
-        padding: 16, 
-        marginBottom: 12, 
-        borderRadius: 12, 
-        borderWidth: 1, 
-        borderColor: isSelected ? theme.colors.primary : theme.colors.border 
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <TouchableOpacity onPress={() => toggleStoreSelection(item._id)} style={{ marginRight: 12 }}>
-            {isSelected ? 
-              <CheckSquare size={20} color={theme.colors.primary} /> : 
-              <Square size={20} color={theme.colors.textSecondary} />
-            }
-          </TouchableOpacity>
-          
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
-              {item.storeId || item.dealerCode}
-            </Text>
-            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
-              {item.storeName}
-            </Text>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {item.location.city}, {item.location.state}
-            </Text>
+      <Card selected={isSelected} onPress={() => toggleStoreSelection(item._id)} style={{ marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <View style={{ paddingTop: 2 }}>
+            <Checkbox checked={isSelected} onPress={() => toggleStoreSelection(item._id)} />
           </View>
-          
-          <View style={{ backgroundColor: getStatusColor(item.currentStatus) + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ color: getStatusColor(item.currentStatus), fontSize: 10, fontWeight: '600' }}>
-              {item.currentStatus.replace(/_/g, ' ')}
-            </Text>
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }} numberOfLines={1}>{item.storeId || item.dealerCode}</Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }} numberOfLines={2}>{item.storeName}</Text>
+            {!!locationText && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MapPin size={12} color={theme.colors.textSecondary} />
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, flex: 1 }} numberOfLines={1}>{locationText}</Text>
+              </View>
+            )}
           </View>
+          <StatusBadge status={item.currentStatus} />
         </View>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Dealer Code</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.dealerCode}</Text>
-          </View>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Client Code</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>{item.clientCode || '-'}</Text>
-          </View>
+        <View style={{ marginTop: 12 }}>
+          <MetaGrid
+            items={[
+              { label: 'Dealer code', value: item.dealerCode || '—' },
+              { label: 'Client code', value: item.clientCode || '—' },
+              !!item.commercials?.poNumber && { label: 'PO', value: item.commercials!.poNumber },
+            ]}
+          />
         </View>
-
-        <TouchableOpacity 
-          onPress={() => {
-            try {
-              if (navigation && navigation.navigate) {
-                navigation.navigate('StoreDetail', { storeId: item._id, fromScreen: 'RFQ' });
-              } else {
-                Toast.show({ 
-                  type: 'info', 
-                  text1: 'Navigation not available', 
-                  text2: 'Please use the main stores section to view details' 
-                });
-              }
-            } catch (error) {
-              // Removed console.error to prevent memory issues
-              Toast.show({ 
-                type: 'error', 
-                text1: 'Navigation failed', 
-                text2: 'Unable to open store details' 
-              });
-            }
-          }} 
-          style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Eye size={16} color="#3B82F6" />
-          <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View Details</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+          <Button label="View details" variant="soft" color={tone.info} size="sm" icon={(col) => <Eye size={14} color={col} />} onPress={() => openStoreDetail(item)} />
+        </View>
+      </Card>
     );
   };
 
+  const allSelected = selectedStoreIds.size === stores.length && stores.length > 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>RFQ Generation</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Create Request for Quotation</Text>
-          </View>
-          {selectedStoreIds.size > 0 && (
-            <DownloadButton
-              onDownload={async () => {
-                const blob = await rfqService.generate(Array.from(selectedStoreIds));
-                return {
-                  blob,
-                  filename: `RFQ_${new Date().toISOString().split('T')[0]}.xlsx`
-                };
-              }}
-              title={`Generate RFQ (${selectedStoreIds.size} stores)`}
-              description="Generating Request for Quotation..."
-              size="medium"
-              variant="primary"
-              disabled={isGenerating}
-            />
-          )}
-        </View>
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader title="RFQ" subtitle="Select stores to generate a Request for Quotation" count={totalStores} />
 
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            <Search size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search stores, dealers, client codes..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Search stores, dealers, client codes…"
+          onFilterPress={() => setShowFilters(true)}
+          activeFilters={activeTextFilters.length}
+        />
+
+        <ActiveFilters
+          items={activeTextFilters.map(f => ({ key: f.key, label: `${f.label}: ${f.value}`, onRemove: () => f.setValue('') }))}
+          onClearAll={clearAllFilters}
+        />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 2, alignItems: 'center' }}>
+          {['ALL', ...Object.values(StoreStatus)].map((s) => (
+            <Chip
+              key={s}
+              label={s === 'ALL' ? 'All' : statusMeta(s).label}
+              color={s === 'ALL' ? undefined : statusMeta(s).color}
+              active={filterStatus === s}
+              onPress={() => setFilterStatus(s)}
             />
-          </View>
-          
-          <TouchableOpacity 
-            onPress={() => setShowFilters(!showFilters)}
-            style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Filter size={16} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 14, marginLeft: 8 }}>
-                Advanced Filters
-              </Text>
-            </View>
+          ))}
+        </ScrollView>
+
+        {stores.length > 0 && (
+          <TouchableOpacity onPress={toggleAllSelection} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 12 }}>
+            <Checkbox checked={allSelected} onPress={toggleAllSelection} size={20} />
+            <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '700' }}>Select all on this page ({stores.length})</Text>
           </TouchableOpacity>
-          
-          {stores.length > 0 && (
-            <TouchableOpacity 
-              onPress={toggleAllSelection}
-              style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center' }}
-            >
-              {selectedStoreIds.size === stores.length && stores.length > 0 ? 
-                <CheckSquare size={20} color={theme.colors.primary} /> : 
-                <Square size={20} color={theme.colors.textSecondary} />
-              }
-              <Text style={{ color: theme.colors.text, marginLeft: 8, fontWeight: '600' }}>
-                Select All ({stores.length})
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        )}
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        <PageSkeleton type="list" />
       ) : (
         <FlatList
           data={stores}
           renderItem={renderStore}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: selectedStoreIds.size > 0 ? 110 : 32 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -419,202 +398,94 @@ export default function RFQScreen({ navigation }: RFQScreenProps = {}) {
                 fetchStores();
               }}
               colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <FileSpreadsheet size={48} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
-                {debouncedSearch ? 'No stores found' : 'No stores available'}
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, marginTop: 8, textAlign: 'center' }}>
-                {debouncedSearch 
-                  ? `No stores match "${debouncedSearch}". Try a different search term.`
-                  : 'There are no stores available for RFQ generation.'}
-              </Text>
-              {debouncedSearch && (
-                <TouchableOpacity 
-                  onPress={() => setSearchTerm('')}
-                  style={{ 
-                    backgroundColor: theme.colors.primary, 
-                    paddingHorizontal: 16, 
-                    paddingVertical: 8, 
-                    borderRadius: 8, 
-                    marginTop: 16 
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Clear Search</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <EmptyState
+              title={debouncedSearch ? 'No stores found' : 'No stores available'}
+              message={debouncedSearch ? `Nothing matches "${debouncedSearch}". Try a different search.` : 'There are no stores available for RFQ generation.'}
+              icon={<FileSpreadsheet size={28} color={theme.colors.textTertiary} />}
+              action={debouncedSearch || activeTextFilters.length || filterStatus !== 'ALL' ? (
+                <Button label="Clear search & filters" variant="outline" onPress={() => { setSearchTerm(''); clearAllFilters(); }} />
+              ) : undefined}
+            />
           }
           ListFooterComponent={
-            totalPages > 1 ? (
-              <View style={{ 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                paddingVertical: 16, 
-                paddingHorizontal: 16,
-                backgroundColor: theme.colors.surface,
-                borderRadius: 8,
-                marginTop: 16,
-                borderWidth: 1,
-                borderColor: theme.colors.border
-              }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalStores)} of {totalStores} entries
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.max(1, p - 1))} 
-                    disabled={page === 1}
-                    style={{ 
-                      padding: 8, 
-                      borderRadius: 6, 
-                      backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary,
-                      opacity: page === 1 ? 0.5 : 1
-                    }}
-                  >
-                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFFFFF'} />
-                  </TouchableOpacity>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', paddingHorizontal: 8 }}>
-                    {page}
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
-                    disabled={page === totalPages}
-                    style={{ 
-                      padding: 8, 
-                      borderRadius: 6, 
-                      backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary,
-                      opacity: page === totalPages ? 0.5 : 1
-                    }}
-                  >
-                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFFFFF'} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+            stores.length > 0 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={totalStores}
+                noun="stores"
+                onPrev={() => setPage(p => Math.max(1, p - 1))}
+                onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+              />
             ) : null
           }
         />
       )}
-      
-      {/* Advanced Filters Modal */}
-      <Modal
-        visible={showFilters}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowFilters(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: theme.colors.background, 
-            borderTopLeftRadius: 20, 
-            borderTopRightRadius: 20, 
-            paddingTop: 20,
-            maxHeight: '80%'
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Advanced Filters</Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <X size={24} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <FlatList
-              data={[
-                { label: 'Status', value: filterStatus, setValue: setFilterStatus, options: ['ALL', ...Object.values(StoreStatus)] },
-                { label: 'Zone', value: filterZone, setValue: setFilterZone, isInput: true },
-                { label: 'State', value: filterState, setValue: setFilterState, isInput: true },
-                { label: 'District', value: filterDistrict, setValue: setFilterDistrict, isInput: true },
-                { label: 'City', value: filterCity, setValue: setFilterCity, isInput: true },
-                { label: 'Vendor Code', value: filterVendorCode, setValue: setFilterVendorCode, isInput: true },
-                { label: 'Dealer Code', value: filterDealerCode, setValue: setFilterDealerCode, isInput: true },
-                { label: 'Client Code', value: filterClientCode, setValue: setFilterClientCode, isInput: true },
-                { label: 'PO Number', value: filterPONumber, setValue: setFilterPONumber, isInput: true },
-                { label: 'Invoice No', value: filterInvoiceNo, setValue: setFilterInvoiceNo, isInput: true },
-              ]}
-              keyExtractor={(item) => item.label}
-              renderItem={({ item }) => (
-                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                    {item.label}
-                  </Text>
-                  {item.isInput ? (
-                    <TextInput
-                      style={{ 
-                        backgroundColor: theme.colors.surface, 
-                        borderRadius: 8, 
-                        paddingHorizontal: 12, 
-                        paddingVertical: 10, 
-                        color: theme.colors.text, 
-                        borderWidth: 1, 
-                        borderColor: theme.colors.border 
-                      }}
-                      placeholder={`Enter ${item.label.toLowerCase()}`}
-                      placeholderTextColor={theme.colors.textSecondary}
-                      value={item.value}
-                      onChangeText={item.setValue}
-                    />
-                  ) : (
-                    <View style={{ backgroundColor: theme.colors.surface, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}>
-                      {item.options?.map((option) => (
-                        <TouchableOpacity
-                          key={option}
-                          onPress={() => item.setValue(option)}
-                          style={{ 
-                            padding: 12, 
-                            borderBottomWidth: 1, 
-                            borderBottomColor: theme.colors.border,
-                            backgroundColor: item.value === option ? theme.colors.primary + '20' : 'transparent'
-                          }}
-                        >
-                          <Text style={{ 
-                            color: item.value === option ? theme.colors.primary : theme.colors.text, 
-                            fontSize: 14,
-                            fontWeight: item.value === option ? '600' : '400'
-                          }}>
-                            {option === 'ALL' ? 'All Status' : option.replace(/_/g, ' ')}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              )}
+
+      {/* Sticky generate bar */}
+      {selectedStoreIds.size > 0 && (
+        <View style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.colors.text, borderRadius: 18, padding: 10, paddingLeft: 14, elevation: 6, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+            <TouchableOpacity onPress={() => setSelectedStoreIds(new Set())} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <X size={18} color={theme.colors.background} />
+            </TouchableOpacity>
+            <Text style={{ flex: 1, color: theme.colors.background, fontSize: 14, fontWeight: '800' }}>
+              {selectedStoreIds.size} store{selectedStoreIds.size > 1 ? 's' : ''} selected
+            </Text>
+            <Button
+              label="Generate RFQ"
+              variant="primary"
+              loading={isGenerating}
+              disabled={isGenerating}
+              icon={(col) => <FileSpreadsheet size={16} color={col} />}
+              onPress={handleGenerateRFQ}
             />
-            
-            <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-              <TouchableOpacity 
-                onPress={() => {
-                  setFilterStatus('ALL');
-                  setFilterZone('');
-                  setFilterState('');
-                  setFilterDistrict('');
-                  setFilterCity('');
-                  setFilterVendorCode('');
-                  setFilterDealerCode('');
-                  setFilterClientCode('');
-                  setFilterPONumber('');
-                  setFilterInvoiceNo('');
-                  setPage(1);
-                }}
-                style={{ 
-                  backgroundColor: theme.colors.surface, 
-                  padding: 12, 
-                  borderRadius: 8, 
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.colors.border
-                }}
-              >
-                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Clear All Filters</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
-      </Modal>
+      )}
+
+      {/* Advanced filters */}
+      <BottomSheet
+        visible={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Advanced filters"
+        subtitle="Results update as you type"
+        icon={<Filter size={18} color={theme.colors.text} />}
+        footer={
+          <>
+            <Button label="Clear all" variant="outline" size="lg" flex onPress={clearAllFilters} />
+            <Button label="Done" variant="primary" size="lg" flex onPress={() => setShowFilters(false)} />
+          </>
+        }
+      >
+        <FormSection title="Location">
+          <FieldRow>
+            <TextField label="Zone" value={filterZone} onChangeText={setFilterZone} placeholder="Any" />
+            <TextField label="State" value={filterState} onChangeText={setFilterState} placeholder="Any" />
+          </FieldRow>
+          <FieldRow>
+            <TextField label="District" value={filterDistrict} onChangeText={setFilterDistrict} placeholder="Any" />
+            <TextField label="City" value={filterCity} onChangeText={setFilterCity} placeholder="Any" />
+          </FieldRow>
+        </FormSection>
+        <FormSection title="Codes">
+          <FieldRow>
+            <TextField label="Vendor code" value={filterVendorCode} onChangeText={setFilterVendorCode} placeholder="Any" autoCapitalize="characters" />
+            <TextField label="Dealer code" value={filterDealerCode} onChangeText={setFilterDealerCode} placeholder="Any" autoCapitalize="characters" />
+          </FieldRow>
+          <TextField label="Client code" value={filterClientCode} onChangeText={setFilterClientCode} placeholder="Any" autoCapitalize="characters" />
+        </FormSection>
+        <FormSection title="Commercial">
+          <FieldRow>
+            <TextField label="PO number" value={filterPONumber} onChangeText={setFilterPONumber} placeholder="Any" />
+            <TextField label="Invoice no" value={filterInvoiceNo} onChangeText={setFilterInvoiceNo} placeholder="Any" />
+          </FieldRow>
+        </FormSection>
+      </BottomSheet>
     </View>
   );
 }

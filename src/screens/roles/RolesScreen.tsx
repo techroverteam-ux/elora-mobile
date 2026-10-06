@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Modal, ScrollView, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { Search, Plus, Edit2, Trash2, X, Shield, ChevronLeft, ChevronRight, Download } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { roleService } from '../../services/roleService';
@@ -9,6 +9,7 @@ import DownloadButton from '../../components/DownloadButton';
 import { Role, PermissionSet } from '../../types';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import { Card, Button, Checkbox, ScreenHeader, SearchBar, Pagination, EmptyState, BottomSheet, ConfirmDialog, TextField, FieldRow, tone, alpha } from '../../components/ui';
 
 const MODULES = ['users', 'roles', 'stores', 'recce', 'installation', 'rfq', 'enquiries', 'reports', 'elements', 'clients'];
 
@@ -138,254 +139,204 @@ export default function RolesScreen() {
     }
   };
 
-  const renderRole = ({ item }: { item: Role }) => (
-    <View style={{ backgroundColor: theme.colors.surface, padding: 16, marginBottom: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: theme.colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
-          <Shield size={20} color={theme.colors.primary} />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{item.name}</Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontFamily: 'monospace' }}>{item.code}</Text>
-        </View>
-      </View>
-      <View style={{ marginBottom: 12 }}>
-        {Object.entries(item.permissions).slice(0, 3).map(([key, val]) => (
-          <View key={key} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textTransform: 'capitalize' }}>{key}</Text>
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: val.view ? '#10B981' : theme.colors.border }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: val.create ? '#3B82F6' : theme.colors.border }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: val.edit ? '#F59E0B' : theme.colors.border }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: val.delete ? '#EF4444' : theme.colors.border }} />
-            </View>
+  // UI helpers -------------------------------------------------------------
+  const ACTIONS = ['view', 'create', 'edit', 'delete'] as const;
+  const ACTION_COLORS: Record<string, string> = { view: tone.success, create: tone.info, edit: tone.warning, delete: tone.danger };
+
+  const accessLevel = (p?: PermissionSet) => {
+    if (!p) return 'none';
+    const n = ACTIONS.filter(a => p[a]).length;
+    return n === 4 ? 'full' : n === 0 ? 'none' : 'partial';
+  };
+
+  // Tap a module name to switch all four actions on (or off if all are on).
+  const toggleModuleAll = (module: string) => {
+    setFormData(prev => {
+      const cur = prev.permissions[module] || { view: false, create: false, edit: false, delete: false };
+      const allOn = ACTIONS.every(a => cur[a]);
+      return {
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          [module]: { view: !allOn, create: !allOn, edit: !allOn, delete: !allOn },
+        },
+      };
+    });
+  };
+
+  const renderRole = ({ item }: { item: Role }) => {
+    const perms = item.permissions || ({} as Record<string, PermissionSet>);
+    const modules = Object.keys(perms);
+    const fullCount = modules.filter(m => accessLevel(perms[m]) === 'full').length;
+    const anyCount = modules.filter(m => accessLevel(perms[m]) !== 'none').length;
+    const isSuper = item.code === 'SUPER_ADMIN';
+    return (
+      <Card onPress={() => handleEdit(item)} style={{ marginBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: alpha(isSuper ? tone.danger : tone.indigo, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+            <Shield size={21} color={isSuper ? tone.danger : tone.indigo} />
           </View>
-        ))}
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border }}>
-        <TouchableOpacity onPress={() => handleEdit(item)} style={{ padding: 8, backgroundColor: '#3B82F620', borderRadius: 8 }}>
-          <Edit2 size={18} color="#3B82F6" />
-        </TouchableOpacity>
-        {item.code !== 'SUPER_ADMIN' && (
-          <TouchableOpacity onPress={() => handleDelete(item)} style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}>
-            <Trash2 size={18} color="#EF4444" />
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }} numberOfLines={1}>{item.name}</Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontFamily: 'monospace', marginTop: 2 }}>{item.code}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '900' }}>{anyCount}<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '700' }}>/{modules.length || MODULES.length}</Text></Text>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>modules</Text>
+          </View>
+        </View>
+
+        {modules.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+            {modules.map(m => {
+              const lvl = accessLevel(perms[m]);
+              const col = lvl === 'full' ? tone.success : lvl === 'partial' ? tone.warning : theme.colors.textTertiary;
+              return (
+                <View key={m} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, backgroundColor: lvl === 'none' ? theme.colors.surfaceSecondary : alpha(col, 0.12) }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: col }} />
+                  <Text style={{ color: lvl === 'none' ? theme.colors.textTertiary : theme.colors.text, fontSize: 11, fontWeight: '700', textTransform: 'capitalize' }}>{m}</Text>
+                </View>
+              );
+            })}
+          </View>
         )}
-      </View>
-    </View>
-  );
+
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 12, flex: 1 }}>{fullCount} with full access</Text>
+          <Button label="Edit" variant="soft" color={tone.info} size="sm" icon={(col) => <Edit2 size={14} color={col} />} onPress={() => handleEdit(item)} />
+          {!isSuper && (
+            <Button variant="soft" color={tone.danger} size="sm" icon={(col) => <Trash2 size={15} color={col} />} onPress={() => handleDelete(item)} />
+          )}
+        </View>
+      </Card>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Roles</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage permissions</Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <DownloadButton
-              onDownload={async () => {
-                const params = { search: searchTerm };
-                const blob = await roleService.export(params);
-                return {
-                  blob,
-                  filename: `Roles_Export_${new Date().toISOString().split('T')[0]}.xlsx`
-                };
-              }}
-              title="Export Roles"
-              description="Downloading roles data..."
-              size="medium"
-              variant="success"
-              disabled={isExporting}
-            />
-            <TouchableOpacity onPress={handleCreate} style={{ backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}>
-              <Plus size={20} color="#FFF" />
-              <Text style={{ color: '#FFF', marginLeft: 6, fontWeight: '600' }}>Add</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}>
-          <Search size={20} color={theme.colors.textSecondary} />
-          <TextInput
-            placeholder="Search roles..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text }}
-          />
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader
+          title="Roles"
+          subtitle="Who can do what"
+          count={roles.length}
+          actions={
+            <>
+              <Button variant="outline" loading={isExporting} disabled={isExporting} icon={(col) => <Download size={18} color={col} />} onPress={handleExport} />
+              <Button label="Add" variant="primary" icon={(col) => <Plus size={18} color={col} strokeWidth={2.5} />} onPress={handleCreate} />
+            </>
+          }
+        />
+        <SearchBar value={searchTerm} onChangeText={setSearchTerm} placeholder="Search roles…" />
+        <View style={{ flexDirection: 'row', gap: 14, paddingTop: 10 }}>
+          {[['Full', tone.success], ['Partial', tone.warning], ['None', theme.colors.textTertiary]].map(([l, col]) => (
+            <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: col }} />
+              <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>{l} access</Text>
+            </View>
+          ))}
         </View>
       </View>
 
       {loading ? (
         <PageSkeleton type="list" />
-      ) : roles.length === 0 ? (
-        <View style={{ 
-          flex: 1, 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          paddingHorizontal: 32 
-        }}>
-          <Shield size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
-          <Text style={{ 
-            color: theme.colors.textSecondary, 
-            fontSize: 18, 
-            fontWeight: '600', 
-            marginTop: 16, 
-            textAlign: 'center' 
-          }}>
-            {searchTerm ? 'No roles found' : 'No roles yet'}
-          </Text>
-          <Text style={{ 
-            color: theme.colors.textSecondary, 
-            fontSize: 14, 
-            marginTop: 8, 
-            textAlign: 'center',
-            opacity: 0.8
-          }}>
-            {searchTerm 
-              ? 'Try adjusting your search terms' 
-              : 'Add your first role to get started'
-            }
-          </Text>
-          {!searchTerm && (
-            <TouchableOpacity 
-              onPress={handleCreate}
-              style={{ 
-                backgroundColor: theme.colors.primary, 
-                paddingHorizontal: 24, 
-                paddingVertical: 12, 
-                borderRadius: 8, 
-                marginTop: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8
-              }}
-            >
-              <Plus size={20} color="#FFF" />
-              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>
-                Add Role
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
       ) : (
         <FlatList
           data={roles}
           renderItem={renderRole}
           keyExtractor={item => item._id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRoles(); }} colors={[theme.colors.primary]} />}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 80 }}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchRoles(); }} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              title={searchTerm ? 'No roles found' : 'No roles yet'}
+              message={searchTerm ? 'Try adjusting your search terms.' : 'Add your first role to get started.'}
+              icon={<Shield size={28} color={theme.colors.textTertiary} />}
+              action={!searchTerm ? <Button label="Add role" variant="primary" icon={(col) => <Plus size={16} color={col} />} onPress={handleCreate} /> : undefined}
+            />
+          }
           ListFooterComponent={
-            totalPages > 1 ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 16, gap: 12 }}>
-                <TouchableOpacity onPress={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, opacity: page === 1 ? 0.5 : 1 }}>
-                  <ChevronLeft size={20} color={theme.colors.text} />
-                </TouchableOpacity>
-                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Page {page} of {totalPages}</Text>
-                <TouchableOpacity onPress={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: 8, backgroundColor: theme.colors.surface, borderRadius: 8, opacity: page === totalPages ? 0.5 : 1 }}>
-                  <ChevronRight size={20} color={theme.colors.text} />
-                </TouchableOpacity>
-              </View>
+            roles.length > 0 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPrev={() => setPage(p => Math.max(1, p - 1))}
+                onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+              />
             ) : null
           }
         />
       )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '90%' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>{editingRole ? 'Edit Role' : 'Create Role'}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={theme.colors.text} />
+      <BottomSheet
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={editingRole ? 'Edit role' : 'Create role'}
+        subtitle="Tap a module name to toggle all its permissions"
+        icon={<Shield size={18} color={theme.colors.text} />}
+        footer={
+          <>
+            <Button label="Cancel" variant="outline" size="lg" flex onPress={() => setModalVisible(false)} />
+            <Button label={editingRole ? 'Update role' : 'Create role'} variant="primary" size="lg" flex onPress={handleSubmit} />
+          </>
+        }
+      >
+        <FieldRow>
+          <TextField
+            label="Role name"
+            required
+            value={formData.name}
+            onChangeText={text => setFormData({ ...formData, name: text })}
+            placeholder="e.g. Recce Team"
+          />
+          <TextField
+            label="Role code"
+            required
+            hint={editingRole ? 'locked' : undefined}
+            value={formData.code}
+            onChangeText={text => setFormData({ ...formData, code: text.toUpperCase().replace(/\s+/g, '_') })}
+            placeholder="ROLE_CODE"
+            editable={!editingRole}
+            autoCapitalize="characters"
+          />
+        </FieldRow>
+
+        <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16, overflow: 'hidden' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: theme.colors.surfaceSecondary }}>
+            <Text style={{ flex: 1, color: theme.colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>MODULE</Text>
+            {ACTIONS.map(a => (
+              <Text key={a} style={{ width: 48, textAlign: 'center', color: ACTION_COLORS[a], fontSize: 11, fontWeight: '900', textTransform: 'capitalize' }}>{a}</Text>
+            ))}
+          </View>
+          {MODULES.map((module, i) => (
+            <View key={module} style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth, borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface }}>
+              <TouchableOpacity onPress={() => toggleModuleAll(module)} style={{ flex: 1 }} hitSlop={{ top: 6, bottom: 6 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700', textTransform: 'capitalize' }}>{module}</Text>
               </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>ROLE NAME</Text>
-              <TextInput
-                value={formData.name}
-                onChangeText={text => setFormData({ ...formData, name: text })}
-                style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, color: theme.colors.text, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="Role name"
-                placeholderTextColor={theme.colors.textSecondary}
-              />
-
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>ROLE CODE</Text>
-              <TextInput
-                value={formData.code}
-                onChangeText={text => setFormData({ ...formData, code: text.toUpperCase().replace(/\s+/g, '_') })}
-                style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, color: theme.colors.text, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border }}
-                placeholder="ROLE_CODE"
-                placeholderTextColor={theme.colors.textSecondary}
-                editable={!editingRole}
-                autoCapitalize="characters"
-              />
-
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 12 }}>PERMISSIONS</Text>
-              {MODULES.map(module => (
-                <View key={module} style={{ backgroundColor: theme.colors.surface, padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.border }}>
-                  <Text style={{ color: theme.colors.text, fontWeight: '600', marginBottom: 8, textTransform: 'capitalize' }}>{module}</Text>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-                    {(['view', 'create', 'edit', 'delete'] as const).map(action => (
-                      <TouchableOpacity
-                        key={action}
-                        onPress={() => togglePermission(module, action)}
-                        style={{ alignItems: 'center' }}
-                      >
-                        <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: formData.permissions[module]?.[action] ? theme.colors.primary : theme.colors.border, backgroundColor: formData.permissions[module]?.[action] ? theme.colors.primary : 'transparent', marginBottom: 4 }} />
-                        <Text style={{ color: theme.colors.textSecondary, fontSize: 10, textTransform: 'capitalize' }}>{action}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              {ACTIONS.map(action => (
+                <View key={action} style={{ width: 48, alignItems: 'center' }}>
+                  <Checkbox checked={!!formData.permissions[module]?.[action]} onPress={() => togglePermission(module, action)} />
                 </View>
               ))}
-
-              <TouchableOpacity onPress={handleSubmit} style={{ backgroundColor: theme.colors.primary, padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 20 }}>
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>{editingRole ? 'Update Role' : 'Create Role'}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal visible={deleteModalVisible} animationType="fade" transparent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: theme.colors.background, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
-            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#EF444420', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <Trash2 size={32} color="#EF4444" />
-              </View>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 8 }}>Delete Role</Text>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary, textAlign: 'center', lineHeight: 20 }}>
-                Are you sure you want to delete the role "{roleToDelete?.name}"? This action cannot be undone and will remove all permissions associated with this role.
-              </Text>
             </View>
-            
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                onPress={() => {
-                  setDeleteModalVisible(false);
-                  setRoleToDelete(null);
-                }}
-                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' }}
-              >
-                <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmDelete}
-                style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#EF4444', alignItems: 'center' }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          ))}
         </View>
-      </Modal>
+      </BottomSheet>
+
+      <ConfirmDialog
+        visible={deleteModalVisible}
+        title="Delete role?"
+        message={`"${roleToDelete?.name || ''}" and all its permissions will be removed. This can't be undone.`}
+        icon={<Trash2 size={28} color={tone.danger} />}
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setDeleteModalVisible(false);
+          setRoleToDelete(null);
+        }}
+      />
     </View>
   );
 }

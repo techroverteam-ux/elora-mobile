@@ -15,6 +15,7 @@ import LoadingScreen from './src/screens/LoadingScreen';
 import ScreenLayout from './src/components/ScreenLayout';
 import CustomDrawer from './src/components/CustomDrawer';
 import Toast from 'react-native-toast-message';
+import { toastConfig } from './src/components/ui/toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text, BackHandler } from 'react-native';
 
@@ -22,7 +23,6 @@ import { View, StyleSheet, Dimensions, TouchableOpacity, Text, BackHandler } fro
 setupCrashHandler();
 
 // Initialize push notifications
-console.log('Initializing push notifications...');
 pushNotificationService; // This will trigger the constructor
 
 // Import ALL screens including the ones that were removed
@@ -479,37 +479,12 @@ const MinimizedOriginalApp = () => {
               <NavigationContainer>
                 <AppContent />
               </NavigationContainer>
-              <Toast 
+              <Toast
                 position='bottom'
                 bottomOffset={100}
                 visibilityTime={4000}
                 autoHide={true}
-                config={{
-                  success: (props) => (
-                    <View style={styles.toastSuccess}>
-                      <Text style={styles.toastText}>{props.text1}</Text>
-                      {props.text2 && (
-                        <Text style={styles.toastSubText}>{props.text2}</Text>
-                      )}
-                    </View>
-                  ),
-                  error: (props) => (
-                    <View style={styles.toastError}>
-                      <Text style={styles.toastText}>{props.text1}</Text>
-                      {props.text2 && (
-                        <Text style={styles.toastSubText}>{props.text2}</Text>
-                      )}
-                    </View>
-                  ),
-                  info: (props) => (
-                    <View style={styles.toastInfo}>
-                      <Text style={styles.toastText}>{props.text1}</Text>
-                      {props.text2 && (
-                        <Text style={styles.toastSubText}>{props.text2}</Text>
-                      )}
-                    </View>
-                  ),
-                }}
+                config={toastConfig}
               />
               <DownloadModalContainer />
             </AuthProvider>

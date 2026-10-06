@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, Modal, Alert, StyleSheet } from 'react-native';
 import { Search, Plus, Edit2, Trash2, X, Package, IndianRupee } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { elementService } from '../../services/elementService';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import { Card, StatusBadge, Button, ScreenHeader, SearchBar, EmptyState, BottomSheet, TextField, FieldRow, tone, alpha } from '../../components/ui';
 
 interface Element {
   _id: string;
@@ -168,264 +169,108 @@ export default function ElementsScreen() {
   };
 
   const renderElement = ({ item }: { item: Element }) => (
-    <View style={{ 
-      backgroundColor: theme.colors.surface, 
-      padding: 16, 
-      marginBottom: 12, 
-      borderRadius: 12, 
-      borderWidth: 1, 
-      borderColor: theme.colors.border 
-    }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ 
-          width: 48, 
-          height: 48, 
-          borderRadius: 24, 
-          backgroundColor: theme.colors.primary + '20', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          marginRight: 12 
-        }}>
-          <Package size={24} color={theme.colors.primary} />
+    <Card onPress={() => openModal(item)} style={{ marginBottom: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: alpha(tone.violet, 0.12), alignItems: 'center', justifyContent: 'center' }}>
+          <Package size={22} color={tone.violet} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
-            {item.elementName}
-          </Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-            {item.category}
-          </Text>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '800' }} numberOfLines={1}>{item.elementName}</Text>
+          <StatusBadge label={item.category || 'General'} color={tone.neutral} size="sm" />
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ color: theme.colors.primary, fontSize: 16, fontWeight: 'bold' }}>
-            ₹{item.baseRate || 0}
-          </Text>
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 10 }}>
-            per sq.ft
-          </Text>
+          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '900' }}>₹{item.baseRate || 0}</Text>
+          <Text style={{ color: theme.colors.textSecondary, fontSize: 11 }}>per sq.ft</Text>
         </View>
       </View>
-
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-        <TouchableOpacity 
-          onPress={() => openModal(item)}
-          style={{ padding: 8, backgroundColor: '#3B82F620', borderRadius: 8 }}
-        >
-          <Edit2 size={18} color="#3B82F6" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          onPress={() => handleDelete(item)}
-          style={{ padding: 8, backgroundColor: '#EF444420', borderRadius: 8 }}
-        >
-          <Trash2 size={18} color="#EF4444" />
-        </TouchableOpacity>
+      {!!item.description && (
+        <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 10 }} numberOfLines={2}>{item.description}</Text>
+      )}
+      <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+      <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+        <Button label="Edit" variant="soft" color={tone.info} size="sm" icon={(col) => <Edit2 size={14} color={col} />} onPress={() => openModal(item)} />
+        <Button variant="soft" color={tone.danger} size="sm" icon={(col) => <Trash2 size={15} color={col} />} onPress={() => handleDelete(item)} />
       </View>
-    </View>
+    </Card>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View>
-            <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Elements</Text>
-            <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage board elements</Text>
-          </View>
-          <TouchableOpacity 
-            onPress={() => openModal()}
-            style={{ 
-              backgroundColor: theme.colors.primary, 
-              paddingHorizontal: 16, 
-              paddingVertical: 10, 
-              borderRadius: 8, 
-              flexDirection: 'row', 
-              alignItems: 'center' 
-            }}
-          >
-            <Plus size={20} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ 
-          flexDirection: 'row', 
-          alignItems: 'center', 
-          backgroundColor: theme.colors.surface, 
-          borderRadius: 8, 
-          paddingHorizontal: 12, 
-          marginBottom: 16, 
-          borderWidth: 1, 
-          borderColor: theme.colors.border 
-        }}>
-          <Search size={20} color={theme.colors.textSecondary} />
-          <TextInput
-            placeholder="Search elements..."
-            placeholderTextColor={theme.colors.textSecondary}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text }}
-          />
-        </View>
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader
+          title="Elements"
+          subtitle="Board elements and base rates"
+          count={elements.length}
+          actions={
+            <Button label="Add" variant="primary" icon={(col) => <Plus size={18} color={col} strokeWidth={2.5} />} onPress={() => openModal()} />
+          }
+        />
+        <SearchBar value={searchTerm} onChangeText={setSearchTerm} placeholder="Search elements…" />
       </View>
 
       {loading ? (
         <PageSkeleton type="list" />
-      ) : elements.length === 0 ? (
-        <View style={{ 
-          flex: 1, 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          paddingHorizontal: 32 
-        }}>
-          <Package size={64} color={theme.colors.textSecondary} style={{ opacity: 0.5 }} />
-          <Text style={{ 
-            color: theme.colors.textSecondary, 
-            fontSize: 18, 
-            fontWeight: '600', 
-            marginTop: 16, 
-            textAlign: 'center' 
-          }}>
-            {searchTerm ? 'No elements found' : 'No elements yet'}
-          </Text>
-          <Text style={{ 
-            color: theme.colors.textSecondary, 
-            fontSize: 14, 
-            marginTop: 8, 
-            textAlign: 'center',
-            opacity: 0.8
-          }}>
-            {searchTerm 
-              ? 'Try adjusting your search terms' 
-              : 'Add your first element to get started'
-            }
-          </Text>
-          {!searchTerm && (
-            <TouchableOpacity 
-              onPress={() => openModal()}
-              style={{ 
-                backgroundColor: theme.colors.primary, 
-                paddingHorizontal: 24, 
-                paddingVertical: 12, 
-                borderRadius: 8, 
-                marginTop: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8
-              }}
-            >
-              <Plus size={20} color="#FFF" />
-              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '600' }}>
-                Add Element
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
       ) : (
         <FlatList
           data={elements}
           renderItem={renderElement}
           keyExtractor={item => item._id}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 80 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <EmptyState
+              title={searchTerm ? 'No elements found' : 'No elements yet'}
+              message={searchTerm ? 'Try adjusting your search terms.' : 'Add your first element to get started.'}
+              icon={<Package size={28} color={theme.colors.textTertiary} />}
+              action={!searchTerm ? (
+                <Button label="Add element" variant="primary" icon={(col) => <Plus size={16} color={col} />} onPress={() => openModal()} />
+              ) : (
+                <Button label="Clear search" variant="outline" onPress={() => setSearchTerm('')} />
+              )}
+            />
+          }
         />
       )}
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: theme.colors.background, 
-            borderTopLeftRadius: 20, 
-            borderTopRightRadius: 20, 
-            padding: 20 
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>
-                {editingElement ? 'Edit Element' : 'Add Element'}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color={theme.colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ gap: 16 }}>
-              <View>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  ELEMENT NAME *
-                </Text>
-                <TextInput
-                  value={formData.elementName}
-                  onChangeText={text => setFormData({ ...formData, elementName: text })}
-                  style={{ 
-                    backgroundColor: theme.colors.surface, 
-                    padding: 12, 
-                    borderRadius: 8, 
-                    color: theme.colors.text, 
-                    borderWidth: 1, 
-                    borderColor: theme.colors.border 
-                  }}
-                  placeholder="Enter element name"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-              </View>
-
-              <View>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  BASE RATE (₹/sq.ft) *
-                </Text>
-                <TextInput
-                  value={formData.baseRate}
-                  onChangeText={text => setFormData({ ...formData, baseRate: text })}
-                  style={{ 
-                    backgroundColor: theme.colors.surface, 
-                    padding: 12, 
-                    borderRadius: 8, 
-                    color: theme.colors.text, 
-                    borderWidth: 1, 
-                    borderColor: theme.colors.border 
-                  }}
-                  placeholder="Enter rate per sq.ft"
-                  placeholderTextColor={theme.colors.textSecondary}
-                  keyboardType="decimal-pad"
-                />
-              </View>
-
-              <View>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
-                  CATEGORY
-                </Text>
-                <TextInput
-                  value={formData.category}
-                  onChangeText={text => setFormData({ ...formData, category: text })}
-                  style={{ 
-                    backgroundColor: theme.colors.surface, 
-                    padding: 12, 
-                    borderRadius: 8, 
-                    color: theme.colors.text, 
-                    borderWidth: 1, 
-                    borderColor: theme.colors.border 
-                  }}
-                  placeholder="Enter category"
-                  placeholderTextColor={theme.colors.textSecondary}
-                />
-              </View>
-
-              <TouchableOpacity 
-                onPress={handleSubmit}
-                style={{ 
-                  backgroundColor: theme.colors.primary, 
-                  padding: 16, 
-                  borderRadius: 8, 
-                  alignItems: 'center', 
-                  marginTop: 20 
-                }}
-              >
-                <Text style={{ color: '#FFF', fontSize: 16, fontWeight: 'bold' }}>
-                  {editingElement ? 'Update Element' : 'Create Element'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <BottomSheet
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        title={editingElement ? 'Edit element' : 'Add element'}
+        subtitle="Name and rate are required"
+        icon={<Package size={18} color={theme.colors.text} />}
+        footer={
+          <>
+            <Button label="Cancel" variant="outline" size="lg" flex onPress={() => setModalVisible(false)} />
+            <Button label={editingElement ? 'Update' : 'Create'} variant="primary" size="lg" flex onPress={handleSubmit} />
+          </>
+        }
+      >
+        <TextField
+          label="Element name"
+          required
+          value={formData.elementName}
+          onChangeText={text => setFormData({ ...formData, elementName: text })}
+          placeholder="e.g. Flex board"
+        />
+        <FieldRow>
+          <TextField
+            label="Base rate"
+            required
+            suffix="₹/sq.ft"
+            value={formData.baseRate}
+            onChangeText={text => setFormData({ ...formData, baseRate: text })}
+            placeholder="0"
+            keyboardType="decimal-pad"
+          />
+          <TextField
+            label="Category"
+            value={formData.category}
+            onChangeText={text => setFormData({ ...formData, category: text })}
+            placeholder="General"
+          />
+        </FieldRow>
+      </BottomSheet>
     </View>
   );
 }

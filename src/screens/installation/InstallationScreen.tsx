@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, FileSpreadsheet } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { storeService } from '../../services/storeService';
@@ -9,6 +9,11 @@ import { modernDownloadService } from '../../services/modernDownloadService';
 import DownloadButton from '../../components/DownloadButton';
 import Toast from 'react-native-toast-message';
 import PageSkeleton from '../../components/PageSkeleton';
+import {
+  Card, StatusBadge, Button, Chip, Checkbox, MetaGrid,
+  ScreenHeader, SearchBar, SelectionBar, Pagination, EmptyState,
+  tone, statusMeta,
+} from '../../components/ui';
 
 interface InstallationAssignment {
   _id: string;
@@ -260,468 +265,241 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     });
   };
 
+  // ---------------------------------------------------------------------------
+  // UI-only helpers (same logic that used to be inline in the JSX).
+  // ---------------------------------------------------------------------------
+  const selectableAssignments = assignments.filter(a => a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED');
+  const allSelected = selectedAssignments.size === selectableAssignments.length && selectableAssignments.length > 0;
+
+  const handleCardDownload = async (item: InstallationAssignment, format: 'pdf' | 'ppt') => {
+    const assignmentId = item._id;
+    setCardDownloadStates(prev => ({
+      ...prev,
+      [assignmentId]: { ...prev[assignmentId], [format]: true }
+    }));
+
+    try {
+      if (format === 'pdf') {
+        const blob = await storeService.getPdf(item.store._id, 'installation');
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `installation_${item.store.dealerCode}.pdf`
+        });
+      } else {
+        const blob = await storeService.getPpt(item.store._id, 'installation');
+        await modernDownloadService.downloadFile({
+          blob,
+          filename: `installation_${item.store.dealerCode}.pptx`
+        });
+      }
+    } catch (error) {
+      Toast.show({ type: 'error', text1: format === 'pdf' ? 'PDF Download Failed' : 'PPT Download Failed' });
+    } finally {
+      setCardDownloadStates(prev => ({
+        ...prev,
+        [assignmentId]: { ...prev[assignmentId], [format]: false }
+      }));
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Installation card
+  // ---------------------------------------------------------------------------
   const renderAssignment = ({ item }: { item: InstallationAssignment }) => {
     const isSelected = selectedAssignments.has(item._id);
     const canSelect = item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED';
-    
+    const isDone = canSelect;
+    const personLabel = isAdmin ? 'Assigned to' : 'Assigned by';
+    const personName = isAdmin ? item.assignedTo?.name : (item as any).assignedBy?.name;
+    const locationText = [item.store.location?.city, item.store.location?.state].filter(Boolean).join(', ');
+
     return (
-      <View style={{ 
-        backgroundColor: isSelected ? theme.colors.primary + '10' : theme.colors.surface, 
-        padding: 16, 
-        marginBottom: 12, 
-        borderRadius: 12, 
-        borderWidth: 1, 
-        borderColor: isSelected ? theme.colors.primary : theme.colors.border 
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1 }}>
-            {canSelect && (
-              <TouchableOpacity onPress={() => toggleSelection(item._id)} style={{ marginRight: 12, marginTop: 2 }}>
-                {isSelected ? 
-                  <CheckSquare size={20} color={theme.colors.primary} /> : 
-                  <Square size={20} color={theme.colors.textSecondary} />
-                }
-              </TouchableOpacity>
-            )}
-            
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: theme.colors.primary, fontSize: 12, fontWeight: '600', marginBottom: 4 }}>
-                {item.store.dealerCode}
-              </Text>
-              <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600', marginBottom: 4 }}>
-                {item.store.storeName}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Card
+        selected={isSelected}
+        onPress={() => navigation.navigate('InstallationDetail', { storeId: item.store._id })}
+        style={{ marginBottom: 12 }}
+      >
+        {/* Identity + status */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          {canSelect && (
+            <View style={{ paddingTop: 2 }}>
+              <Checkbox checked={isSelected} onPress={() => toggleSelection(item._id)} />
+            </View>
+          )}
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: '800', letterSpacing: 0.6 }} numberOfLines={1}>
+              {item.store.dealerCode}
+            </Text>
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '800' }} numberOfLines={2}>
+              {item.store.storeName}
+            </Text>
+            {!!locationText && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <MapPin size={12} color={theme.colors.textSecondary} />
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginLeft: 4 }}>
-                  {item.store.location.city}, {item.store.location.state}
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 12, flex: 1 }} numberOfLines={1}>{locationText}</Text>
+              </View>
+            )}
+          </View>
+          <StatusBadge status={item.status} />
+        </View>
+
+        {/* Who + when */}
+        <View style={{ marginTop: 12 }}>
+          <MetaGrid
+            items={[
+              { label: personLabel, value: personName || '—' },
+              { label: 'Assigned', value: formatDate(item.assignedAt) },
+              !!item.submittedAt && { label: 'Updated', value: formatDate(item.submittedAt!), color: tone.success },
+            ]}
+          />
+        </View>
+
+        {/* Photos + remarks */}
+        {(item.images && item.images.length > 0) || item.remarks ? (
+          <View style={{ marginTop: 10, gap: 8 }}>
+            {item.images && item.images.length > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Camera size={14} color={tone.success} />
+                <Text style={{ color: tone.success, fontSize: 12, fontWeight: '700' }}>
+                  {item.images.length} photo{item.images.length > 1 ? 's' : ''} attached
                 </Text>
               </View>
-            </View>
+            )}
+            {!!item.remarks && (
+              <View style={{ padding: 10, borderRadius: 10, backgroundColor: theme.colors.surfaceSecondary, borderLeftWidth: 3, borderLeftColor: theme.colors.primary }}>
+                <Text style={{ color: theme.colors.textSecondary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 }}>REMARKS</Text>
+                <Text style={{ color: theme.colors.text, fontSize: 13 }}>{item.remarks}</Text>
+              </View>
+            )}
           </View>
-          
-          <View style={{ backgroundColor: getStatusColor(item.status) + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ color: getStatusColor(item.status), fontSize: 10, fontWeight: '600' }}>
-              {item.status.replace(/_/g, ' ')}
-            </Text>
-          </View>
-        </View>
+        ) : null}
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-              {isAdmin ? 'Assigned To' : 'Assigned By'}
-            </Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-              {isAdmin ? item.assignedTo.name : item.assignedBy.name}
-            </Text>
-          </View>
-          <View>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Assigned Date</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Clock size={12} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', marginLeft: 4 }}>
-                {formatDate(item.assignedAt)}
-              </Text>
-            </View>
-          </View>
-          {item.submittedAt && (
-            <View>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Submitted</Text>
-              <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '600' }}>
-                {formatDate(item.submittedAt)}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {item.images && item.images.length > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <Camera size={16} color="#10B981" />
-            <Text style={{ color: '#10B981', fontSize: 12, marginLeft: 4, fontWeight: '600' }}>
-              {item.images.length} images attached
-            </Text>
-          </View>
-        )}
-
-        {item.remarks && (
-          <View style={{ marginBottom: 12, padding: 8, backgroundColor: theme.colors.background, borderRadius: 8 }}>
-            <Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginBottom: 4 }}>Remarks</Text>
-            <Text style={{ color: theme.colors.text, fontSize: 14 }}>{item.remarks}</Text>
-          </View>
-        )}
-
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <TouchableOpacity 
-            onPress={() => {
-              console.log('InstallationScreen: Navigating to detail', item._id);
-              navigation.navigate('InstallationDetail', { storeId: item.store._id });
-            }} 
-            style={{ flex: 1, backgroundColor: '#3B82F620', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Eye size={16} color="#3B82F6" />
-            <Text style={{ color: '#3B82F6', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>View Details</Text>
-          </TouchableOpacity>
-          
+        {/* Actions */}
+        <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border, marginVertical: 12 }} />
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {item.status === 'INSTALLATION_ASSIGNED' && (
-            <TouchableOpacity 
-              onPress={() => {
-                console.log('InstallationScreen: Starting installation', item._id);
-                navigation.navigate('InstallationForm', { storeId: item.store._id });
-              }} 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <Upload size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Start Installation</Text>
-            </TouchableOpacity>
+            <Button
+              label="Start installation"
+              variant="primary"
+              size="sm"
+              icon={(col) => <Upload size={15} color={col} />}
+              onPress={() => navigation.navigate('InstallationForm', { storeId: item.store._id })}
+            />
           )}
-          
-          {(item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED') && (
-            <TouchableOpacity 
-              style={{ backgroundColor: '#10B98120', padding: 10, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-            >
-              <CheckSquare size={16} color="#10B981" />
-              <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: '600', fontSize: 12 }}>Installation Complete</Text>
-            </TouchableOpacity>
-          )}
-          
-          {/* Individual Download Buttons */}
-          {(item.status === 'INSTALLATION_SUBMITTED' || item.status === 'COMPLETED') && (
-            <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, width: '100%' }}>
-              {/* PDF Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const assignmentId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [assignmentId]: { ...prev[assignmentId], pdf: true }
-                  }));
-                  
-                  try {
-                    const blob = await storeService.getPdf(item.store._id, 'installation');
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `installation_${item.store.dealerCode}.pdf`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PDF Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [assignmentId]: { ...prev[assignmentId], pdf: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.pdf}
-                style={{ 
-                  flex: 1,
-                  backgroundColor: '#EF4444', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#EF4444',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.pdf ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileText size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PDF</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              
-              {/* PPT Download */}
-              <TouchableOpacity
-                onPress={async () => {
-                  const assignmentId = item._id;
-                  setCardDownloadStates(prev => ({
-                    ...prev,
-                    [assignmentId]: { ...prev[assignmentId], ppt: true }
-                  }));
-                  
-                  try {
-                    const blob = await storeService.getPpt(item.store._id, 'installation');
-                    await modernDownloadService.downloadFile({
-                      blob,
-                      filename: `installation_${item.store.dealerCode}.pptx`
-                    });
-                  } catch (error) {
-                    Toast.show({ type: 'error', text1: 'PPT Download Failed' });
-                  } finally {
-                    setCardDownloadStates(prev => ({
-                      ...prev,
-                      [assignmentId]: { ...prev[assignmentId], ppt: false }
-                    }));
-                  }
-                }}
-                disabled={cardDownloadStates[item._id]?.ppt}
-                style={{ 
-                  flex: 1,
-                  backgroundColor: '#F59E0B', 
-                  paddingHorizontal: 12, 
-                  paddingVertical: 8, 
-                  borderRadius: 8, 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  shadowColor: '#F59E0B',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 2,
-                  elevation: 2
-                }}
-              >
-                {cardDownloadStates[item._id]?.ppt ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '600', marginLeft: 4 }}>...</Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <FileText size={14} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 4 }}>PPT</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+
+          <Button
+            label="Details"
+            variant="soft"
+            color={tone.info}
+            size="sm"
+            icon={(col) => <Eye size={15} color={col} />}
+            onPress={() => navigation.navigate('InstallationDetail', { storeId: item.store._id })}
+          />
+
+          {isDone && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <CheckCircle2 size={15} color={tone.success} />
+              <Text style={{ color: tone.success, fontSize: 12, fontWeight: '800' }}>Installed</Text>
             </View>
           )}
+
+          <View style={{ flex: 1 }} />
+
+          {isDone && (
+            <>
+              <Button
+                label="PDF"
+                variant="outline"
+                color={tone.danger}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.pdf}
+                icon={(col) => <FileText size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'pdf')}
+              />
+              <Button
+                label="PPT"
+                variant="outline"
+                color={tone.warning}
+                size="sm"
+                loading={!!cardDownloadStates[item._id]?.ppt}
+                icon={(col) => <FileSpreadsheet size={14} color={col} />}
+                onPress={() => handleCardDownload(item, 'ppt')}
+              />
+            </>
+          )}
         </View>
-      </View>
+      </Card>
     );
   };
 
+  // ---------------------------------------------------------------------------
+  // Screen
+  // ---------------------------------------------------------------------------
+  const hasActiveFilters = !!debouncedSearch || filterStatus !== 'ALL';
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <View style={{ padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Wrench size={24} color={theme.colors.primary} />
-            <View style={{ marginLeft: 12 }}>
-              <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.text }}>Installation Tasks</Text>
-              <Text style={{ fontSize: 14, color: theme.colors.textSecondary }}>Manage your installation assignments</Text>
-            </View>
-          </View>
-            <DownloadButton
-              onDownload={async () => {
-                const blob = await storeService.exportInstallation();
-                return {
-                  blob,
-                  filename: `Installation_Export_${new Date().toISOString().split('T')[0]}.xlsx`
-                };
-              }}
-              title="Export"
-              description="Downloading installation assignments..."
-              size="medium"
-              variant="success"
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+        <ScreenHeader
+          title="Installation"
+          subtitle={isAdmin ? 'Installations across all stores' : 'Your installation tasks'}
+          count={totalStores}
+          actions={
+            <Button
+              variant="outline"
+              loading={isExporting}
               disabled={isExporting}
+              icon={(col) => <Download size={18} color={col} />}
+              onPress={handleExport}
             />
-        </View>
+          }
+        />
 
-        <View style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface, borderRadius: 8, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.colors.border }}>
-            <Search size={20} color={theme.colors.textSecondary} />
-            <TextInput
-              style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, color: theme.colors.text, fontSize: 16 }}
-              placeholder="Search store name, city, dealer code..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
-          </View>
-          
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity 
-              onPress={() => setShowFilters(true)}
-              style={{ 
-                backgroundColor: theme.colors.surface, 
-                padding: 12, 
-                borderRadius: 8, 
-                borderWidth: 1, 
-                borderColor: theme.colors.border, 
-                flexDirection: 'row', 
-                alignItems: 'center',
-                flex: 1
+        <SearchBar value={searchTerm} onChangeText={setSearchTerm} placeholder="Search store, city, dealer code…" />
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 2, alignItems: 'center' }}>
+          {statusOptions.map((s) => (
+            <Chip
+              key={s.value}
+              label={s.value === 'ALL' ? 'All' : s.label}
+              color={s.value === 'ALL' ? undefined : statusMeta(s.value).color}
+              active={filterStatus === s.value}
+              onPress={() => {
+                setFilterStatus(s.value);
+                setPage(1);
               }}
-            >
-              <Filter size={16} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 14, marginLeft: 8 }}>
-                {filterStatus === 'ALL' ? 'All Status' : statusOptions.find(s => s.value === filterStatus)?.label}
-              </Text>
+            />
+          ))}
+          {assignments.length > 0 && isAdmin && selectableAssignments.length > 0 && (
+            <TouchableOpacity onPress={toggleAllSelection} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 6 }}>
+              <Checkbox checked={allSelected} onPress={toggleAllSelection} size={18} />
+              <Text style={{ color: theme.colors.text, fontSize: 12, fontWeight: '700' }}>Select all</Text>
             </TouchableOpacity>
-            
-            {assignments.length > 0 && isAdmin && (
-              <TouchableOpacity 
-                onPress={toggleAllSelection}
-                style={{ 
-                  backgroundColor: theme.colors.surface, 
-                  padding: 12, 
-                  borderRadius: 8, 
-                  borderWidth: 1, 
-                  borderColor: theme.colors.border, 
-                  flexDirection: 'row', 
-                  alignItems: 'center'
-                }}
-              >
-                {selectedAssignments.size === assignments.filter(a => a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED').length && assignments.filter(a => a.status === 'INSTALLATION_SUBMITTED' || a.status === 'COMPLETED').length > 0 ? 
-                  <CheckSquare size={20} color={theme.colors.primary} /> : 
-                  <Square size={20} color={theme.colors.textSecondary} />
-                }
-                <Text style={{ color: theme.colors.text, marginLeft: 8, fontWeight: '600', fontSize: 12 }}>
-                  Select All
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {isAdmin && selectedAssignments.size > 0 && (
-            <View style={{ marginBottom: 12 }}>
-              {/* Selection Count Header */}
-              <View style={{ 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                justifyContent: 'space-between',
-                backgroundColor: theme.colors.primary + '10',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                marginBottom: 8,
-                borderWidth: 1,
-                borderColor: theme.colors.primary + '20'
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <CheckSquare size={16} color={theme.colors.primary} />
-                  <Text style={{ 
-                    color: theme.colors.primary, 
-                    fontSize: 14, 
-                    fontWeight: '600', 
-                    marginLeft: 6 
-                  }}>
-                    {selectedAssignments.size} installation{selectedAssignments.size > 1 ? 's' : ''} selected
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  onPress={() => setSelectedAssignments(new Set())}
-                  style={{ padding: 4 }}
-                >
-                  <X size={16} color={theme.colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              
-              {/* Enhanced Download Buttons */}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={handleBulkPPTDownload}
-                  disabled={isDownloadingPPT}
-                  style={{ 
-                    flex: 1, 
-                    backgroundColor: '#F59E0B', 
-                    paddingVertical: 14, 
-                    paddingHorizontal: 16, 
-                    borderRadius: 10, 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    shadowColor: '#F59E0B',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3
-                  }}
-                >
-                  {isDownloadingPPT ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color="#FFF" />
-                      <View style={{ 
-                        marginLeft: 8, 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 8, 
-                        paddingVertical: 2, 
-                        borderRadius: 4 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <FileText size={18} color="#FFF" />
-                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PPT</Text>
-                      <View style={{ 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 6, 
-                        paddingVertical: 2, 
-                        borderRadius: 10, 
-                        marginLeft: 6 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
-                      </View>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  onPress={handleBulkPDFDownload}
-                  disabled={isDownloadingPDF}
-                  style={{ 
-                    flex: 1, 
-                    backgroundColor: '#EF4444', 
-                    paddingVertical: 14, 
-                    paddingHorizontal: 16, 
-                    borderRadius: 10, 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    shadowColor: '#EF4444',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3
-                  }}
-                >
-                  {isDownloadingPDF ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <ActivityIndicator size="small" color="#FFF" />
-                      <View style={{ 
-                        marginLeft: 8, 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 8, 
-                        paddingVertical: 2, 
-                        borderRadius: 4 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '600' }}>Generating...</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <FileText size={18} color="#FFF" />
-                      <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '600', marginLeft: 8 }}>PDF</Text>
-                      <View style={{ 
-                        backgroundColor: 'rgba(255,255,255,0.2)', 
-                        paddingHorizontal: 6, 
-                        paddingVertical: 2, 
-                        borderRadius: 10, 
-                        marginLeft: 6 
-                      }}>
-                        <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600' }}>{selectedAssignments.size}</Text>
-                      </View>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
           )}
-        </View>
+        </ScrollView>
+
+        {isAdmin && (
+          <SelectionBar count={selectedAssignments.size} noun="installation" onClear={() => setSelectedAssignments(new Set())}>
+            <Button
+              label="PPT"
+              variant="solid"
+              color={tone.warning}
+              size="sm"
+              loading={isDownloadingPPT}
+              icon={(col) => <FileSpreadsheet size={14} color={col} />}
+              onPress={handleBulkPPTDownload}
+            />
+            <Button
+              label="PDF"
+              variant="solid"
+              color={tone.danger}
+              size="sm"
+              loading={isDownloadingPDF}
+              icon={(col) => <FileText size={14} color={col} />}
+              onPress={handleBulkPDFDownload}
+            />
+          </SelectionBar>
+        )}
       </View>
 
       {loading ? (
@@ -731,7 +509,8 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
           data={assignments}
           renderItem={renderAssignment}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 10, paddingBottom: 32 }}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -741,141 +520,39 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
                 fetchAssignments();
               }}
               colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
-              <Wrench size={48} color={theme.colors.textSecondary} />
-              <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '600', marginTop: 16, textAlign: 'center' }}>
-                {debouncedSearch ? 'No installations found' : filterStatus !== 'ALL' ? 'No installations with this status' : 'No installation tasks available'}
-              </Text>
-              <Text style={{ color: theme.colors.textSecondary, fontSize: 14, marginTop: 8, textAlign: 'center' }}>
-                {debouncedSearch 
-                  ? `No installations match "${debouncedSearch}". Try a different search term.`
+            <EmptyState
+              title={debouncedSearch ? 'No installations found' : filterStatus !== 'ALL' ? 'No installations with this status' : 'No installation tasks yet'}
+              message={
+                debouncedSearch
+                  ? `Nothing matches "${debouncedSearch}". Try a different search.`
                   : filterStatus !== 'ALL'
-                    ? `No installations found with status "${statusOptions.find(s => s.value === filterStatus)?.label}". Try selecting a different status.`
-                    : 'There are no installation tasks assigned yet.'}
-              </Text>
-              {(debouncedSearch || filterStatus !== 'ALL') && (
-                <TouchableOpacity 
-                  onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }}
-                  style={{ 
-                    backgroundColor: theme.colors.primary, 
-                    paddingHorizontal: 16, 
-                    paddingVertical: 8, 
-                    borderRadius: 8, 
-                    marginTop: 16 
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '600' }}>Clear Filters</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                    ? 'Try a different status.'
+                    : 'Installation tasks will appear here once stores are assigned.'
+              }
+              icon={<Wrench size={28} color={theme.colors.textTertiary} />}
+              action={hasActiveFilters ? (
+                <Button label="Clear filters" variant="outline" onPress={() => { setSearchTerm(''); setFilterStatus('ALL'); }} />
+              ) : undefined}
+            />
           }
           ListFooterComponent={
-            totalPages > 1 ? (
-              <View style={{ 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                paddingVertical: 16, 
-                paddingHorizontal: 16,
-                backgroundColor: theme.colors.surface,
-                borderRadius: 8,
-                marginTop: 16,
-                borderWidth: 1,
-                borderColor: theme.colors.border
-              }}>
-                <Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>
-                  Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalStores)} of {totalStores} entries
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.max(1, p - 1))} 
-                    disabled={page === 1}
-                    style={{ 
-                      padding: 8, 
-                      borderRadius: 6, 
-                      backgroundColor: page === 1 ? theme.colors.border : theme.colors.primary,
-                      opacity: page === 1 ? 0.5 : 1
-                    }}
-                  >
-                    <ChevronLeft size={16} color={page === 1 ? theme.colors.textSecondary : '#FFFFFF'} />
-                  </TouchableOpacity>
-                  <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600', paddingHorizontal: 8 }}>
-                    {page}
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => setPage(p => Math.min(totalPages, p + 1))} 
-                    disabled={page === totalPages}
-                    style={{ 
-                      padding: 8, 
-                      borderRadius: 6, 
-                      backgroundColor: page === totalPages ? theme.colors.border : theme.colors.primary,
-                      opacity: page === totalPages ? 0.5 : 1
-                    }}
-                  >
-                    <ChevronRight size={16} color={page === totalPages ? theme.colors.textSecondary : '#FFFFFF'} />
-                  </TouchableOpacity>
-                </View>
-              </View>
+            assignments.length > 0 ? (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                total={totalStores}
+                noun="installations"
+                onPrev={() => setPage(p => Math.max(1, p - 1))}
+                onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+              />
             ) : null
           }
         />
       )}
-      
-      {/* Status Filter Modal */}
-      <Modal
-        visible={showFilters}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowFilters(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ 
-            backgroundColor: theme.colors.background, 
-            borderTopLeftRadius: 20, 
-            borderTopRightRadius: 20, 
-            paddingTop: 20,
-            maxHeight: '50%'
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>Filter by Status</Text>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
-                <X size={24} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            
-            <FlatList
-              data={statusOptions}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setFilterStatus(item.value);
-                    setPage(1);
-                    setShowFilters(false);
-                  }}
-                  style={{ 
-                    padding: 16, 
-                    borderBottomWidth: 1, 
-                    borderBottomColor: theme.colors.border,
-                    backgroundColor: filterStatus === item.value ? theme.colors.primary + '20' : 'transparent'
-                  }}
-                >
-                  <Text style={{ 
-                    color: filterStatus === item.value ? theme.colors.primary : theme.colors.text, 
-                    fontSize: 16,
-                    fontWeight: filterStatus === item.value ? '600' : '400'
-                  }}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

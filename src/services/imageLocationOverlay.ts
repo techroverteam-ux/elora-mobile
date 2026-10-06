@@ -1,4 +1,4 @@
-import { locationService, LocationData, AddressComponents } from './locationService';
+import { locationService, LocationData, AddressComponents, LocationIssue, getLocationIssue } from './locationService';
 import { Dimensions } from 'react-native';
 import RNFS from 'react-native-fs';
 
@@ -42,6 +42,9 @@ class ImageLocationOverlay {
         coordinates: formatted.coordinates,
       };
     } catch (error) {
+      // Location off / no permission: don't stamp the photo with 0,0 —
+      // let the camera ask the user to turn location on.
+      if (getLocationIssue(error)) throw error;
       return {
         location: { latitude: 0, longitude: 0, timestamp: Date.now() },
         address: { formattedAddress: 'Location unavailable' },
@@ -238,6 +241,7 @@ class ImageLocationOverlay {
     shouldAddOverlay: boolean;
     locationData?: LocationOverlayData;
     config?: LocationOverlayConfig;
+    issue?: LocationIssue;
   }> {
     try {
       const shouldEnable = await this.shouldEnableLocationOverlay(clientId);
@@ -250,7 +254,7 @@ class ImageLocationOverlay {
       if (!hasPermission) {
         const granted = await locationService.requestLocationPermission();
         if (!granted) {
-          return { shouldAddOverlay: false };
+          return { shouldAddOverlay: false, issue: 'PERMISSION_DENIED' };
         }
       }
 
@@ -270,7 +274,7 @@ class ImageLocationOverlay {
         config,
       };
     } catch (error) {
-      return { shouldAddOverlay: false };
+      return { shouldAddOverlay: false, issue: getLocationIssue(error) || undefined };
     }
   }
 

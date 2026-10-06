@@ -35,7 +35,8 @@ class PushNotificationService {
           importance: 4,
           vibrate: true,
         },
-        (created) => console.log(`Download channel created: ${created}`)
+        // `created` is false when the channel already exists from an earlier launch — nothing to log.
+        () => {}
       );
     }
   }

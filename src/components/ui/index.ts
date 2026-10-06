@@ -10,6 +10,8 @@
  * Primitives: Card, StatusBadge, Button, Chip, Checkbox, Avatar, MetaGrid, AssigneeRow
  * Sheets:     BottomSheet (forms / filters / pickers), ConfirmDialog
  * Forms:      FormSection, FieldRow, TextField, SelectField, ToggleCard, SegmentedControl
+ * Detail:     SectionTitle, InfoRow, MiniFact, StatStrip, Timeline, PhotoTile, PhotoStrip, ImageViewer,
+ *             FactGrid, ContactCard, LocationCard, SpecsCard, CommercialCard
  * Tokens:     radius, space, INK, tone, STORE_STATUS, statusMeta(), alpha()
  *
  * Everything reads colours from ThemeContext, so light/dark mode just works.
@@ -19,3 +21,5 @@ export * from './primitives';
 export * from './layout';
 export * from './sheet';
 export * from './form';
+export * from './toast';
+export * from './detail';

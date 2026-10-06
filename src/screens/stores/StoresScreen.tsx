@@ -132,33 +132,34 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         console.warn('Reverse geocode fallback:', e);
       }
 
-      setNewStoreData((prev) => {
-        const updated = {
-          ...prev,
-          latitude: String(loc.latitude.toFixed(6)),
-          longitude: String(loc.longitude.toFixed(6)),
-        };
+      // The geocoder returns plain "lat, lng" as formattedAddress when every
+      // lookup fails. Never put that into the Address field.
+      const hasRealAddress = !!(geo && (geo.street || geo.city || geo.state || geo.postalCode));
 
-        if (geo) {
-          if (geo.formattedAddress && !prev.dealerAddress) {
-            updated.dealerAddress = geo.formattedAddress;
-          }
-          if (geo.city && !prev.city) {
-            updated.city = geo.city;
-          }
-          if (geo.state && !prev.state) {
-            updated.state = geo.state;
-          }
-        }
+      // The user tapped "Use GPS", so the GPS result replaces whatever is in
+      // the fields (same as the recce form). Previously these were only filled
+      // when empty, so a partial / coordinate-only first result got stuck.
+      setNewStoreData((prev) => ({
+        ...prev,
+        latitude: String(loc.latitude.toFixed(6)),
+        longitude: String(loc.longitude.toFixed(6)),
+        ...(hasRealAddress && {
+          dealerAddress: geo.formattedAddress || prev.dealerAddress,
+          city: geo.city || prev.city,
+          district: geo.district || prev.district,
+          state: geo.state || prev.state,
+        }),
+      }));
 
-        return updated;
-      });
-
-      Toast.show({
-        type: 'success',
-        text1: 'GPS Location Detected',
-        text2: `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`
-      });
+      if (hasRealAddress) {
+        Toast.show({ type: 'success', text1: 'GPS Location Detected', text2: geo.formattedAddress });
+      } else {
+        Toast.show({
+          type: 'info',
+          text1: 'Coordinates saved',
+          text2: 'Could not look up the address. Please type it in.',
+        });
+      }
     } catch (err: any) {
       console.error('GPS detection error:', err);
       Alert.alert(

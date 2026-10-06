@@ -215,8 +215,9 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
               const response = await storeService.approveAllReccePhotos?.(storeId);
               Toast.show({
                 type: 'success',
-                text1: 'All Photos Approved',
-                text2: 'All pending photos have been approved'
+                text1: 'Pending Boards Approved',
+                // Server says how many were approved; rejected boards stay rejected.
+                text2: response?.message || 'All pending boards have been approved'
               });
               fetchStore();
             } catch (error: any) {

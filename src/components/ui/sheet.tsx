@@ -4,6 +4,7 @@ import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { radius, alpha } from './tokens';
+import { ModalToast } from './toast';
 
 // ---------------------------------------------------------------------------
 // BottomSheet — the shared modal used for forms (Add Store, Add User…),
@@ -76,6 +77,7 @@ export function BottomSheet({
           </View>
         </View>
       </KeyboardAvoidingView>
+      <ModalToast />
     </Modal>
   );
 }
@@ -123,6 +125,7 @@ export function ConfirmDialog({
           </View>
         </View>
       </View>
+      <ModalToast />
     </Modal>
   );
 }

@@ -9,6 +9,7 @@ import { launchCamera, launchImageLibrary, ImagePickerResponse, MediaType, Photo
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import LocationOverlay from './LocationOverlay';
 import { imageLocationOverlay, LocationOverlayData, LocationOverlayConfig } from '../services/imageLocationOverlay';
+import { locationService } from '../services/locationService';
 import { clientService } from '../services/clientService';
 import RNFS from 'react-native-fs';
 import ReactNativeBlobUtil from 'react-native-blob-util';
@@ -29,6 +30,8 @@ interface MeasurementCameraProps {
     mimeType?: string;
     fileExtension?: string;
     source?: 'camera' | 'gallery';
+    /** true when more gallery photos are queued — the parent should keep the camera open. */
+    hasMore?: boolean;
   }) => void;
   width: string;
   height: string;
@@ -36,6 +39,8 @@ interface MeasurementCameraProps {
   title?: string;
   instructions?: string;
   clientId?: string;
+  /** How many photos can be picked from the gallery at once (default 1). */
+  maxGallerySelection?: number;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -70,7 +75,8 @@ export default function MeasurementCamera({
   width, 
   height, 
   photoType,
-  clientId
+  clientId,
+  maxGallerySelection = 1,
 }: MeasurementCameraProps) {
   const { theme } = useTheme();
   const [showMeasurement, setShowMeasurement] = useState(false);
@@ -94,6 +100,10 @@ export default function MeasurementCamera({
   // camera capture or a photo that gets re-rendered through ViewShot below).
   const pickedMimeTypeRef = useRef<string | undefined>(undefined);
   const pickedSourceRef = useRef<'camera' | 'gallery'>('camera');
+  // Extra gallery photos waiting to be reviewed (multi-select). Each one goes
+  // through the same preview / GPS stamp as a single photo.
+  const galleryQueueRef = useRef<{ uri: string; type?: string }[]>([]);
+  const [queueProgress, setQueueProgress] = useState<{ current: number; total: number } | null>(null);
   const brushSizeRef = useRef(4);
   const brushColorRef = useRef('#00C853');
   const currentPathRef = useRef('');
@@ -252,6 +262,8 @@ export default function MeasurementCamera({
       setLocationConfig(null);
       setMapImageUri('');
       setPhotoDimensions(null);
+      galleryQueueRef.current = [];
+      setQueueProgress(null);
     }
   }, [visible, width, height, clientId]);
 
@@ -268,13 +280,27 @@ export default function MeasurementCamera({
     }
   }, [visible, capturedPhoto, width, height]);
 
-  const initializeLocationOverlay = async () => {
+  const initializeLocationOverlay = async (allowPrompt = true) => {
     try {
       setIsLoadingLocation(true);
       
       // Get location data and overlay configuration
       const result = await imageLocationOverlay.processImageWithLocation('', clientId);
       console.log('Location overlay result:', result);
+
+      // Location switched off / permission missing: ask the user to fix it
+      // instead of silently taking photos without a GPS stamp.
+      if (result.issue && allowPrompt) {
+        const fixed = await locationService.promptToEnableLocation(
+          result.issue,
+          'Recce photos are stamped with your GPS location.'
+        );
+        if (fixed) {
+          await new Promise((r) => setTimeout(r, 800));
+          return initializeLocationOverlay(false);
+        }
+        return;
+      }
       
       if (result.shouldAddOverlay && result.locationData && result.config) {
         setLocationOverlayData(result.locationData);
@@ -491,7 +517,7 @@ export default function MeasurementCamera({
         maxHeight: 1024,
         maxWidth: 1024,
         quality: 0.6 as PhotoQuality,
-        selectionLimit: 1,
+        selectionLimit: Math.max(1, maxGallerySelection),
       };
 
       launchImageLibrary(options, async (response: ImagePickerResponse) => {
@@ -520,43 +546,43 @@ export default function MeasurementCamera({
           return;
         }
 
-        if (response.assets && response.assets[0]) {
-          let photoUri = response.assets[0].uri;
-          if (photoUri) {
-            // Gallery picks aren't guaranteed to be JPEG (could be PNG, HEIC,
-            // WEBP, etc.) — remember the real type so it isn't mislabeled at
-            // upload time. See handleConfirm() for how this is used.
-            pickedMimeTypeRef.current = response.assets[0].type;
-            pickedSourceRef.current = 'gallery';
-
-            // On Android, gallery picks may return content:// URIs which have transient
-            // permissions that fail during subsequent multipart/form-data upload.
-            // Copy immediately to app cache so it becomes a stable file:// URI.
-            if (Platform.OS === 'android') {
-              if (photoUri.startsWith('content://')) {
-                try {
-                  const ext = extensionForMimeType(response.assets[0].type) || 'jpg';
-                  const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/gallery_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
-                  await ReactNativeBlobUtil.fs.cp(photoUri, destPath);
-                  photoUri = `file://${destPath}`;
-                } catch (copyError) {
-                  console.warn('Failed to cache gallery image with ReactNativeBlobUtil:', copyError);
-                }
-              } else if (!photoUri.startsWith('file://')) {
-                photoUri = `file://${photoUri}`;
-              }
+        // On Android, gallery picks may return content:// URIs which have transient
+        // permissions that fail during subsequent multipart/form-data upload.
+        // Copy immediately to app cache so it becomes a stable file:// URI.
+        const toStableUri = async (uri: string, type?: string) => {
+          if (Platform.OS !== 'android') return uri;
+          if (uri.startsWith('content://')) {
+            try {
+              const ext = extensionForMimeType(type) || 'jpg';
+              const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/gallery_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+              await ReactNativeBlobUtil.fs.cp(uri, destPath);
+              return `file://${destPath}`;
+            } catch (copyError) {
+              console.warn('Failed to cache gallery image with ReactNativeBlobUtil:', copyError);
+              return uri;
             }
-
-            setCapturedPhoto(photoUri);
-            capturedPhotoRef.current = photoUri;
-            setShowMeasurement(false);
-          } else {
-            // Re-show measurement guide on failure
-            if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
-              setShowMeasurement(true);
-            }
-            Alert.alert('Error', 'Failed to load the selected photo. Please try again.');
           }
+          return uri.startsWith('file://') ? uri : `file://${uri}`;
+        };
+
+        const picked: { uri: string; type?: string }[] = [];
+        for (const asset of response.assets || []) {
+          if (!asset?.uri) continue;
+          // Gallery picks aren't guaranteed to be JPEG (could be PNG, HEIC,
+          // WEBP, etc.) — remember the real type so it isn't mislabeled at
+          // upload time. See handleConfirm() for how this is used.
+          picked.push({ uri: await toStableUri(asset.uri, asset.type), type: asset.type });
+        }
+
+        if (picked.length > 0) {
+          const [first, ...rest] = picked;
+          galleryQueueRef.current = rest;
+          setQueueProgress(picked.length > 1 ? { current: 1, total: picked.length } : null);
+          pickedMimeTypeRef.current = first.type;
+          pickedSourceRef.current = 'gallery';
+          setCapturedPhoto(first.uri);
+          capturedPhotoRef.current = first.uri;
+          setShowMeasurement(false);
         } else {
           // Re-show measurement guide on failure
           if (width && height && parseFloat(width) > 0 && parseFloat(height) > 0) {
@@ -571,8 +597,25 @@ export default function MeasurementCamera({
     }
   };
 
+  /** Show the next queued gallery photo. Returns false when the queue is empty. */
+  const loadNextQueued = (): boolean => {
+    const next = galleryQueueRef.current.shift();
+    if (!next) {
+      setQueueProgress(null);
+      return false;
+    }
+    pickedMimeTypeRef.current = next.type;
+    pickedSourceRef.current = 'gallery';
+    setCapturedPhoto(next.uri);
+    capturedPhotoRef.current = next.uri;
+    setShowMeasurement(false);
+    setQueueProgress((p) => (p ? { ...p, current: p.current + 1 } : null));
+    return true;
+  };
+
   const handleConfirm = async () => {
     if (capturedPhoto) {
+      const hasMore = galleryQueueRef.current.length > 0;
       try {
         let finalImageUri = capturedPhoto;
         let hasDrawings = false;
@@ -629,7 +672,8 @@ export default function MeasurementCamera({
           locationData: locationOverlayData || undefined,
           mimeType: effectiveMimeType,
           fileExtension: effectiveFileExt,
-          source: pickedSourceRef.current
+          source: pickedSourceRef.current,
+          hasMore,
         });
         
         // Reset state
@@ -650,10 +694,12 @@ export default function MeasurementCamera({
         setTouchMode('off');
         setIsDragging(false);
         setIsResizing(false);
-        setLocationOverlayData(null);
-        setLocationConfig(null);
-        setMapImageUri('');
-        onClose();
+        if (!loadNextQueued()) {
+          setLocationOverlayData(null);
+          setLocationConfig(null);
+          setMapImageUri('');
+          onClose();
+        }
       } catch (error) {
         // Fallback to original photo — this is always the raw picked/captured
         // file (no ViewShot recompose happened), so use its real tracked type.
@@ -668,7 +714,8 @@ export default function MeasurementCamera({
           } : undefined,
           mimeType: pickedMimeTypeRef.current || 'image/jpeg',
           fileExtension: extensionForMimeType(pickedMimeTypeRef.current),
-          source: pickedSourceRef.current
+          source: pickedSourceRef.current,
+          hasMore,
         });
         setCapturedPhoto(null);
         setShowMeasurement(false);
@@ -677,15 +724,27 @@ export default function MeasurementCamera({
         setDrawingPaths([]);
         setCurrentPath('');
         currentPathRef.current = '';
-        setLocationOverlayData(null);
-        setLocationConfig(null);
-        setMapImageUri('');
-        onClose();
+        if (!loadNextQueued()) {
+          setLocationOverlayData(null);
+          setLocationConfig(null);
+          setMapImageUri('');
+          onClose();
+        }
       }
     }
   };
 
   const handleRetake = () => {
+    // In a multi-photo batch, "Skip" drops this photo and shows the next one.
+    if (queueProgress) {
+      setIsDrawingMode(false);
+      isDrawingModeRef.current = false;
+      setDrawingPaths([]);
+      setCurrentPath('');
+      currentPathRef.current = '';
+      if (!loadNextQueued()) onClose();
+      return;
+    }
     setCapturedPhoto(null);
     capturedPhotoRef.current = null;
     pickedMimeTypeRef.current = undefined;
@@ -1196,6 +1255,11 @@ export default function MeasurementCamera({
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {queueProgress && (
+                <Text style={{ width: '100%', textAlign: 'center', color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>
+                  Photo {queueProgress.current} of {queueProgress.total}
+                </Text>
+              )}
               <TouchableOpacity 
                 onPress={handleRetake}
                 style={{ 
@@ -1207,7 +1271,7 @@ export default function MeasurementCamera({
                   borderColor: 'rgba(255,255,255,0.3)'
                 }}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Retake</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>{queueProgress ? 'Skip' : 'Retake'}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 

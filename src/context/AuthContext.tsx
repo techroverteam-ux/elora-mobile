@@ -238,44 +238,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Role checking utilities
-  const isAdmin = (): boolean => {
+  // Role checking utilities.
+  // Match on the role's code OR name, normalised ("Super Admin" -> SUPER_ADMIN),
+  // the same way the API does (store.controller roleKeys). The seeded super
+  // admin role is name "Super Admin" / code "SUPER_ADMIN", so checking
+  // role.name === 'SUPER_ADMIN' alone never matched it.
+  const roleKeys = (role: any): string[] =>
+    [role?.code, role?.name]
+      .filter(Boolean)
+      .map((v: any) => String(v).trim().toUpperCase().replace(/[\s-]+/g, '_'));
+
+  const hasAnyRole = (...wanted: string[]): boolean => {
     if (!user || !user.roles) return false;
-    return user.roles.some(role => 
-      role.name === 'ADMIN' || 
-      role.name === 'SUPER_ADMIN' || 
-      role.name === 'MANAGER'
-    );
+    return user.roles.some((role) => roleKeys(role).some((k) => wanted.includes(k)));
   };
 
-  const isFieldWorker = (): boolean => {
-    if (!user || !user.roles) return false;
-    return user.roles.some(role => 
-      role.name === 'RECCE' || 
-      role.name === 'INSTALLATION' ||
-      role.name === 'FIELD_WORKER'
-    );
-  };
+  const isAdmin = (): boolean => hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'MANAGER');
 
-  const canViewCommercialInfo = (): boolean => {
-    // Only super admins, admins, and managers can view commercial information
-    // RECCE and INSTALLATION users should not see pricing
-    if (!user || !user.roles) return false;
-    
-    return user.roles.some(role => 
-      role.name === 'ADMIN' || 
-      role.name === 'SUPER_ADMIN' || 
-      role.name === 'MANAGER'
-    );
-  };
+  const isFieldWorker = (): boolean => hasAnyRole('RECCE', 'INSTALLATION', 'FIELD_WORKER');
 
-  const canViewElementRates = (): boolean => {
-    // Only super admins can view element rates
-    // RECCE and INSTALLATION users should not see rates
-    if (!user || !user.roles) return false;
-    
-    return user.roles.some(role => role.name === 'SUPER_ADMIN');
-  };
+  // Only super admins, admins, and managers can view commercial information.
+  // RECCE and INSTALLATION users should not see pricing.
+  const canViewCommercialInfo = (): boolean => hasAnyRole('SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'MANAGER');
+
+  // Only super admins can view element rates.
+  const canViewElementRates = (): boolean => hasAnyRole('SUPER_ADMIN');
 
   return (
     <AuthContext.Provider

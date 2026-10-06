@@ -9,7 +9,7 @@ import Toast from 'react-native-toast-message';
 import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
 import ElementDropdown from '../../components/ElementDropdown';
-import { locationService } from '../../services/locationService';
+import { locationService, getLocationIssue } from '../../services/locationService';
 import imageService from '../../services/imageService';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -268,7 +268,8 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
   const getCurrentLocationAndAddress = async () => {
     try {
       setLocationLoading(true);
-      const location = await locationService.getCurrentLocation();
+      // Prompts the user to turn on Location if it's off, then retries.
+      const location = await locationService.getCurrentLocationWithPrompt('The recce needs your current GPS location.');
       const addressData = await locationService.reverseGeocode(location.latitude, location.longitude);
       
       setCurrentLocation(location);
@@ -331,6 +332,21 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       if (!reccePhotos[i].elementId) {
         showModal('Error', `Please select an element for recce photo ${i + 1}`, 'error');
         return;
+      }
+    }
+
+    // Recce must be done on site: make sure Location is on before submitting.
+    // If GPS is on but just slow / weak signal, don't block the submission.
+    if (!currentLocation) {
+      try {
+        const loc = await locationService.getCurrentLocationWithPrompt('Submitting a recce needs your current GPS location.');
+        setCurrentLocation(loc);
+      } catch (locErr: any) {
+        if (getLocationIssue(locErr)) {
+          showModal('Location required', 'Please turn on Location (GPS) to submit this recce.', 'warning');
+          return;
+        }
+        console.warn('GPS not available at submit, continuing:', locErr);
       }
     }
 
@@ -575,6 +591,7 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
     mimeType?: string;
     fileExtension?: string;
     source?: 'camera' | 'gallery';
+    hasMore?: boolean;
   }) => {
     if (currentRecceIndex !== null) {
       // Recce photo - store locally for immediate preview
@@ -605,13 +622,15 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
       setCurrentRecceIndex(null);
     } else {
       // Initial photo - store locally for immediate preview
-      setLocalInitialPhotos([...localInitialPhotos, photoUri]);
-      setLocalInitialPhotoMeta([...localInitialPhotoMeta, {
+      // Functional updates: several gallery photos can arrive one after another.
+      setLocalInitialPhotos(prev => [...prev, photoUri]);
+      setLocalInitialPhotoMeta(prev => [...prev, {
         mimeType: metadata?.mimeType || 'image/jpeg',
         fileExtension: metadata?.fileExtension || 'jpg',
       }]);
     }
-    setCameraVisible(false);
+    // Keep the camera open while more selected gallery photos are queued.
+    if (!metadata?.hasMore) setCameraVisible(false);
   };
 
   const addReccePhoto = () => {
@@ -1316,6 +1335,9 @@ export default function RecceFormScreen({ route, navigation }: RecceFormProps) {
         height={currentRecceIndex !== null ? reccePhotos[currentRecceIndex]?.height || '0' : '0'}
         photoType={currentPhotoType}
         clientId={storeData?.clientId}
+        // Initial store photos: pick several at once (up to the 10-photo cap).
+        // Recce photos stay single — each one belongs to one measurement.
+        maxGallerySelection={currentRecceIndex === null ? Math.max(1, 10 - initialPhotos.length - localInitialPhotos.length) : 1}
       />
       
       <CustomModal

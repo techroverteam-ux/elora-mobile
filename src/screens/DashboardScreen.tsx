@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import Toast from 'react-native-toast-message';
-import PageSkeleton from '../components/PageSkeleton';
+import { Skeleton } from '../components/PageSkeleton';
 import Header from '../components/Header';
 
 // ---------------------------------------------------------------------------
@@ -115,6 +115,12 @@ const FILTER_FIELDS = [
   { key: 'district', label: 'District' },
 ] as const;
 
+// Last successful (unfiltered) dashboard per user. The app's hand-rolled
+// router unmounts the Dashboard whenever you leave it, so without this every
+// return showed the loading skeleton again. Now we show the cached numbers
+// instantly and refresh quietly in the background.
+let dashboardCache: { userKey: string; data: DashboardData } | null = null;
+
 type Props = {
   onMenuPress: () => void;
   onProfilePress?: () => void;
@@ -127,8 +133,10 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
   const { user } = useAuth();
   const c = theme.colors;
 
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const userKey = String((user as any)?._id || (user as any)?.id || user?.email || '');
+  const cached = dashboardCache && dashboardCache.userKey === userKey ? dashboardCache.data : null;
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(cached);
+  const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
 
   // Filters — mirror elora-web's /dashboard/stats query params.
@@ -150,8 +158,11 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
     if (user) {
       fetchDashboardData();
     }
+    // Depend on the user's id, not the user object: AuthContext can hand us a
+    // new object with the same user (e.g. after a token refresh), which used
+    // to trigger an extra reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, appliedFilters]);
+  }, [userKey, appliedFilters]);
 
   const applyFilters = () => {
     setAppliedFilters(filters);
@@ -238,6 +249,9 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
       };
 
       setDashboardData(mappedData);
+      if (userKey && !Object.values(appliedFilters).some(Boolean)) {
+        dashboardCache = { userKey, data: mappedData };
+      }
     } catch (error: any) {
       console.error('DashboardScreen: Error fetching dashboard data', error);
       if (error.response?.status === 401) {
@@ -247,16 +261,13 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
       } else {
         Toast.show({ type: 'error', text1: 'Failed to load dashboard data' });
       }
-      setDashboardData(EMPTY_DATA);
+      // Keep showing the last good numbers if we have them.
+      setDashboardData(prev => prev || EMPTY_DATA);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
-  if (loading && !dashboardData) {
-    return <PageSkeleton type="dashboard" />;
-  }
 
   const d = dashboardData || EMPTY_DATA;
   const firstName = (user?.name || '').trim().split(' ')[0] || 'there';
@@ -271,6 +282,9 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
     <View style={{ flex: 1, backgroundColor: surfaceAlt }}>
       <Header onMenuPress={onMenuPress} onProfilePress={onProfilePress} hasNotifications={true} />
 
+      {loading && !dashboardData ? (
+        <DashboardSkeleton />
+      ) : (
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -544,6 +558,7 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
           )}
         </View>
       </ScrollView>
+      )}
 
       {/* ---------- Filter bottom sheet ---------- */}
       <Modal visible={showFilterSheet} transparent animationType="slide" onRequestClose={() => setShowFilterSheet(false)}>
@@ -587,6 +602,33 @@ export default function DashboardScreen({ onMenuPress, onProfilePress, onNavigat
           </View>
         </KeyboardAvoidingView>
       </Modal>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Loading skeleton — mirrors the real layout (greeting, pipeline card, today
+// tiles, quick actions, KPI grid) so nothing jumps when data arrives. The real
+// Header stays on screen above it.
+// ---------------------------------------------------------------------------
+function DashboardSkeleton() {
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 18, gap: 18 }}>
+      <View style={{ gap: 8 }}>
+        <Skeleton width={110} height={12} />
+        <Skeleton width={220} height={24} />
+        <Skeleton width={70} height={18} borderRadius={999} />
+      </View>
+      <Skeleton width="100%" height={150} borderRadius={22} />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {[0, 1, 2].map(i => <Skeleton key={i} width="31%" height={84} borderRadius={16} style={{ flex: 1 }} />)}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {[0, 1, 2, 3].map(i => <Skeleton key={i} width="23%" height={82} borderRadius={16} style={{ flex: 1 }} />)}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {[0, 1, 2, 3].map(i => <Skeleton key={i} width="48%" height={68} borderRadius={16} style={{ flexGrow: 1 }} />)}
+      </View>
     </View>
   );
 }

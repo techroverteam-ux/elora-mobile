@@ -1,4 +1,4 @@
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Alert, Linking, AppState } from 'react-native';
 import Geolocation from '@react-native-community/geolocation';
 
 // Configure Geolocation safely for Android and iOS
@@ -24,6 +24,7 @@ export interface AddressComponents {
   placeName?: string;      // Store / building / establishment name
   street?: string;
   city?: string;
+  district?: string;
   state?: string;
   country?: string;
   postalCode?: string;
@@ -38,6 +39,21 @@ export interface LocationOverlayConfig {
   showTimestamp: boolean;
   position: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right';
 }
+
+/** Why a location request failed in a way the user can fix. */
+export type LocationIssue = 'LOCATION_OFF' | 'PERMISSION_DENIED';
+
+const makeLocationError = (code: LocationIssue, message: string) => {
+  const err: any = new Error(message);
+  err.code = code;
+  return err;
+};
+
+/** LOCATION_OFF / PERMISSION_DENIED if the error is one the user can fix, else null. */
+export const getLocationIssue = (err: any): LocationIssue | null => {
+  if (err?.code === 'LOCATION_OFF' || err?.code === 'PERMISSION_DENIED') return err.code;
+  return null;
+};
 
 class LocationService {
   async requestLocationPermission(): Promise<boolean> {
@@ -103,7 +119,7 @@ class LocationService {
     if (!hasPermission) {
       const granted = await this.requestLocationPermission();
       if (!granted) {
-        throw new Error('Location permission denied. Please grant location access in device settings.');
+        throw makeLocationError('PERMISSION_DENIED', 'Location permission denied. Please grant location access in device settings.');
       }
     }
 
@@ -130,9 +146,78 @@ class LocationService {
         timeout: 12000,
         maximumAge: 60000,
       });
-    } catch (fallbackError) {
+    } catch (fallbackError: any) {
       console.error('All location attempts failed:', fallbackError);
+      // @react-native-community/geolocation reports "location switched off" as
+      // POSITION_UNAVAILABLE (code 2) with "No location provider available"
+      // (Android) — it never shows the system "Turn on location" dialog itself.
+      const msg = String(fallbackError?.message || '');
+      if (fallbackError?.code === 1) {
+        throw makeLocationError('PERMISSION_DENIED', 'Location permission denied. Please grant location access in settings.');
+      }
+      if (/no location provider|location not available|disabled/i.test(msg) || (Platform.OS === 'ios' && fallbackError?.code === 2)) {
+        throw makeLocationError('LOCATION_OFF', 'Location (GPS) is turned off. Please turn it on.');
+      }
       throw new Error('Unable to retrieve GPS coordinates. Please ensure Location (GPS) is turned ON in your phone settings.');
+    }
+  }
+
+  /**
+   * Ask the user to turn on location (or grant permission) and send them to the
+   * right settings screen. Resolves true once they come back to the app after
+   * tapping "Turn on", false if they cancel.
+   */
+  promptToEnableLocation(issue: LocationIssue, purpose = 'This needs your current GPS location.'): Promise<boolean> {
+    const isOff = issue === 'LOCATION_OFF';
+    return new Promise((resolve) => {
+      Alert.alert(
+        isOff ? 'Turn on Location' : 'Allow Location Access',
+        isOff
+          ? `${purpose} Your phone's Location (GPS) is off. Turn it on, then come back to the app.`
+          : `${purpose} Please allow location access for this app in Settings, then come back.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          {
+            text: isOff ? 'Turn on' : 'Open Settings',
+            onPress: async () => {
+              // Wait for the user to return from Settings before retrying.
+              let sub: any;
+              const done = () => { sub?.remove(); resolve(true); };
+              sub = AppState.addEventListener('change', (state) => { if (state === 'active') done(); });
+              try {
+                if (isOff && Platform.OS === 'android') {
+                  await Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
+                } else {
+                  await Linking.openSettings();
+                }
+              } catch (e) {
+                console.warn('Could not open location settings:', e);
+                sub?.remove();
+                resolve(false);
+              }
+            },
+          },
+        ],
+        { cancelable: false }
+      );
+    });
+  }
+
+  /**
+   * getCurrentLocation(), but if location is off / permission denied, prompt
+   * the user to fix it and retry once. Still throws if they cancel.
+   */
+  async getCurrentLocationWithPrompt(purpose?: string): Promise<LocationData> {
+    try {
+      return await this.getCurrentLocation();
+    } catch (err) {
+      const issue = getLocationIssue(err);
+      if (!issue) throw err;
+      const fixed = await this.promptToEnableLocation(issue, purpose);
+      if (!fixed) throw err;
+      // Give the GPS provider a moment to come up after being switched on.
+      await new Promise((r) => setTimeout(r, 800));
+      return await this.getCurrentLocation();
     }
   }
 
@@ -215,6 +300,7 @@ class LocationService {
             .filter(Boolean)
             .join(' ');
           const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || '';
+          const district = addr.state_district || addr.county || '';
           const state = addr.state || addr.region || '';
           const country = addr.country || '';
           const postalCode = addr.postcode || '';
@@ -227,6 +313,7 @@ class LocationService {
             placeName,
             street,
             city,
+            district,
             state,
             country,
             postalCode,

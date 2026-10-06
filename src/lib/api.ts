@@ -5,6 +5,80 @@ import { DeviceEventEmitter } from 'react-native';
 const API_BASE_URL = 'https://elora-api-smoky.vercel.app/api/v1';
 
 // Dedicated unauthenticated client for token refresh to avoid sending expired Bearer tokens
+
+
+// ---------------------------------------------------------------------------
+// Dev-only request logging (RN 0.80's DevTools has no Network tab).
+// Filter the Console by "[API]" to see every call:
+//   [API] → GET /stores?page=1&limit=20
+//   [API] ← 200 GET /stores?page=1&limit=20 (412ms) {stores: Array(20), pagination: {…}}
+//   [API] ✕ 400 POST /stores (230ms) {message: "A store with this Dealer Code already exists"}
+// ---------------------------------------------------------------------------
+const describeRequest = (config: any) => {
+  const method = String(config?.method || 'GET').toUpperCase();
+  const url = String(config?.url || '');
+  const params = config?.params
+    ? Object.entries(config.params)
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
+        .join('&')
+    : '';
+  return `${method} ${url}${params ? (url.includes('?') ? '&' : '?') + params : ''}`;
+};
+
+// Successful responses: log the FULL body so it can be expanded in DevTools.
+// console.log is not routed through LogBox, so big payloads are fine here.
+// Only binary bodies are summarised.
+const loggableBody = (data: any): any => {
+  if (data == null) return '';
+  if (typeof Blob !== 'undefined' && data instanceof Blob) return `(blob ${data.size} bytes)`;
+  return data;
+};
+
+// Errors go through console.error → LogBox, which can choke on huge objects,
+// so error bodies stay summarised. Keep logged bodies small: big arrays become "Array(n)" previews, blobs are
+// summarised, so the console (and LogBox) never chokes on a huge payload.
+const summarizeBody = (data: any): any => {
+  if (data == null) return '';
+  if (typeof Blob !== 'undefined' && data instanceof Blob) return `(blob ${data.size} bytes)`;
+  if (typeof data !== 'object') return typeof data === 'string' && data.length > 300 ? data.slice(0, 300) + '…' : data;
+  if (Array.isArray(data)) return `Array(${data.length})`;
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (Array.isArray(v)) out[k] = `Array(${v.length})`;
+    else if (v && typeof v === 'object') out[k] = '{…}';
+    else out[k] = v;
+  }
+  return out;
+};
+
+// ---------------------------------------------------------------------------
+// Axios errors carry the whole XMLHttpRequest (`request`) and request
+// `config` (adapters, transforms, headers…). When any screen does
+// `console.error('...', error)`, LogBox tries to render that object and Hermes
+// throws "RangeError: Property storage exceeds 196607 properties".
+// Making those fields non-enumerable keeps them fully usable in code
+// (error.config, error.request still work — the retry logic below relies on
+// error.config) but loggers no longer walk into them.
+// ---------------------------------------------------------------------------
+const hideHeavyErrorFields = (err: any) => {
+  if (!err || typeof err !== 'object') return err;
+  const hide = (obj: any, key: string) => {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
+      try {
+        Object.defineProperty(obj, key, { value: obj[key], enumerable: false, writable: true, configurable: true });
+      } catch {}
+    }
+  };
+  hide(err, 'request');
+  hide(err, 'config');
+  if (err.response && typeof err.response === 'object') {
+    hide(err.response, 'request');
+    hide(err.response, 'config');
+  }
+  return err;
+};
+
 const refreshClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
@@ -34,6 +108,11 @@ export const recordUserActivity = () => {
 export const getLastUserActivity = () => lastActiveTimestamp;
 
 // Standalone function to perform token refresh using cookie and body fallback
+refreshClient.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(hideHeavyErrorFields(error)),
+);
+
 export const performTokenRefresh = async (): Promise<string | null> => {
   const refreshToken = await AsyncStorage.getItem('refreshToken');
   if (!refreshToken) {
@@ -112,6 +191,13 @@ api.interceptors.request.use(async (config) => {
     config.headers.Cookie = `refresh_token=${refreshToken}`;
   }
 
+  if (__DEV__) {
+    (config as any).__startedAt = Date.now();
+    const isAuthCall = String(config.url || '').includes('/auth/');
+    const body = isAuthCall ? '(hidden)' : config.data instanceof FormData ? '(multipart form-data)' : config.data ?? '';
+    console.log(`[API] → ${describeRequest(config)}`, body);
+  }
+
   return config;
 });
 
@@ -141,19 +227,24 @@ api.interceptors.response.use(
     if (rt) {
       AsyncStorage.setItem('refreshToken', rt).catch(() => {});
     }
+    if (__DEV__) {
+      const ms = Date.now() - ((response.config as any)?.__startedAt || Date.now());
+      const isAuthCall = String(response.config?.url || '').includes('/auth/');
+      console.log(`[API] ← ${response.status} ${describeRequest(response.config)} (${ms}ms)`, isAuthCall ? '(hidden)' : loggableBody(response.data));
+    }
     return response;
   },
   async (error) => {
+    hideHeavyErrorFields(error);
     const originalRequest = error.config;
 
     // Dev-only: surface every failed API call in the DevTools console.
     // (Most screens catch errors and only show a Toast, so without this
     // nothing ever reached the console.)
     if (__DEV__) {
-      const method = (originalRequest?.method || 'GET').toUpperCase();
-      const url = `${originalRequest?.baseURL || ''}${originalRequest?.url || ''}`;
       const status = error?.response?.status ?? 'NETWORK';
-      console.error(`[API] ${method} ${url} → ${status}`, error?.response?.data ?? error?.message);
+      const ms = Date.now() - (originalRequest?.__startedAt || Date.now());
+      console.error(`[API] ✕ ${status} ${describeRequest(originalRequest || {})} (${ms}ms)`, summarizeBody(error?.response?.data ?? error?.message));
     }
 
     // Never intercept auth endpoints (login, refresh, logout) to prevent loops
