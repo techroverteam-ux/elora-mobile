@@ -26,18 +26,20 @@ const imageService = {
   },
 
   getFullImageUrl: (imageUrl: string | undefined | null) => {
-    // Handle null/undefined imageUrl
-    if (!imageUrl || typeof imageUrl !== 'string') {
+    // Handle null/undefined or empty imageUrl
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
       return '';
     }
-    
+
+    const trimmed = imageUrl.trim();
+
     // If it's already a full URL, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      return imageUrl;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
     }
-    
+
     // If it's a relative path, construct full URL with correct base URL
-    const fullUrl = `${imageService.baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+    const fullUrl = `${imageService.baseUrl}${trimmed.startsWith('/') ? '' : '/'}${trimmed}`;
     return fullUrl;
   },
 };

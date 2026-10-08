@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, FileSpreadsheet } from 'lucide-react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Wrench, CheckSquare, Square, Download, FileText, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, FileSpreadsheet, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { canDeleteStore } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
@@ -26,6 +27,7 @@ interface InstallationAssignment {
       state?: string;
       address?: string;
     };
+    createdBy?: any;
   };
   assignedTo: {
     _id: string;
@@ -131,10 +133,12 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
         .map((store: any) => ({
           _id: store._id,
           store: {
+            ...store,
             _id: store._id,
             dealerCode: store.dealerCode,
             storeName: store.storeName,
-            location: store.location
+            location: store.location,
+            createdBy: store.createdBy,
           },
           assignedTo: store.workflow?.installationAssignedTo || { name: 'Unassigned' },
           assignedBy: store.workflow?.installationAssignedBy || { name: 'Unknown' },
@@ -302,6 +306,33 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
     }
   };
 
+  const handleDeleteStore = (item: InstallationAssignment) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${item.store.storeName || 'this store'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(item.store._id);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              fetchAssignments();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error.response?.data?.message || 'Could not delete store'
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // ---------------------------------------------------------------------------
   // Installation card
   // ---------------------------------------------------------------------------
@@ -426,6 +457,17 @@ export default function InstallationScreen({ navigation }: { navigation?: any })
                 onPress={() => handleCardDownload(item, 'ppt')}
               />
             </>
+          )}
+
+          {canDeleteStore(user, item.store) && (
+            <Button
+              label="Delete"
+              variant="outline"
+              color={tone.danger}
+              size="sm"
+              icon={(col) => <Trash2 size={14} color={col} />}
+              onPress={() => handleDeleteStore(item)}
+            />
           )}
         </View>
       </Card>

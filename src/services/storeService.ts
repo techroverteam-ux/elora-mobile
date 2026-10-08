@@ -24,7 +24,12 @@ export const storeService = {
   },
 
   create: async (storeData: any) => {
-    const { data } = await api.post('/stores', storeData);
+    const isFormData = typeof FormData !== 'undefined' && storeData instanceof FormData;
+    const { data } = await api.post('/stores', storeData, isFormData ? {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    } : undefined);
     return data;
   },
 

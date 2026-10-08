@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle2, Hash, User, Phone, Workflow, Ruler } from 'lucide-react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Wrench, CheckCircle2, Hash, User, Phone, Workflow, Ruler, Trash2, Layers } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { canDeleteStore } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
@@ -83,12 +85,42 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
     );
   }
 
-  const img = (path?: string) => (path ? imageService.getFullImageUrl(path) : undefined);
+  const { user } = useAuth();
+  const isDeletable = canDeleteStore(user, store);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete this store "${store?.storeName || ''}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(storeId);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              navigation.goBack();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error?.response?.data?.message || 'Failed to delete store',
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const img = (path?: string) => (path && typeof path === 'string' && path.trim() !== '' ? imageService.getFullImageUrl(path) : undefined);
   const reccePhotos: any[] = store.recce?.reccePhotos || [];
-  const initialPhotos: string[] = store.recce?.initialPhotos || [];
+  const initialPhotos: string[] = (store.recce?.initialPhotos || []).filter((p: any) => p && typeof p === 'string' && p.trim() !== '');
   const installPhotos: any[] = store.installation?.photos || [];
-  const approvedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'APPROVED').length;
-  const rejectedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'REJECTED').length;
+  const approvedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'APPROVED' || p.status === 'APPROVED').length;
+  const rejectedBoards = reccePhotos.filter((p: any) => p.approvalStatus === 'REJECTED' || p.status === 'REJECTED').length;
   const mobile = store.contact?.mobile || store.contact?.phone || store.mobile || store.phone || store.contactMobile || store.dealerMobile;
   const locationLine = [store.location?.city, store.location?.district, store.location?.state].filter(Boolean).join(', ');
 
@@ -97,7 +129,7 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
     installPhotos.reduce((acc: Record<number, any[]>, p: any) => {
       const idx = p.reccePhotoIndex;
       const recce = reccePhotos[idx];
-      if (!recce || recce.approvalStatus !== 'APPROVED') return acc;
+      if (!recce || (recce.approvalStatus !== 'APPROVED' && recce.status !== 'APPROVED')) return acc;
       (acc[idx] = acc[idx] || []).push(p);
       return acc;
     }, {}),
@@ -127,6 +159,15 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
                 </View>
               )}
             </View>
+            {isDeletable && (
+              <Button
+                variant="soft"
+                color={tone.danger}
+                size="sm"
+                icon={(col) => <Trash2 size={16} color={col} />}
+                onPress={handleDelete}
+              />
+            )}
           </View>
           <View style={{ marginTop: 12 }}>
             <StatusBadge status={status} />
@@ -223,17 +264,20 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
               <View>
                 <Text style={styles.subLabel(c)}>BOARDS</Text>
                 <PhotoStrip>
-                  {reccePhotos.map((rp: any, index: number) => (
-                    <PhotoTile
-                      key={index}
-                      uri={img(rp.photo)}
-                      size={84}
-                      label={`B${index + 1}`}
-                      caption={rp.measurements ? `${rp.measurements.width}×${rp.measurements.height} ${rp.measurements.unit || ''}` : undefined}
-                      statusColor={APPROVAL_COLOR[rp.approvalStatus] || tone.warning}
-                      onPress={() => setSelectedImage(img(rp.photo) || null)}
-                    />
-                  ))}
+                  {reccePhotos.map((rp: any, index: number) => {
+                    const hasPhoto = Boolean(rp.photo && typeof rp.photo === 'string' && rp.photo.trim() !== '');
+                    return (
+                      <PhotoTile
+                        key={index}
+                        uri={hasPhoto ? img(rp.photo) : undefined}
+                        size={84}
+                        label={`B${index + 1}`}
+                        caption={rp.measurements ? `${rp.measurements.width}×${rp.measurements.height} ${rp.measurements.unit || ''}` : undefined}
+                        statusColor={APPROVAL_COLOR[rp.approvalStatus] || tone.warning}
+                        onPress={() => (hasPhoto ? setSelectedImage(img(rp.photo) || null) : null)}
+                      />
+                    );
+                  })}
                 </PhotoStrip>
               </View>
             )}
@@ -281,7 +325,29 @@ export default function InstallationDetailScreen({ route, navigation }: Installa
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={styles.subLabel(c)}>RECCE</Text>
-                <PhotoTile uri={img(recce?.photo)} size="100%" onPress={() => setSelectedImage(img(recce?.photo) || null)} />
+                {recce?.photo && typeof recce.photo === 'string' && recce.photo.trim() !== '' ? (
+                  <PhotoTile uri={img(recce?.photo)} size="100%" onPress={() => setSelectedImage(img(recce?.photo) || null)} />
+                ) : (
+                  <View style={{
+                    width: '100%',
+                    aspectRatio: 1,
+                    borderRadius: 12,
+                    backgroundColor: '#0F172A',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 10,
+                    borderWidth: 1,
+                    borderColor: '#3B82F630'
+                  }}>
+                    <Layers size={22} color="#60A5FA" />
+                    <Text style={{ color: '#93C5FD', fontSize: 11, fontWeight: '800', marginTop: 6, textAlign: 'center' }}>
+                      Direct Installation
+                    </Text>
+                    <Text style={{ color: '#94A3B8', fontSize: 10, textAlign: 'center', marginTop: 2 }}>
+                      No recce photo
+                    </Text>
+                  </View>
+                )}
               </View>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={[styles.subLabel(c), { color: tone.success }]}>INSTALLED</Text>

@@ -119,9 +119,19 @@ export function PhotoTile({
   statusColor?: string;
   style?: any;
 }) {
+  const hasValidUri = Boolean(uri && typeof uri === 'string' && uri.trim().length > 0);
+  const cleanUri = hasValidUri ? uri!.trim() : undefined;
+
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={onPress} disabled={!uri} style={[{ width: size as any, aspectRatio: 1, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#0F172A' }, style]}>
-      {uri ? <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      disabled={!hasValidUri}
+      style={[{ width: size as any, aspectRatio: 1, borderRadius: radius.md, overflow: 'hidden', backgroundColor: '#0F172A' }, style]}
+    >
+      {cleanUri ? (
+        <Image source={{ uri: cleanUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: '#94A3B8', fontSize: 11 }}>No photo</Text>
         </View>
@@ -135,7 +145,7 @@ export function PhotoTile({
           <Text style={{ color: '#FFF', fontSize: 10, fontWeight: '800', textAlign: 'center' }} numberOfLines={1}>{caption}</Text>
         </View>
       ) : null}
-      {uri && !caption ? <View style={styles.zoom}><ZoomIn size={12} color="#FFF" /></View> : null}
+      {cleanUri && !caption ? <View style={styles.zoom}><ZoomIn size={12} color="#FFF" /></View> : null}
     </TouchableOpacity>
   );
 }

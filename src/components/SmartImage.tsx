@@ -26,7 +26,7 @@ const SmartImage: React.FC<SmartImageProps> = ({
   const [error, setError] = useState(false);
 
   // Handle empty/null source
-  if (!source) {
+  if (!source || (typeof source === 'string' && source.trim() === '')) {
     return (
       <TouchableOpacity 
         style={[style, { backgroundColor: fallbackColor, justifyContent: 'center', alignItems: 'center' }]}

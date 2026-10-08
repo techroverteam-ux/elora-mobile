@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
-import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X, UserPlus, CheckCircle2, ClipboardCheck } from 'lucide-react-native';
+import { Search, Eye, Camera, Upload, MapPin, Clock, Download, FileText, CheckSquare, Square, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, X, UserPlus, CheckCircle2, ClipboardCheck, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { canDeleteStore } from '../../hooks/usePermissions';
 import { recceService } from '../../services/recceService';
 import { fileService } from '../../services/fileService';
 import { modernDownloadService } from '../../services/modernDownloadService';
@@ -33,6 +34,7 @@ interface RecceAssignment {
       state?: string;
       address?: string;
     };
+    createdBy?: any;
   };
   assignedTo: {
     _id: string;
@@ -118,10 +120,12 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
         .map((store: any) => ({
           _id: store._id,
           store: {
+            ...store,
             _id: store._id,
             dealerCode: store.dealerCode,
             storeName: store.storeName,
-            location: store.location
+            location: store.location,
+            createdBy: store.createdBy,
           },
           assignedTo: store.workflow?.recceAssignedTo || { name: 'Unassigned' },
           assignedBy: store.workflow?.recceAssignedBy || { name: 'System' },
@@ -401,6 +405,33 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
     }
   };
 
+  const handleDeleteStore = (item: RecceAssignment) => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${item.store.storeName || 'this store'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(item.store._id);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              fetchAssignments();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error.response?.data?.message || 'Could not delete store'
+              });
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // ---------------------------------------------------------------------------
   // Recce card
   // ---------------------------------------------------------------------------
@@ -536,6 +567,17 @@ export default function RecceScreen({ navigation }: { navigation: RecceScreenNav
                 onPress={() => handleCardDownload(item, 'ppt')}
               />
             </>
+          )}
+
+          {canDeleteStore(user, item.store) && (
+            <Button
+              label="Delete"
+              variant="outline"
+              color={tone.danger}
+              size="sm"
+              icon={(col) => <Trash2 size={14} color={col} />}
+              onPress={() => handleDeleteStore(item)}
+            />
           )}
         </View>
       </Card>

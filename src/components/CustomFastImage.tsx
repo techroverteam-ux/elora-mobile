@@ -23,7 +23,8 @@ const CustomFastImage: React.FC<CustomFastImageProps> = ({
   const [isLoading, setIsLoading] = useState(true)
 
   // If no imageUrl provided or error occurred, show placeholder
-  if (!imageUrl || hasError) {
+  const isImageEmpty = !imageUrl || (typeof imageUrl === 'string' && imageUrl.trim() === '');
+  if (isImageEmpty || hasError) {
     return (
       <View style={[style, {
         backgroundColor: '#f0f0f0',

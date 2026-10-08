@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal, Platform, AppState, AppStateStatus, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import { Camera, Upload, CheckCircle2, Loader2, Ruler, FileText, ImageIcon, X, Trash2 } from 'lucide-react-native';
+import { Camera, Upload, CheckCircle2, Loader2, Ruler, FileText, ImageIcon, X, Trash2, Layers } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -10,6 +10,8 @@ import MeasurementCamera from '../../components/MeasurementCamera';
 import CustomModal from '../../components/CustomModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import imageService from '../../services/imageService';
+
+const isBoardApproved = (p: any) => p?.approvalStatus === 'APPROVED' || p?.status === 'APPROVED';
 
 interface InstallationFormProps {
   route: {
@@ -132,7 +134,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
       // Initialize installation photos object if not restored from draft
       if (!restoredFromDraft && store?.recce?.reccePhotos) {
-        const approvedPhotos = store.recce.reccePhotos.filter(photo => photo.approvalStatus === 'APPROVED');
+        const approvedPhotos = store.recce.reccePhotos.filter(isBoardApproved);
         const initialPhotos: {[key: number]: {before?: string, after?: string, closeup?: string}} = {};
         approvedPhotos.forEach((_, index: number) => {
           initialPhotos[index] = { before: undefined, after: undefined, closeup: undefined };
@@ -162,7 +164,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
   };
 
   const handleSubmit = async () => {
-    const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+    const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(isBoardApproved) || [];
     const reccePhotosCount = approvedReccePhotos.length;
     
     if (reccePhotosCount === 0) {
@@ -444,7 +446,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
 
   // Get the approved recce photo for camera measurements
   const getCurrentReccePhoto = () => {
-    const approvedPhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+    const approvedPhotos = storeData?.recce?.reccePhotos?.filter(isBoardApproved) || [];
     return approvedPhotos[currentPhotoIndex] || null;
   };
 
@@ -456,7 +458,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
     );
   }
 
-  const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || [];
+  const approvedReccePhotos = storeData?.recce?.reccePhotos?.filter(isBoardApproved) || [];
   const initialPhotos = storeData?.recce?.initialPhotos || [];
 
   return (
@@ -594,17 +596,23 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                 Initial Photos (Reference)
               </Text>
             </View>
-            
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {initialPhotos.slice(0, 4).map((photo: string, idx: number) => (
-                <TouchableOpacity key={idx} onPress={() => setSelectedImage(photo)} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A' }}>
-                  <Image
-                    source={{ uri: photo.startsWith('http') ? photo : imageService.getFullImageUrl(photo) }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              ))}
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {initialPhotos
+                .filter((p: any) => p && typeof p === 'string' && p.trim() !== '')
+                .slice(0, 4)
+                .map((photo: string, idx: number) => {
+                  const fullUrl = photo.startsWith('http') ? photo : imageService.getFullImageUrl(photo);
+                  if (!fullUrl) return null;
+                  return (
+                    <TouchableOpacity key={idx} onPress={() => setSelectedImage(fullUrl)} style={{ width: 70, height: 70, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A' }}>
+                      <Image
+                        source={{ uri: fullUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
             </View>
           </View>
         )}
@@ -613,7 +621,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
           backgroundColor: theme.colors.surface, 
           borderRadius: 12, 
           padding: 16, 
-          marginBottom: 16,
+          marginBottom: 16, 
           borderWidth: 1,
           borderColor: theme.colors.border
         }}>
@@ -621,13 +629,14 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             Installation Photos for Each Approved Board
           </Text>
           <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 16 }}>
-            Upload minimum 2 photos per approved board: Before & After installation ({storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0} approved boards)
+            Upload minimum 2 photos per approved board: Before & After installation ({storeData?.recce?.reccePhotos?.filter(isBoardApproved).length || 0} approved boards)
           </Text>
           
           <View style={{ gap: 16 }}>
-            {(storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED') || []).map((reccePhoto: any, index: number) => {
+            {(storeData?.recce?.reccePhotos?.filter(isBoardApproved) || []).map((reccePhoto: any, index: number) => {
               const boardPhotos = installationPhotos[index] || {};
               const photoCount = Object.values(boardPhotos).filter(photo => photo).length;
+              const hasReccePhoto = Boolean(reccePhoto?.photo && typeof reccePhoto.photo === 'string' && reccePhoto.photo.trim() !== '');
               
               return (
                 <View key={index} style={{ 
@@ -639,7 +648,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>
-                      Approved Board {index + 1}
+                      {hasReccePhoto ? `Approved Board ${index + 1}` : `Direct Installation — Board ${index + 1}`}
                     </Text>
                     <View style={{ 
                       backgroundColor: photoCount >= 2 ? '#10B98120' : '#F59E0B20', 
@@ -658,18 +667,45 @@ export default function InstallationFormScreen({ route, navigation }: Installati
                   </View>
                   
                   <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
-                    {/* Recce Photo Reference */}
+                    {/* Recce Photo Reference or Direct Installation Placeholder */}
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
-                        Recce Photo (Reference)
-                      </Text>
-                      <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A', borderWidth: 2, borderColor: '#3B82F6' }}>
-                        <Image
-                          source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
-                          style={{ width: '100%', height: '100%' }}
-                          resizeMode="contain"
-                        />
-                      </TouchableOpacity>
+                      {hasReccePhoto ? (
+                        <>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
+                            Recce Photo (Reference)
+                          </Text>
+                          <TouchableOpacity onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))} style={{ aspectRatio: 1, borderRadius: 8, overflow: 'hidden', backgroundColor: '#0F172A', borderWidth: 2, borderColor: '#3B82F6' }}>
+                            <Image
+                              source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="contain"
+                            />
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <View style={{
+                          aspectRatio: 1,
+                          borderRadius: 8,
+                          backgroundColor: '#0F172A',
+                          borderWidth: 1.5,
+                          borderColor: '#3B82F640',
+                          borderStyle: 'dashed',
+                          padding: 12,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6
+                        }}>
+                          <View style={{ backgroundColor: '#3B82F620', padding: 8, borderRadius: 20 }}>
+                            <Layers size={22} color="#60A5FA" />
+                          </View>
+                          <Text style={{ color: '#93C5FD', fontSize: 12, fontWeight: '800', textAlign: 'center' }}>
+                            Direct Installation
+                          </Text>
+                          <Text style={{ color: '#94A3B8', fontSize: 10, textAlign: 'center' }}>
+                            Board {index + 1} • No recce photo required
+                          </Text>
+                        </View>
+                      )}
                       <View style={{ marginTop: 8, padding: 8, backgroundColor: '#3B82F610', borderRadius: 6 }}>
                         <Text style={{ fontSize: 11, color: '#3B82F6', fontWeight: '600' }}>
                           {reccePhoto?.measurements?.width || 0} × {reccePhoto?.measurements?.height || 0} {reccePhoto?.measurements?.unit || 'ft'}
@@ -823,7 +859,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
             disabled={loading || Object.values(installationPhotos).some(boardPhotos => {
               const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
               return photoCount < 2;
-            }) || (storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0) === 0}
+            }) || (storeData?.recce?.reccePhotos?.filter(isBoardApproved).length || 0) === 0}
             style={{
               flex: 2,
               padding: 16,
@@ -831,7 +867,7 @@ export default function InstallationFormScreen({ route, navigation }: Installati
               backgroundColor: (Object.values(installationPhotos).some(boardPhotos => {
                 const photoCount = Object.values(boardPhotos || {}).filter(photo => photo).length;
                 return photoCount < 2;
-              }) || (storeData?.recce?.reccePhotos?.filter(photo => photo.approvalStatus === 'APPROVED').length || 0) === 0) ? theme.colors.border : '#10B981',
+              }) || (storeData?.recce?.reccePhotos?.filter(isBoardApproved).length || 0) === 0) ? theme.colors.border : '#10B981',
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center'

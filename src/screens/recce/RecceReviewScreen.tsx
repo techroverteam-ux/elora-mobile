@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Modal, TextInput, Alert } from 'react-native';
-import { CheckCircle2, XCircle, Clock, Loader2, AlertCircle, CheckSquare, X, Camera, PauseCircle } from 'lucide-react-native';
+import { CheckCircle2, XCircle, Clock, Loader2, AlertCircle, CheckSquare, X, Camera, PauseCircle, Layers } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
@@ -485,18 +485,41 @@ export default function RecceReviewScreen({ route, navigation }: RecceReviewProp
                   </View>
                 </View>
 
-                <TouchableOpacity onPress={() => {
-                  const fullImageUrl = imageService.getFullImageUrl(photo.photo);
-                  setSelectedImage(fullImageUrl);
-                }}>
-                  <Image
-                    source={{ uri: imageService.getFullImageUrl(photo.photo) }}
-                    style={{ width: '100%', height: 220, borderRadius: 8, marginBottom: 12, backgroundColor: '#0F172A' }}
-                    resizeMode="contain"
-                    onError={() => {}}
-                    onLoad={() => {}}
-                  />
-                </TouchableOpacity>
+                {photo.photo ? (
+                  <TouchableOpacity onPress={() => {
+                    const fullImageUrl = imageService.getFullImageUrl(photo.photo);
+                    setSelectedImage(fullImageUrl);
+                  }}>
+                    <Image
+                      source={{ uri: imageService.getFullImageUrl(photo.photo) }}
+                      style={{ width: '100%', height: 220, borderRadius: 8, marginBottom: 12, backgroundColor: '#0F172A' }}
+                      resizeMode="contain"
+                      onError={() => {}}
+                      onLoad={() => {}}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{
+                    width: '100%',
+                    height: 140,
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    backgroundColor: theme.colors.surfaceSecondary || '#1E293B',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: theme.colors.border,
+                    borderStyle: 'dashed'
+                  }}>
+                    <Layers size={28} color={theme.colors.primary} />
+                    <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '700', marginTop: 8 }}>
+                      Direct Installation Board
+                    </Text>
+                    <Text style={{ color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 }}>
+                      No Recce photo uploaded
+                    </Text>
+                  </View>
+                )}
 
                 <View style={{ marginBottom: 12 }}>
                   <Text style={{ fontSize: 12, color: theme.colors.textSecondary, marginBottom: 4 }}>

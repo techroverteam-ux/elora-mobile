@@ -1,17 +1,17 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, Workflow, Hash, User, Phone, Calendar, Layers, ZoomIn, Wrench, Flag } from 'lucide-react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, Workflow, Hash, User, Phone, Calendar, Layers, ZoomIn, Wrench, Flag, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { usePermissions } from '../../hooks/usePermissions';
+import { usePermissions, canDeleteStore } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StoreDetailsEditor from '../../components/StoreDetailsEditor';
 import {
-  Card, StatusBadge, EmptyState,
+  Card, StatusBadge, EmptyState, Button,
   SectionTitle, MiniFact, StatStrip, Timeline, PhotoTile, PhotoStrip, ImageViewer,
   FactGrid, ContactCard, LocationCard, SpecsCard, CommercialCard,
   tone, alpha,
@@ -123,13 +123,43 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
     );
   }
 
-  const img = (path?: string) => (path && typeof path === 'string' ? imageService.getFullImageUrl(path) : undefined);
+  const { user } = useAuth();
+  const isDeletable = canDeleteStore(user, store);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete this store "${store?.storeName || ''}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(storeId);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              navigation.goBack();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error?.response?.data?.message || 'Failed to delete store',
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const img = (path?: string) => (path && typeof path === 'string' && path.trim() !== '' ? imageService.getFullImageUrl(path) : undefined);
   const canSeeMoney = canViewCommercialInfo();
-  const initialPhotos: string[] = (store.recce?.initialPhotos || []).filter((p: any) => p && typeof p === 'string');
-  const reccePhotos: any[] = (store.recce?.reccePhotos || []).filter((p: any) => p?.photo && typeof p.photo === 'string');
+  const initialPhotos: string[] = (store.recce?.initialPhotos || []).filter((p: any) => p && typeof p === 'string' && p.trim() !== '');
+  const reccePhotos: any[] = store.recce?.reccePhotos || [];
   const installPhotos: string[] = (store.installation?.photos || [])
     .map((p: any) => (typeof p === 'string' ? p : p?.installationPhoto))
-    .filter((u: any) => u && typeof u === 'string');
+    .filter((u: any) => u && typeof u === 'string' && u.trim() !== '');
   const locationLine = [store.location?.city, store.location?.district, store.location?.state].filter(Boolean).join(', ');
   const costs = store.costDetails || {};
   const boardRate = store.costDetails?.boardRate || store.recce?.costDetails?.boardRate;
@@ -160,15 +190,26 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
                 </View>
               )}
             </View>
-            {hasPermission('stores', 'edit') && (
-              <StoreDetailsEditor
-                storeId={storeId}
-                initialData={store}
-                onUpdate={(updatedData: any) => {
-                  setStore((prev: any) => ({ ...prev, ...updatedData }));
-                }}
-              />
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {hasPermission('stores', 'edit') && (
+                <StoreDetailsEditor
+                  storeId={storeId}
+                  initialData={store}
+                  onUpdate={(updatedData: any) => {
+                    setStore((prev: any) => ({ ...prev, ...updatedData }));
+                  }}
+                />
+              )}
+              {isDeletable && (
+                <Button
+                  variant="soft"
+                  color={tone.danger}
+                  size="sm"
+                  icon={(col) => <Trash2 size={16} color={col} />}
+                  onPress={handleDelete}
+                />
+              )}
+            </View>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -287,23 +328,40 @@ export default function StoreDetailScreen({ route, navigation }: StoreDetailProp
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 }}>
               <Ruler size={16} color={c.textSecondary} />
               <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>
-                Recce boards <Text style={{ color: c.textSecondary, fontWeight: '700' }}>({reccePhotos.length})</Text>
+                {store.directInstallation ? 'Boards ' : 'Recce boards '}<Text style={{ color: c.textSecondary, fontWeight: '700' }}>({reccePhotos.length})</Text>
               </Text>
             </View>
             {reccePhotos.map((rp: any, index: number) => {
               const approval = APPROVAL_META[rp.approvalStatus] || APPROVAL_META.PENDING;
               const m = rp.measurements || {};
-              const uri = img(rp.photo);
+              const hasPhoto = Boolean(rp.photo && typeof rp.photo === 'string' && rp.photo.trim() !== '');
+              const uri = hasPhoto ? img(rp.photo) : undefined;
               return (
                 <Card key={index} style={{ padding: 0, overflow: 'hidden', borderColor: rp.approvalStatus === 'REJECTED' ? alpha(tone.danger, 0.5) : c.border }}>
-                  <TouchableOpacity activeOpacity={0.9} onPress={() => uri && setSelectedImage(uri)}>
-                    <Image source={{ uri }} style={styles.boardImage} resizeMode="contain" />
-                    <View style={styles.boardOverlay}>
-                      <View style={styles.boardNumber}><Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12 }}>Board {index + 1}</Text></View>
-                      <StatusBadge label={approval.label} color={approval.color} />
+                  {hasPhoto && uri ? (
+                    <TouchableOpacity activeOpacity={0.9} onPress={() => uri && setSelectedImage(uri)}>
+                      <Image source={{ uri }} style={styles.boardImage} resizeMode="contain" />
+                      <View style={styles.boardOverlay}>
+                        <View style={styles.boardNumber}><Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12 }}>Board {index + 1}</Text></View>
+                        <StatusBadge label={approval.label} color={approval.color} />
+                      </View>
+                      <View style={styles.zoomHint}><ZoomIn size={14} color="#FFF" /></View>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={{ backgroundColor: '#0F172A', padding: 16, alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={{ flexDirection: 'row', width: '100%', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <View style={styles.boardNumber}><Text style={{ color: '#FFF', fontWeight: '900', fontSize: 12 }}>Board {index + 1}</Text></View>
+                        <StatusBadge label={approval.label} color={approval.color} />
+                      </View>
+                      <View style={{ alignItems: 'center', paddingVertical: 12, gap: 6 }}>
+                        <View style={{ backgroundColor: '#3B82F620', padding: 10, borderRadius: 24 }}>
+                          <Layers size={24} color="#60A5FA" />
+                        </View>
+                        <Text style={{ color: '#93C5FD', fontSize: 13, fontWeight: '800' }}>Direct Installation — Board {index + 1}</Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 11 }}>No recce photo required</Text>
+                      </View>
                     </View>
-                    <View style={styles.zoomHint}><ZoomIn size={14} color="#FFF" /></View>
-                  </TouchableOpacity>
+                  )}
                   <View style={{ padding: 14, gap: 10 }}>
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                       <View style={[styles.fact, { backgroundColor: c.surfaceSecondary }]}>

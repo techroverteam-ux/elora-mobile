@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight, MapPin, Phone, Store as StoreIcon, Navigation, Layers } from 'lucide-react-native';
+import { View, Text, FlatList, TouchableOpacity, TextInput, RefreshControl, Alert, Modal, ScrollView, ActivityIndicator, StyleSheet, Image, Platform } from 'react-native';
+import { Search, Plus, Eye, Trash2, Check, XCircle, ChevronDown, Upload, UserPlus, CheckSquare, Square, Download, FileText, FileSpreadsheet, MoreVertical, X, User, Wrench, Filter, ChevronLeft, ChevronRight, MapPin, Phone, Store as StoreIcon, Navigation, Layers, Camera } from 'lucide-react-native';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { canDeleteStore } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import { userService } from '../../services/userService';
 import { fileService } from '../../services/fileService';
@@ -17,7 +20,7 @@ import BulkUpload from '../../components/BulkUpload';
 import {
   Card, StatusBadge, Button, Chip, Checkbox, Avatar, MetaGrid, AssigneeRow,
   ScreenHeader, SearchBar, ActiveFilters, SelectionBar, Pagination, EmptyState,
-  BottomSheet, ConfirmDialog,
+  BottomSheet,
   FormSection, FieldRow, TextField, SelectField, ToggleCard, SegmentedControl,
   tone, statusMeta,
 } from '../../components/ui';
@@ -47,6 +50,7 @@ interface Store {
     recceAssignedTo?: { _id: string; name: string };
     installationAssignedTo?: { _id: string; name: string };
   };
+  createdBy?: any;
 }
 
 enum StoreStatus {
@@ -64,7 +68,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   const navigation = useNavigation();
   const nav = navigationProp || navigation;
   const { theme } = useTheme();
-  const { isAdmin, canViewCommercialInfo } = useAuth();
+  const { isAdmin, canViewCommercialInfo, user } = useAuth();
   const isAdminUser = isAdmin();
   const canViewCosts = canViewCommercialInfo();
   const [stores, setStores] = useState<Store[]>([]);
@@ -105,14 +109,16 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     clientCode: '',
     latitude: '', longitude: '',
     directInstallation: false,
+    installationAssignedTo: '',
+    initialPhotos: [] as Array<{ uri: string; name: string; type: string }>,
     boards: [] as { elementId: string; elementName: string; quantity: number; customRate: number; width: string; height: string; unit: string }[]
   });
   const [openBoardElementIndex, setOpenBoardElementIndex] = useState<number | null>(null);
+  const [installationUsers, setInstallationUsers] = useState<any[]>([]);
+  const [showInstallUserDropdown, setShowInstallUserDropdown] = useState(false);
 
   // Add Store Modal - using ref to prevent re-render issues
   const [isAddStoreModalOpen, setIsAddStoreModalOpen] = useState(false);
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [storeToDelete, setStoreToDelete] = useState<Store | null>(null);
   const [fetchingLocation, setFetchingLocation] = useState(false);
 
   const handleGetCurrentLocation = async () => {
@@ -268,22 +274,30 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
   };
 
   const handleDelete = (store: Store) => {
-    setStoreToDelete(store);
-    setDeleteModalVisible(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!storeToDelete) return;
-    
-    try {
-      await storeService.delete(storeToDelete._id);
-      Toast.show({ type: 'success', text1: 'Store deleted successfully' });
-      setDeleteModalVisible(false);
-      setStoreToDelete(null);
-      fetchStores();
-    } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to delete store' });
-    }
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete ${store.storeName || 'this store'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(store._id);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              fetchStores();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error?.response?.data?.message || 'Failed to delete store'
+              });
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleApproveRecce = async (id: string) => {
@@ -600,8 +614,87 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
     }
   };
 
+  const toStableFile = async (asset: any) => {
+    let uri = asset.uri;
+    const ext = asset.fileName ? asset.fileName.split('.').pop() : (asset.type === 'image/png' ? 'png' : 'jpg');
+    if (Platform.OS === 'android' && uri.startsWith('content://')) {
+      try {
+        const destPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/store_${Date.now()}_${Math.floor(Math.random() * 10000)}.${ext}`;
+        await ReactNativeBlobUtil.fs.cp(uri, destPath);
+        uri = `file://${destPath}`;
+      } catch (e) {
+        console.warn('Failed to cache image:', e);
+      }
+    } else if (!uri.startsWith('file://') && !uri.startsWith('content://')) {
+      uri = `file://${uri}`;
+    }
+    return {
+      uri,
+      name: asset.fileName || `initial_${Date.now()}.${ext}`,
+      type: asset.type || 'image/jpeg',
+    };
+  };
+
+  const handlePickInitialPhoto = () => {
+    if (newStoreData.initialPhotos.length >= 10) {
+      Toast.show({ type: 'info', text1: 'Maximum 10 initial photos allowed' });
+      return;
+    }
+
+    Alert.alert(
+      'Attach Store Photo',
+      'Choose image source:',
+      [
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const hasPermission = await permissionService.checkCameraPermission();
+            if (!hasPermission) {
+              const granted = await permissionService.requestCameraPermission();
+              if (!granted) {
+                permissionService.showCleanPermissionAlert('camera');
+                return;
+              }
+            }
+            launchCamera({ mediaType: 'photo', quality: 0.7, maxWidth: 1200, maxHeight: 1200 }, async (res) => {
+              if (res.didCancel || !res.assets?.[0]?.uri) return;
+              const file = await toStableFile(res.assets[0]);
+              setNewStoreData(prev => ({
+                ...prev,
+                initialPhotos: [...prev.initialPhotos, file].slice(0, 10)
+              }));
+            });
+          }
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: () => {
+            const remaining = 10 - newStoreData.initialPhotos.length;
+            launchImageLibrary({ mediaType: 'photo', quality: 0.7, selectionLimit: remaining, maxWidth: 1200, maxHeight: 1200 }, async (res) => {
+              if (res.didCancel || !res.assets || res.assets.length === 0) return;
+              const files = await Promise.all(res.assets.filter(a => !!a.uri).map(toStableFile));
+              setNewStoreData(prev => ({
+                ...prev,
+                initialPhotos: [...prev.initialPhotos, ...files].slice(0, 10)
+              }));
+            });
+          }
+        },
+        { text: 'Cancel', style: 'cancel' }
+      ]
+    );
+  };
+
+  const handleRemoveInitialPhoto = (index: number) => {
+    setNewStoreData(prev => ({
+      ...prev,
+      initialPhotos: prev.initialPhotos.filter((_, i) => i !== index)
+    }));
+  };
+
   const isDirectInstallBoardsInvalid = () => {
     if (!newStoreData.directInstallation) return false;
+    if (!newStoreData.installationAssignedTo) return true;
     if (newStoreData.boards.length === 0) return true;
     return newStoreData.boards.some(b => !b.width || !b.height || !b.elementId);
   };
@@ -615,22 +708,35 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       Toast.show({ type: 'error', text1: 'Client Code is required' });
       return;
     }
-    if (newStoreData.directInstallation && newStoreData.boards.length === 0) {
-      Toast.show({ type: 'error', text1: 'Add at least one board for Direct Installation' });
-      return;
-    }
-    if (isDirectInstallBoardsInvalid()) {
-      Toast.show({ type: 'error', text1: 'Each board needs a width, height and element selected' });
-      return;
+    if (newStoreData.directInstallation) {
+      if (!newStoreData.installationAssignedTo) {
+        Toast.show({ type: 'error', text1: 'Please select an assigned installation technician' });
+        return;
+      }
+      if (newStoreData.boards.length === 0) {
+        Toast.show({ type: 'error', text1: 'Add at least one board for Direct Installation' });
+        return;
+      }
+      if (isDirectInstallBoardsInvalid()) {
+        Toast.show({ type: 'error', text1: 'Each board needs a width, height and element selected' });
+        return;
+      }
     }
 
     try {
-      const payload = {
-        dealerCode: newStoreData.dealerCode,
-        storeName: newStoreData.dealerName,
-        vendorCode: newStoreData.vendorCode,
-        clientCode: newStoreData.clientCode,
-        location: {
+      let response;
+      if (newStoreData.initialPhotos.length > 0) {
+        const formData = new FormData();
+        formData.append('dealerCode', newStoreData.dealerCode);
+        formData.append('storeName', newStoreData.dealerName);
+        if (newStoreData.vendorCode) formData.append('vendorCode', newStoreData.vendorCode);
+        formData.append('clientCode', newStoreData.clientCode);
+        formData.append('directInstallation', String(newStoreData.directInstallation));
+        if (newStoreData.directInstallation) {
+          formData.append('installationAssignedTo', newStoreData.installationAssignedTo);
+          formData.append('boards', JSON.stringify(newStoreData.boards));
+        }
+        formData.append('location', JSON.stringify({
           zone: newStoreData.zone,
           state: newStoreData.state,
           district: newStoreData.district,
@@ -642,11 +748,43 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
               lng: Number(newStoreData.longitude)
             }
           })
-        },
-        directInstallation: newStoreData.directInstallation,
-        ...(newStoreData.directInstallation && { boards: newStoreData.boards })
-      };
-      const response = await storeService.create(payload);
+        }));
+        newStoreData.initialPhotos.forEach((photo) => {
+          formData.append('initialPhotos', {
+            uri: photo.uri,
+            type: photo.type,
+            name: photo.name,
+          } as any);
+        });
+        response = await storeService.create(formData);
+      } else {
+        const payload = {
+          dealerCode: newStoreData.dealerCode,
+          storeName: newStoreData.dealerName,
+          vendorCode: newStoreData.vendorCode,
+          clientCode: newStoreData.clientCode,
+          location: {
+            zone: newStoreData.zone,
+            state: newStoreData.state,
+            district: newStoreData.district,
+            city: newStoreData.city,
+            address: newStoreData.dealerAddress,
+            ...(newStoreData.latitude && newStoreData.longitude && {
+              coordinates: {
+                lat: Number(newStoreData.latitude),
+                lng: Number(newStoreData.longitude)
+              }
+            })
+          },
+          directInstallation: newStoreData.directInstallation,
+          ...(newStoreData.directInstallation && {
+            installationAssignedTo: newStoreData.installationAssignedTo,
+            boards: newStoreData.boards
+          })
+        };
+        response = await storeService.create(payload);
+      }
+
       Toast.show({
         type: 'success',
         text1: response?.autoAssigned ? 'Store added' : 'Store added successfully!',
@@ -654,18 +792,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       });
       setIsAddStoreModalOpen(false);
       setOpenBoardElementIndex(null);
-      setNewStoreData({
-        zone: '', state: '', district: '', city: '',
-        vendorCode: '', dealerCode: '', dealerName: '', dealerAddress: '',
-        clientCode: '',
-        latitude: '', longitude: '',
-        directInstallation: false,
-        boards: []
-      });
+      resetNewStoreForm();
       fetchStores();
       
       // Show assign recce option after successful store creation
-      if (response.store && !response.autoAssigned) {
+      if (response.store && !response.autoAssigned && !newStoreData.directInstallation) {
         setTimeout(() => {
           Toast.show({
             type: 'info',
@@ -741,8 +872,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       clientCode: '',
       latitude: '', longitude: '',
       directInstallation: false,
+      installationAssignedTo: '',
+      initialPhotos: [],
       boards: []
     });
+    setShowInstallUserDropdown(false);
   };
 
   const closeAddStore = () => {
@@ -986,13 +1120,15 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             </>
           )}
 
-          <Button
-            variant="soft"
-            color={tone.danger}
-            size="sm"
-            icon={(col) => <Trash2 size={15} color={col} />}
-            onPress={() => handleDelete(item)}
-          />
+          {canDeleteStore(user, item) && (
+            <Button
+              variant="soft"
+              color={tone.danger}
+              size="sm"
+              icon={(col) => <Trash2 size={15} color={col} />}
+              onPress={() => handleDelete(item)}
+            />
+          )}
         </View>
       </Card>
     );
@@ -1340,18 +1476,60 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
         <FormSection step={3} title="Workflow" description="Normal flow starts with a recce">
           <ToggleCard
             value={newStoreData.directInstallation}
-            onToggle={() => setNewStoreData({
-              ...newStoreData,
-              directInstallation: !newStoreData.directInstallation,
-              boards: !newStoreData.directInstallation ? newStoreData.boards : []
-            })}
+            onToggle={async () => {
+              const next = !newStoreData.directInstallation;
+              if (next && installationUsers.length === 0) {
+                try {
+                  const data = await userService.getByRole('INSTALLATION');
+                  setInstallationUsers(data.users || []);
+                } catch (e) {
+                  console.error('Failed to load installation users', e);
+                }
+              }
+              setNewStoreData({
+                ...newStoreData,
+                directInstallation: next,
+                installationAssignedTo: next ? newStoreData.installationAssignedTo : '',
+                boards: next
+                  ? (newStoreData.boards.length > 0 ? newStoreData.boards : [{ elementId: '', elementName: '', quantity: 1, customRate: 0, width: '', height: '', unit: 'ft' }])
+                  : []
+              });
+            }}
             icon={<Layers size={20} color={newStoreData.directInstallation ? theme.colors.text : theme.colors.textSecondary} />}
             title="Direct installation"
-            description="Skip recce and add the boards now"
+            description="Skip recce, assign technician, and add boards now"
           />
 
           {newStoreData.directInstallation && (
             <View style={{ gap: 12 }}>
+              <SelectField
+                label="Assigned installation technician"
+                required
+                placeholder="Select technician"
+                valueText={
+                  newStoreData.installationAssignedTo
+                    ? (() => {
+                        const u = installationUsers.find((user: any) => user._id === newStoreData.installationAssignedTo);
+                        return u ? `${u.name} (${u.email || u.phone || 'Technician'})` : newStoreData.installationAssignedTo;
+                      })()
+                    : undefined
+                }
+                selectedKey={newStoreData.installationAssignedTo}
+                open={showInstallUserDropdown}
+                onToggle={() => setShowInstallUserDropdown(!showInstallUserDropdown)}
+                searchable
+                emptyText="No installation technicians found"
+                options={installationUsers.map((u: any) => ({
+                  key: u._id,
+                  label: u.name,
+                  sublabel: u.email || u.phone || 'Installation technician'
+                }))}
+                onSelect={(o) => {
+                  setNewStoreData({ ...newStoreData, installationAssignedTo: o.key });
+                  setShowInstallUserDropdown(false);
+                }}
+              />
+
               {newStoreData.boards.length === 0 && (
                 <Text style={{ color: theme.colors.textSecondary, fontSize: 12, textAlign: 'center', paddingVertical: 6 }}>
                   No boards yet — add at least one board.
@@ -1429,6 +1607,56 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
                   boards: [...newStoreData.boards, { elementId: '', elementName: '', quantity: 1, customRate: 0, width: '', height: '', unit: 'ft' }]
                 })}
               />
+
+              {/* Initial Store Photos */}
+              <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, padding: 12, gap: 10, backgroundColor: theme.colors.background }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Camera size={16} color={theme.colors.textSecondary} />
+                    <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '800' }}>Initial store photos (Optional)</Text>
+                  </View>
+                  <Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: '700' }}>
+                    {newStoreData.initialPhotos.length} / 10
+                  </Text>
+                </View>
+
+                {newStoreData.initialPhotos.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                    {newStoreData.initialPhotos.map((photo, pIdx) => (
+                      <View key={pIdx} style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: theme.colors.border }}>
+                        <Image source={{ uri: photo.uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        <TouchableOpacity
+                          style={{
+                            position: 'absolute',
+                            top: 3,
+                            right: 3,
+                            backgroundColor: 'rgba(0,0,0,0.65)',
+                            borderRadius: 10,
+                            width: 20,
+                            height: 20,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          onPress={() => handleRemoveInitialPhoto(pIdx)}
+                        >
+                          <X size={12} color="#FFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+
+                {newStoreData.initialPhotos.length < 10 && (
+                  <Button
+                    label="Attach photo"
+                    variant="soft"
+                    size="sm"
+                    color={tone.info}
+                    icon={(col) => <Camera size={14} color={col} />}
+                    onPress={handlePickInitialPhoto}
+                  />
+                )}
+              </View>
             </View>
           )}
         </FormSection>
@@ -1470,20 +1698,6 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
           </>
         )}
       </BottomSheet>
-
-      {/* ---------------- Delete confirmation ---------------- */}
-      <ConfirmDialog
-        visible={deleteModalVisible}
-        title="Delete store?"
-        message={`"${storeToDelete?.storeName || ''}" and all its recce and installation records will be permanently removed. This can't be undone.`}
-        icon={<Trash2 size={28} color={tone.danger} />}
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          setDeleteModalVisible(false);
-          setStoreToDelete(null);
-        }}
-      />
     </View>
   );
 }

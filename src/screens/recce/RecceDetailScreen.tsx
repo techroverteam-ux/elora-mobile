@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Modal, ActivityIndicator, StyleSheet } from 'react-native';
-import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle2, XCircle, Clock, Edit3, X, Phone, User, Hash, Layers, ZoomIn } from 'lucide-react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Modal, ActivityIndicator, StyleSheet, Alert } from 'react-native';
+import { MapPin, Building2, Package, IndianRupee, Camera, Ruler, FileText, CheckCircle2, XCircle, Clock, Edit3, X, Phone, User, Hash, Layers, ZoomIn, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { canDeleteStore } from '../../hooks/usePermissions';
 import { storeService } from '../../services/storeService';
 import Toast from 'react-native-toast-message';
 import imageService from '../../services/imageService';
@@ -32,7 +33,7 @@ const APPROVAL_META: Record<string, { label: string; color: string }> = {
 
 export default function RecceDetailScreen({ route, navigation }: RecceDetailProps) {
   const { theme } = useTheme();
-  const { canViewCommercialInfo, isAdmin } = useAuth();
+  const { canViewCommercialInfo, isAdmin, user } = useAuth();
   const insets = useSafeAreaInsets();
   const { storeId } = route.params;
   const [store, setStore] = useState<any>(null);
@@ -114,12 +115,41 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
   }
 
   const admin = isAdmin();
+  const isDeletable = canDeleteStore(user, store);
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Confirm Delete',
+      `Are you sure you want to delete this store "${store?.storeName || ''}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storeService.delete(storeId);
+              Toast.show({ type: 'success', text1: 'Store deleted successfully' });
+              navigation.goBack();
+            } catch (error: any) {
+              Toast.show({
+                type: 'error',
+                text1: 'Delete Failed',
+                text2: error?.response?.data?.message || 'Failed to delete store',
+              });
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const allPhotos: any[] = store.recce?.reccePhotos || [];
-  const visiblePhotos = allPhotos.filter((photo: any) => admin || photo.approvalStatus === 'APPROVED');
-  const approvedCount = allPhotos.filter((p: any) => p.approvalStatus === 'APPROVED').length;
-  const rejectedCount = allPhotos.filter((p: any) => p.approvalStatus === 'REJECTED').length;
+  const visiblePhotos = allPhotos.filter((photo: any) => admin || photo.approvalStatus === 'APPROVED' || photo.status === 'APPROVED');
+  const approvedCount = allPhotos.filter((p: any) => p.approvalStatus === 'APPROVED' || p.status === 'APPROVED').length;
+  const rejectedCount = allPhotos.filter((p: any) => p.approvalStatus === 'REJECTED' || p.status === 'REJECTED').length;
   const pendingCount = allPhotos.length - approvedCount - rejectedCount;
-  const initialPhotos: string[] = store.recce?.initialPhotos || [];
+  const initialPhotos: string[] = (store.recce?.initialPhotos || []).filter((p: any) => p && typeof p === 'string' && p.trim() !== '');
   const mobile = store.contact?.mobile || store.contact?.phone || store.mobile || store.phone || store.contactMobile || store.dealerMobile;
   const locationLine = [store.location?.city, store.location?.district, store.location?.state].filter(Boolean).join(', ');
 
@@ -148,6 +178,15 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
                 </View>
               )}
             </View>
+            {isDeletable && (
+              <Button
+                variant="soft"
+                color={tone.danger}
+                size="sm"
+                icon={(col) => <Trash2 size={16} color={col} />}
+                onPress={handleDelete}
+              />
+            )}
           </View>
           <View style={{ marginTop: 12 }}>
             <StatusBadge status={store.currentStatus} />
@@ -228,13 +267,19 @@ export default function RecceDetailScreen({ route, navigation }: RecceDetailProp
               return (
                 <Card key={originalIndex} style={{ padding: 0, overflow: 'hidden', borderColor: reccePhoto.approvalStatus === 'REJECTED' ? alpha(tone.danger, 0.5) : c.border }}>
                   {/* Photo */}
-                  <TouchableOpacity activeOpacity={0.9} onPress={() => setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo))}>
+                  <TouchableOpacity
+                    activeOpacity={reccePhoto.photo ? 0.9 : 1}
+                    onPress={() => reccePhoto.photo ? setSelectedImage(imageService.getFullImageUrl(reccePhoto.photo)) : null}
+                  >
                     {reccePhoto.photo ? (
                       <Image source={{ uri: imageService.getFullImageUrl(reccePhoto.photo) }} style={styles.boardImage} resizeMode="contain" />
                     ) : (
-                      <View style={[styles.boardImage, { alignItems: 'center', justifyContent: 'center' }]}>
-                        <Camera size={28} color="#64748B" />
-                        <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 6 }}>No photo (direct installation)</Text>
+                      <View style={[styles.boardImage, { alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceSecondary }]}>
+                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: alpha(tone.primary, 0.12), alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                          <Layers size={24} color={tone.primary} />
+                        </View>
+                        <Text style={{ color: c.text, fontSize: 14, fontWeight: '800' }}>Direct Installation</Text>
+                        <Text style={{ color: c.textSecondary, fontSize: 12, marginTop: 2 }}>No Recce Photo Required</Text>
                       </View>
                     )}
                     <View style={styles.boardOverlayTop}>
