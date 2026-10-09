@@ -50,6 +50,7 @@ interface Store {
     recceAssignedTo?: { _id: string; name: string };
     installationAssignedTo?: { _id: string; name: string };
   };
+  directInstallation?: boolean;
   createdBy?: any;
 }
 
@@ -994,6 +995,11 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
       item.currentStatus === 'INSTALLATION_SUBMITTED' ? { label: 'Submitted', color: tone.teal }
       : item.currentStatus === 'COMPLETED' ? { label: 'Completed', color: tone.success }
       : null;
+    const isDirectInstall = !!item.directInstallation || !!item.workflow?.installationAssignedTo;
+    const canAssignRecce =
+      (item.currentStatus === StoreStatus.UPLOADED || item.currentStatus === 'UPLOADED') &&
+      !item.workflow?.recceAssignedTo &&
+      !isDirectInstall;
 
     return (
       <Card
@@ -1066,7 +1072,7 @@ export default function StoresScreen({ navigation: navigationProp }: { navigatio
             onPress={() => nav?.navigate('StoreDetail', { storeId: item._id })}
           />
 
-          {(item.currentStatus === StoreStatus.UPLOADED || !item.workflow.recceAssignedTo) && (
+          {canAssignRecce && (
             <Button
               label="Assign recce"
               variant="soft"
